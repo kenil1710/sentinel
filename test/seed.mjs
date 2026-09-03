@@ -67,7 +67,27 @@ if (strictId !== null && strictId !== undefined) {
   if (!filed.ok) {
     console.log(`  ✘ challenge: ${filed.revertReason || filed.status}`);
   } else {
-    const known = await watcher.viewJson("is_tx_challenged", ["ethereum", SWAP_TX]);
+    /*
+     * Read the id back by POLLING, not once.
+     *
+     * A settled write is not immediately visible to a read on Bradbury, and a
+     * single read here returned `challenge_id: undefined` — which was then
+     * passed straight into resolve_challenge(undefined). The transaction
+     * "succeeded" and judged nothing.
+     *
+     * This is the same lesson as the patrol bot's: a settled transaction is not
+     * a completed effect, and the contract's own state is the only authority.
+     */
+    let known = { challenged: false };
+    for (let i = 0; i < 10; i++) {
+      known = await watcher.viewJson("is_tx_challenged", ["ethereum", SWAP_TX]);
+      if (known.challenged && typeof known.challenge_id === "number") break;
+      await sleep(3000);
+    }
+    if (!known.challenged || typeof known.challenge_id !== "number") {
+      console.log("  ✘ challenge filed but its id never became readable — not judging blindly");
+      process.exit(1);
+    }
     const cid = known.challenge_id;
     console.log(`  ✔ challenge #${cid} filed`);
     console.log(`  … putting it to the validators (each fetches Blockscout independently)`);
