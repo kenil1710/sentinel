@@ -165,14 +165,40 @@ error nor a confirmation, because it is neither.
 
 ---
 
+## The landing page has no wallet
+
+`src/app/(marketing)/` and `src/app/(app)/` are separate route groups with
+separate layouts. The landing page gets a header with no wallet control and no
+network badge; every page that can touch the chain gets both.
+
+That split is structural rather than a conditional inside one component — the
+marketing layout has no import path to a wallet prompt at all, and the audit
+checks the served HTML of both to prove it.
+
 ## Verification
 
 ```
-offline suite     369 tests   test/test_logic.py       (includes the mangled artifact)
-patrol suite       28 tests   test/test_patrol.mjs     (real Blockscout fixtures)
-live suite         79 checks  test/e2e.mjs             (Studionet, real validators)
-audit                         bash tools/audit.sh      (live chain + live site)
+offline suite      369 tests    test/test_logic.py       (includes the mangled artifact)
+patrol suite        28 tests    test/test_patrol.mjs     (real Blockscout fixtures)
+live suite          79 checks   test/e2e.mjs             (Studionet, real validators)
+functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
+rejection checklist 19 checks   tools/checklist.py       (AST, not grep)
+audit               51 checks   bash tools/audit.sh      (live chain + live site)
 ```
+
+`verify_methods.mjs` exercises all 36 public methods on a freshly deployed
+contract and asserts an **observable effect** for each — a method that answers
+and changes nothing is a method that does not work. It lowers the challenge
+cooldown and the resolution window through `set_params` so that
+`settle_stalled` is reachable without a 48-hour wait, which is what those dials
+are for.
+
+`checklist.py` re-checks every pattern that has sunk a submission before: that a
+leader cannot forge a stored value, that the content hash is present and
+hand-rolled, that `verify_challenge` recomputes rather than reports, that no
+owner-gated method can reach a verdict or a bond, that every payable path
+refunds, that the fetch URL has exactly one producer. All by AST — twice now a
+text search has produced a false positive on a comment that *explains* a hazard.
 
 The offline suite drives the **mangled artifact** — the bytes that actually
 deploy — through a full lifecycle, not a spot check. PredictStake's first

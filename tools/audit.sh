@@ -66,6 +66,11 @@ if echo "$LOGIC" | grep -q "^OK"; then
   ok "test_logic.py — ${N} tests, all passing"
 else bad "test_logic.py FAILED: $(echo "$LOGIC" | tail -1)"; fi
 
+CHECK=$(python3 tools/checklist.py 2>&1 | tail -1)
+if echo "$CHECK" | grep -q "0 failed"; then
+  ok "checklist.py — $(echo "$CHECK" | grep -oE '[0-9]+ passed') rejection-pattern checks (AST)"
+else bad "checklist.py FAILED: $CHECK"; fi
+
 PATROL=$(node --experimental-strip-types --no-warnings test/test_patrol.mjs 2>&1 | tail -2)
 if echo "$PATROL" | grep -q "0 failed"; then
   ok "test_patrol.mjs — $(echo "$PATROL" | grep -oE '[0-9]+ passed')"
@@ -124,6 +129,26 @@ if [ -z "$SITE" ]; then skip "no frontend URL recorded"; else
   TXS=$(curl -s --max-time 45 "${SITE}/api/txs?chain=ethereum&wallet=0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5" \
     | python3 -c "import json,sys;print(json.load(sys.stdin).get('ok'))" 2>/dev/null || echo "error")
   [ "$TXS" = "True" ] && ok "/api/txs reads live Blockscout" || bad "/api/txs failed (got: $TXS)"
+
+  # The marketing / app split, verified on the served HTML rather than asserted.
+  # The landing page must offer no wallet prompt and name no network; every page
+  # that can touch the chain must offer both.
+  LAND=$(curl -s --max-time 30 "${SITE}/")
+  if echo "$LAND" | grep -qE "Connect wallet|Install a wallet"; then
+    bad "landing page carries a wallet control"
+  else ok "landing page carries NO wallet control"; fi
+  if echo "$LAND" | grep -qE "Bradbury|Studionet"; then
+    bad "landing page names a network"
+  else ok "landing page names NO network"; fi
+
+  APPOK=1
+  for p in /agents /register /patrol /leaderboard /docs; do
+    H=$(curl -s --max-time 30 "${SITE}${p}")
+    echo "$H" | grep -qE "Connect wallet|Install a wallet" || APPOK=0
+    echo "$H" | grep -qE "Bradbury|Studionet" || APPOK=0
+  done
+  [ "$APPOK" = "1" ] && ok "every app page carries the wallet control and the network badge" \
+    || bad "an app page is missing the wallet control or the network badge"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +158,12 @@ if [ -d frontend/node_modules ]; then
   (cd frontend && npx tsc --noEmit >/dev/null 2>&1) && ok "tsc --noEmit is clean" || bad "tsc --noEmit reports errors"
   (cd frontend && npx eslint . --max-warnings=0 >/dev/null 2>&1) && ok "eslint --max-warnings=0 is clean" || bad "eslint reports problems"
 else skip "frontend/node_modules missing — run npm install"; fi
+
+[ -f "frontend/src/app/(marketing)/layout.tsx" ] && [ -f "frontend/src/app/(app)/layout.tsx" ] \
+  && ok "route groups split marketing from app structurally" || bad "route groups missing"
+grep -q "WalletProvider" "frontend/src/app/(marketing)/layout.tsx" 2>/dev/null \
+  && bad "the marketing layout imports the wallet provider" \
+  || ok "the marketing layout has no wallet import path"
 
 grep -q 'PATROL_PRIVATE_KEY' frontend/.env.example && ok ".env.example documents the patrol key" || bad ".env.example missing the patrol key"
 grep -q 'NEXT_PUBLIC_PATROL_PRIVATE_KEY' frontend/src/app/api/patrol/route.ts 2>/dev/null \

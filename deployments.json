@@ -43,7 +43,13 @@
         "address": "0xE66B5DC3E66DF231167D16C73eeAcB21323f483C"
       },
       "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
-      "note": "Where the 79-check live suite runs \u2014 it is gasless, so nine roles can be funded automatically."
+      "note": "Where the 79-check live suite (test/e2e.mjs) runs \u2014 Studionet is gasless, so several roles can be funded automatically.",
+      "functional_verification": {
+        "contract": "0x0873Ea1d23bDAccb1FfB23496Ec4f8C2e1C5Af1D",
+        "source": "test/verify_methods.mjs",
+        "result": "36/36 public methods verified, each by an observable effect rather than a bare return",
+        "covers": "every write, every owner control, every view, the pause exits, the refund-on-reject paths, and the reconstructed balance invariant"
+      }
     },
     "bradbury": {
       "network": "testnet-bradbury",
@@ -108,6 +114,42 @@
     },
     "cron": "daily \u2014 the Vercel Hobby plan rejects anything finer at deploy time. See frontend/CRON.md.",
     "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
-    "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link."
+    "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link.",
+    "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all."
+  },
+  "verification": {
+    "offline_suite": {
+      "tests": 369,
+      "failed": 0,
+      "source": "test/test_logic.py",
+      "note": "includes the mangled artifact driven through a full lifecycle"
+    },
+    "patrol_suite": {
+      "tests": 28,
+      "failed": 0,
+      "source": "test/test_patrol.mjs",
+      "note": "the bot's accusation rules against real Blockscout fixtures"
+    },
+    "live_suite": {
+      "checks": 79,
+      "failed": 0,
+      "source": "test/e2e.mjs",
+      "network": "studionet"
+    },
+    "functional_sweep": {
+      "methods": 36,
+      "failed": 0,
+      "source": "test/verify_methods.mjs",
+      "network": "studionet"
+    },
+    "repository_audit": {
+      "source": "tools/audit.sh"
+    },
+    "rejection_checklist": {
+      "checks": 19,
+      "failed": 0,
+      "source": "tools/checklist.py",
+      "note": "AST-checked: forgery, content hash, recomputation, owner powers, refund-on-reject, URL derivation, binding, closures, floats"
+    }
   }
 }
