@@ -1,0 +1,113 @@
+{
+  "project": "Sentinel",
+  "tagline": "An autonomous agent that polices other autonomous agents.",
+  "category": "Hackathon project \u2014 contract + frontend + autonomous patrol agent",
+  "summary": "Operators register AI agents with plain-English mandates on-chain and post a bond. A serverless patrol bot walks public blockchains via Blockscout, detects transactions that contradict a mandate, and files challenges on GenLayer. Five validators independently fetch the transaction and agree on one verdict: VIOLATION slashes the bond, COMPLIANT costs the challenger their stake, INCONCLUSIVE refunds. No administrator decides anything.",
+  "runner": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
+  "consensus": {
+    "axis": "One string: VIOLATION / COMPLIANT / INCONCLUSIVE / RETRY. Nothing else is compared.",
+    "why": "docs/PROBE.md \u00a74 measured five fields moving between two fetches of the same transaction seconds apart (confirmations, exchange_rate, has_error_in_internal_transactions, and the nested token.holders_count and token.total_supply). \u00a75 then measured validators DISAGREEING about one round in four on a content digest of the STABLE projection, because Blockscout is a load-balanced cluster whose replicas index at different rates. A digest on the axis would leave a quarter of all challenges unsettleable at random.",
+    "digest": "Recorded on every challenge as evidence, and never voted on.",
+    "retry": "RETRY is on the axis because it is NOT a verdict: validators must agree a source was transiently unavailable, or one node's bad luck silently becomes everybody's refund.",
+    "gates_before_the_model": [
+      "transient (5xx/429/0) \u2192 RETRY, no state applied",
+      "404 \u2192 INCONCLUSIVE, deterministic absence, challenger refunded",
+      "unparseable 200 \u2192 INCONCLUSIVE",
+      "binding: the transaction must involve the registered wallet, checked in Python",
+      "only then does a model see a fenced, defanged projection"
+    ]
+  },
+  "data_sources": {
+    "ethereum": "eth.blockscout.com",
+    "base": "base.blockscout.com",
+    "arbitrum": "arbitrum.blockscout.com",
+    "polygon": "polygon.blockscout.com",
+    "validators_read": "/api/v2/transactions/{hash} \u2014 10-18 KB, one immutable transaction",
+    "patrol_bot_reads": "/api/v2/addresses/{wallet}/transactions \u2014 0.5-1.0 MB, 50 rows, moves constantly",
+    "no_query_parameters": "Blockscout 422s unknown query parameters; the brief's ?limit=5 is one of them"
+  },
+  "artifacts": {
+    "build/Sentinel.min.py": {
+      "source": "contracts/Sentinel.py",
+      "bytes": 49885,
+      "sha256": "eb4ef213e62f50918bd6eec1ab893cc03d07961cd95af91ac03c16b7869c8c13",
+      "source_sha256": "03395ea2925d7707f2138bc03e6317b6465ab6a7229b08680a6b820fa06a0091",
+      "premangle_bytes": 61631
+    }
+  },
+  "deployments": {
+    "studionet": {
+      "network": "studionet",
+      "rpc": "https://studio.genlayer.com/api",
+      "Sentinel": {
+        "address": "0xE66B5DC3E66DF231167D16C73eeAcB21323f483C"
+      },
+      "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
+      "note": "Where the 79-check live suite runs \u2014 it is gasless, so nine roles can be funded automatically."
+    },
+    "bradbury": {
+      "network": "testnet-bradbury",
+      "rpc": "https://rpc-bradbury.genlayer.com",
+      "Sentinel": {
+        "address": "0xAe9288096E6A451a3A94f7886537a512B248913F"
+      },
+      "owner": "0xC70FF4C06aEcb796ED712029EE548834764c9Fe8",
+      "artifact_bytes": 49885,
+      "verified": "genlayer code <addr> is BYTE-IDENTICAL to build/Sentinel.min.py \u2014 same sha256 as the artifacts block.",
+      "explorer": "https://explorer-bradbury.genlayer.com/address/0xAe9288096E6A451a3A94f7886537a512B248913F",
+      "live_activity": "Two agents registered, real challenges filed and judged by validators, bond slashed on a proven violation."
+    }
+  },
+  "note": "Verify with: shasum -a 256 build/Sentinel.min.py and compare against the sha256 below, or `genlayer network set testnet-bradbury` then `python3 tools/verify_onchain.py <address> build/Sentinel.min.py`.",
+  "build": {
+    "command": "bash tools/build.sh",
+    "stages": [
+      "tools/minify_contract.py -> build/Sentinel.premangle.py",
+      "tools/mangle_names.py -> build/Sentinel.min.py + build/Sentinel.names.json"
+    ],
+    "size_ceiling_measured": {
+      "tool": "test/size_gate.py \u2014 deploys a padded contract and reads a value back",
+      "accepted": 51257,
+      "refused": 53500,
+      "note": "Bradbury refuses with BlockPubdataLimitReached. The artifact ships under the accepted figure."
+    },
+    "never_renamed": [
+      "the contract class name",
+      "public method names (the ABI)",
+      "dunders",
+      "names used as keyword arguments",
+      "names in getattr strings",
+      "every string literal"
+    ]
+  },
+  "probe": {
+    "contract": "contracts/_render_probe.py",
+    "studionet": [
+      "0xa931D970D89A0f33Dd86325BddD681f0C9AB576E",
+      "0x96e022114f418F4708a08beD858324830226Fce4"
+    ],
+    "findings": "docs/PROBE.md \u2014 nine findings, three of which changed the architecture"
+  },
+  "frontend": {
+    "url": "https://sentinel-tau-ashen.vercel.app",
+    "network": "bradbury",
+    "pages": [
+      "/",
+      "/register",
+      "/agents",
+      "/agent/[id]",
+      "/challenge/[id]",
+      "/patrol",
+      "/leaderboard",
+      "/docs"
+    ],
+    "api": {
+      "/api/patrol": "the Sentinel itself \u2014 reads the queue, fetches Blockscout, files challenges",
+      "/api/txs": "server-side Blockscout proxy for the agent detail page",
+      "/api/rpc": "same-origin RPC relay for Studionet, whose 429s drop CORS headers"
+    },
+    "cron": "daily \u2014 the Vercel Hobby plan rejects anything finer at deploy time. See frontend/CRON.md.",
+    "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
+    "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link."
+  }
+}

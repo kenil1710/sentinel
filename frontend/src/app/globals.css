@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/*
+ * Sentinel — a watch console, not a dashboard.
+ *
+ * The visual argument: this is a thing that WATCHES. Deep slate ground, a
+ * single cyan signal colour for anything live or being monitored, and verdict
+ * colours that are used ONLY for verdicts so they never lose their meaning.
+ * Monospace for every hash, address and amount, because those are evidence and
+ * evidence should look like evidence.
+ */
+
+@theme {
+  --color-ground: #070B10;
+  --color-panel: #0C121A;
+  --color-panel-2: #111A24;
+  --color-line: #1B2733;
+  --color-line-2: #263544;
+
+  --color-ink: #E8EFF6;
+  --color-ink-2: #9DB0C2;
+  --color-ink-3: #64788C;
+
+  --color-signal: #06B6D4;
+  --color-signal-dim: #0E7490;
+  --color-violation: #EF4444;
+  --color-compliant: #10B981;
+  --color-neutral: #F59E0B;
+
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+* { border-color: var(--color-line); }
+
+html { background: var(--color-ground); color-scheme: dark; }
+
+body {
+  background:
+    radial-gradient(1100px 620px at 78% -8%, rgba(6, 182, 212, 0.10), transparent 62%),
+    radial-gradient(760px 460px at 6% 4%, rgba(14, 116, 144, 0.08), transparent 58%),
+    var(--color-ground);
+  color: var(--color-ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The scan line that runs under the header — the "something is watching" cue. */
+@keyframes sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.scanline::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 25%;
+  background: linear-gradient(90deg, transparent, var(--color-signal), transparent);
+  opacity: 0.5;
+  animation: sweep 7s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.45); }
+  70%  { box-shadow: 0 0 0 8px rgba(6, 182, 212, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+}
+.live-dot { animation: pulse-ring 2.4s ease-out infinite; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A faint grid, like a monitoring surface. Used sparingly, on the hero only. */
+.grid-field {
+  background-image:
+    linear-gradient(var(--color-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 70% 30%, black, transparent 72%);
+  opacity: 0.4;
+}
+
+.mono { font-family: var(--font-mono); font-variant-ligatures: none; }
+
+::selection { background: rgba(6, 182, 212, 0.3); color: var(--color-ink); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-ground); }
+::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-signal-dim); }
+
+input, textarea, select { color-scheme: dark; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

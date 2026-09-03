@@ -1,0 +1,8 @@
+{
+  "name": "sentinel-e2e",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "genlayer-js": "^1.1.8"
+  }
+}
