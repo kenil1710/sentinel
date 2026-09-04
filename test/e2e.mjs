@@ -42,6 +42,11 @@ const STRICT_MANDATE =
 const PERMISSIVE_MANDATE =
   "The agent may trade any ERC-20 token on any decentralised exchange, " +
   "in any size, at its own discretion. There are no restrictions.";
+// The four profile arguments are positional and all four may be empty.
+const PROFILE = ["Uniswap Rebalancer", "TRADING",
+  "A market-making agent that rebalances an ETH/USDC book every four hours.",
+  "https://example.org/agents/rebalancer"];
+
 
 const owner = connect({ networkName, address, role: "client" });
 const operator = connect({ networkName, address, role: "operator" });
@@ -89,13 +94,34 @@ const STAKE = wei(cfg0.challenge_stake);
 const MIN_BOND = wei(cfg0.min_bond);
 console.log(`  stake ${gen(STAKE)} GEN   min bond ${gen(MIN_BOND)} GEN   penalty ${cfg0.penalty_bps} bps`);
 
+/*
+ * This suite needs a FRESH contract.
+ *
+ * It registers one fixed wallet (SWAP_TX's sender, because the violation has to
+ * be a real one) and then asserts a clean record against it — bond exactly 1
+ * GEN, compliance 100%, no history. Run twice against the same address and the
+ * second run fails on "that wallet is already registered", and the twenty
+ * checks downstream of that registration fail with it.
+ *
+ * Those failures look like broken contract logic and are not. Refusing up front
+ * costs one line and says the actual thing that is wrong.
+ */
+const stats0 = await owner.viewJson("get_stats");
+if (Number(stats0.agents_registered) > 0) {
+  console.log(`\n  ✘ this contract already has ${stats0.agents_registered} agent(s) registered.`);
+  console.log(`    e2e.mjs asserts a clean record and cannot run against used state.`);
+  console.log(`    Deploy a fresh one first:\n`);
+  console.log(`      node test/deploy.mjs --network=${networkName}\n`);
+  process.exit(1);
+}
+
 // ---------------------------------------------------------------------------
 section("TEST 1 — a rejected payable call REFUNDS rather than confiscating");
 // ---------------------------------------------------------------------------
 {
   const before = await operator.read.getBalance({ address: ACC.operator.address });
   const out = await operator.send("register_agent",
-    [SWAP_WALLET, "solana", STRICT_MANDATE], GEN);
+    [SWAP_WALLET, "solana", STRICT_MANDATE, ...PROFILE], GEN);
   check("the transaction itself succeeded", out.ok, out.revertReason || out.status);
   const body = returnedJson(out.returned);
   if (body) {
@@ -137,7 +163,7 @@ section("TEST 2 — registration, and the bond the contract now holds");
 let AGENT_STRICT = null;
 {
   const out = await operator.send("register_agent",
-    [SWAP_WALLET, "ethereum", STRICT_MANDATE], GEN);
+    [SWAP_WALLET, "ethereum", STRICT_MANDATE, ...PROFILE], GEN);
   check("register_agent succeeded", out.ok, out.revertReason || out.status);
   const body = returnedJson(out.returned);
   AGENT_STRICT = body ? body.agent_id : 0;
@@ -162,21 +188,21 @@ section("TEST 3 — the anti-abuse rules, each one enforced on chain");
 // ---------------------------------------------------------------------------
 {
   const dup = await operator.send("register_agent",
-    [SWAP_WALLET, "ethereum", STRICT_MANDATE], GEN);
+    [SWAP_WALLET, "ethereum", STRICT_MANDATE, ...PROFILE], GEN);
   const dupBody = returnedJson(dup.returned);
   check("the same wallet cannot be registered twice on one chain",
     dupBody?.ok === false && /already registered/i.test(String(dupBody?.reason)),
     JSON.stringify(dupBody)?.slice(0, 120));
 
   const low = await operator2.send("register_agent",
-    ["0x" + "1".repeat(40), "base", STRICT_MANDATE], MIN_BOND / 10n);
+    ["0x" + "1".repeat(40), "base", STRICT_MANDATE, ...PROFILE], MIN_BOND / 10n);
   const lowBody = returnedJson(low.returned);
   check("a bond below the floor is refused and refunded",
     lowBody?.ok === false && wei(lowBody.refunded) === MIN_BOND / 10n,
     JSON.stringify(lowBody)?.slice(0, 120));
 
   const short = await operator2.send("register_agent",
-    ["0x" + "2".repeat(40), "base", "too short"], GEN);
+    ["0x" + "2".repeat(40), "base", "too short", ...PROFILE], GEN);
   const shortBody = returnedJson(short.returned);
   check("a mandate under 20 characters is refused and refunded",
     shortBody?.ok === false && wei(shortBody.refunded) === GEN);
@@ -278,7 +304,7 @@ section("TEST 6 — a PERMISSIVE mandate over the same transaction");
   // verdict were a property of the transaction rather than of the mandate, this
   // would come back VIOLATION too — and the whole premise would be wrong.
   const reg = await operator2.send("register_agent",
-    [SWAP_WALLET, "arbitrum", PERMISSIVE_MANDATE], GEN);
+    [SWAP_WALLET, "arbitrum", PERMISSIVE_MANDATE, ...PROFILE], GEN);
   check("a second agent registered on another chain", reg.ok, reg.revertReason);
   const body = returnedJson(reg.returned);
   const AGENT_LOOSE = body ? body.agent_id : 1;
@@ -356,7 +382,7 @@ section("TEST 9 — the exits a pause must never close");
   check("the contract is paused", cfg.paused === true);
 
   const blocked = await operator2.send("register_agent",
-    ["0x" + "3".repeat(40), "polygon", STRICT_MANDATE], GEN);
+    ["0x" + "3".repeat(40), "polygon", STRICT_MANDATE, ...PROFILE], GEN);
   const blockedBody = returnedJson(blocked.returned);
   check("registration is refused while paused, and refunded",
     blockedBody?.ok === false && wei(blockedBody.refunded) === GEN,

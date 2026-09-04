@@ -19,8 +19,8 @@
 import type { CalldataEncodable, TransactionHash } from "genlayer-js/types";
 import { CONTRACT_ADDRESS, getReadClient, getWalletClient } from "./genlayer";
 import type {
-  Agent, AgentSummary, Challenge, ComplianceScore, Config, PatrolPreview,
-  Stats, Treasury, VerifyResult, Watcher, WriteResult,
+  Agent, AgentSummary, AgentType, Challenge, ComplianceScore, Config,
+  PatrolPreview, Stats, Treasury, VerifyResult, Watcher, WriteResult,
 } from "@/types";
 
 /** Reads are capped so a hung endpoint surfaces as an error, not a spinner. */
@@ -70,6 +70,8 @@ export const previewChallenge = (id: number, tx: string) =>
 
 export const getActiveAgents = (count = 60) =>
   view<{ count: number; agents: AgentSummary[] }>("get_active_agents", [count]);
+export const getAgentsByType = (agentType: string, count = 60) =>
+  view<{ agent_type: string; count: number; agents: AgentSummary[] }>("get_agents_by_type", [agentType, count]);
 export const getAgentsByChain = (chain: string, count = 60) =>
   view<{ chain: string; count: number; agents: AgentSummary[] }>("get_agents_by_chain", [chain, count]);
 export const getAgentsByOperator = (addr: string, count = 60) =>
@@ -189,10 +191,19 @@ async function send<T>(
   }
 }
 
+/**
+ * The four profile arguments are positional and every one may be an empty
+ * string. They are passed explicitly rather than defaulted here so a caller
+ * cannot silently register an agent under a profile it never chose.
+ */
 export const registerAgent = (
-  account: `0x${string}`, wallet: string, chain: string, mandate: string, bondWei: bigint,
-) => send<{ agent_id: number; chain: string; wallet: string; bond: string; status: string }>(
-  account, "register_agent", [wallet, chain, mandate], bondWei);
+  account: `0x${string}`, wallet: string, chain: string, mandate: string,
+  profile: { name: string; agentType: AgentType; description: string; operatorUrl: string },
+  bondWei: bigint,
+) => send<{ agent_id: number; chain: string; wallet: string; bond: string; status: string; agent_type: string }>(
+  account, "register_agent",
+  [wallet, chain, mandate, profile.name, profile.agentType, profile.description, profile.operatorUrl],
+  bondWei);
 
 export const challengeAgent = (
   account: `0x${string}`, agentId: number, txHash: string, reason: string, stakeWei: bigint,

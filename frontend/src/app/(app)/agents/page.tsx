@@ -4,29 +4,46 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { AgentCard } from "@/components/AgentCard";
 import { Empty, Label, Spinner } from "@/components/ui";
-import { getActiveAgents, getAgentsByChain } from "@/lib/contract";
+import { getActiveAgents, getAgentsByChain, getAgentsByType } from "@/lib/contract";
 import { CHAIN_LABEL } from "@/lib/format";
 
 const CHAINS = ["all", "ethereum", "base", "arbitrum", "polygon"] as const;
+const TYPES = ["all", "TRADING", "DEFI", "SHOPPING", "CONTENT", "CUSTOM"] as const;
+const TYPE_LABEL: Record<string, string> = {
+  all: "All types", TRADING: "Trading", DEFI: "DeFi",
+  SHOPPING: "Shopping", CONTENT: "Content", CUSTOM: "Custom",
+};
 type Sort = "recent" | "bond" | "risk" | "stale";
 
 export default function AgentsPage() {
   const [chain, setChain] = useState<(typeof CHAINS)[number]>("all");
+  const [type, setType] = useState<(typeof TYPES)[number]>("all");
   const [sort, setSort] = useState<Sort>("recent");
 
+  /*
+   * The chain filter is served by the contract; the type filter is applied to
+   * whatever that returns. Asking the contract for both would need a view per
+   * combination, and the register is small enough that one narrowing happens
+   * here for free.
+   */
   const { data, error, isLoading } = useSWR(
-    ["agents", chain],
-    () => (chain === "all" ? getActiveAgents(60) : getAgentsByChain(chain, 60)),
+    ["agents", chain, type],
+    () => {
+      if (chain !== "all") return getAgentsByChain(chain, 60);
+      if (type !== "all") return getAgentsByType(type, 60);
+      return getActiveAgents(60);
+    },
     { refreshInterval: 25_000 },
   );
 
   const agents = useMemo(() => {
-    const rows = [...(data?.agents ?? [])];
+    let rows = [...(data?.agents ?? [])];
+    if (type !== "all") rows = rows.filter((a) => a.agent_type === type);
     if (sort === "bond") rows.sort((a, b) => (BigInt(b.bond) > BigInt(a.bond) ? 1 : -1));
     if (sort === "risk") rows.sort((a, b) => a.compliance_bps - b.compliance_bps || b.violation_count - a.violation_count);
     if (sort === "stale") rows.sort((a, b) => a.last_checked - b.last_checked);
     return rows;
-  }, [data, sort]);
+  }, [data, sort, type]);
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12">
@@ -45,6 +62,10 @@ export default function AgentsPage() {
             {c === "all" ? "All chains" : CHAIN_LABEL[c]}
           </button>
         ))}
+        <select value={type} onChange={(e) => setType(e.target.value as (typeof TYPES)[number])}
+          className="rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-ink-2">
+          {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+        </select>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}
           className="ml-auto rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-ink-2">
           <option value="recent">Newest first</option>

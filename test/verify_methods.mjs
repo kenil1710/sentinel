@@ -23,6 +23,11 @@ const SWAP_TX = "0x41729a0ba95cb56368bc48601e0e133b23d8fcf3a1d5321550dbf5819810c
 const SWAP_WALLET = "0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5";
 const STRICT = "Only trade ETH and USDC on Uniswap. Maximum 0.5 ETH per trade. " +
   "Never interact with unverified contracts or unlisted tokens.";
+// The four profile arguments are positional and all four may be empty.
+const PROFILE = ["Uniswap Rebalancer", "TRADING",
+  "A market-making agent that rebalances an ETH/USDC book every four hours.",
+  "https://example.org/agents/rebalancer"];
+
 
 const results = [];
 function record(method, ok, detail = "") {
@@ -121,19 +126,30 @@ console.log("\n── agent lifecycle ──");
 let AGENT_A = null, AGENT_B = null;
 
 await check("register_agent", async () => {
-  const out = await operator.send("register_agent", [SWAP_WALLET, "ethereum", STRICT], GEN);
+  const out = await operator.send("register_agent",
+    [SWAP_WALLET, "ethereum", STRICT, ...PROFILE], GEN);
   assert(out.ok, out.revertReason || out.status);
   const found = await owner.viewJson("get_agent_by_wallet", ["ethereum", SWAP_WALLET]);
   assert(found.found, "agent not readable after registering");
   AGENT_A = found.agent.agent_id;
   assert(found.agent.bond === String(GEN), `bond ${found.agent.bond}`);
   assert(found.agent.mandate === STRICT, "mandate not stored verbatim");
+  assert(found.agent.name === PROFILE[0], `name ${found.agent.name}`);
+  assert(found.agent.agent_type === PROFILE[1], `type ${found.agent.agent_type}`);
+  assert(found.agent.description === PROFILE[2], "description not stored");
+  assert(found.agent.operator_url === PROFILE[3], `url ${found.agent.operator_url}`);
   // The refund path is part of the method working.
-  const rej = await operator.send("register_agent", [SWAP_WALLET, "solana", STRICT], GEN);
+  const rej = await operator.send("register_agent",
+    [SWAP_WALLET, "solana", STRICT, ...PROFILE], GEN);
   const body = returnedJson(rej.returned);
   assert(rej.ok, "a rejected registration must still succeed as a transaction");
   if (body) assert(body.ok === false && body.refunded === String(GEN), `refund ${JSON.stringify(body)}`);
-  return `agent #${AGENT_A} bonded 1 GEN; bad chain refunded`;
+  const xss = await operator2.send("register_agent",
+    ["0x" + "8".repeat(40), "base", STRICT, "Evil", "TRADING", "d", "javascript:alert(1)"], GEN);
+  const xb = returnedJson(xss.returned);
+  if (xb) assert(xb.ok === false && xb.refunded === String(GEN),
+    `a javascript: operator URL was not refunded: ${JSON.stringify(xb)}`);
+  return `agent #${AGENT_A} + profile stored; bad chain and javascript: URL both refunded`;
 });
 
 await check("top_up_bond", async () => {
@@ -200,7 +216,8 @@ await check("mark_patrolled", async () => {
 
 await check("settle_stalled", async () => {
   // Needs a PENDING challenge older than the (now 60s) resolution window.
-  const r = await operator2.send("register_agent", [SWAP_WALLET, "polygon", STRICT], GEN);
+  const r = await operator2.send("register_agent",
+    [SWAP_WALLET, "polygon", STRICT, ...PROFILE], GEN);
   assert(r.ok, "second agent did not register");
   const b = await owner.viewJson("get_agent_by_wallet", ["polygon", SWAP_WALLET]);
   AGENT_B = b.agent.agent_id;
@@ -224,7 +241,8 @@ await check("set_paused (pause/unpause)", async () => {
   await owner.send("set_paused", [true]);
   let cfg = await owner.viewJson("get_config");
   assert(cfg.paused === true, "did not pause");
-  const blocked = await operator2.send("register_agent", ["0x" + "3".repeat(40), "base", STRICT], GEN);
+  const blocked = await operator2.send("register_agent",
+    ["0x" + "3".repeat(40), "base", STRICT, ...PROFILE], GEN);
   const body = returnedJson(blocked.returned);
   if (body) assert(body.ok === false && body.refunded === String(GEN), "paused registration was not refunded");
   // The exit that must survive a pause.
@@ -289,6 +307,7 @@ const VIEWS = [
   ["get_active_agents", () => owner.viewJson("get_active_agents", [50]), (d) => d.agents.every((a) => a.status === "ACTIVE")],
   ["get_agent_history", () => owner.viewJson("get_agent_history", [AGENT_A, 50]), (d) => d.count >= 1 && d.challenges[0].agent_id === AGENT_A],
   ["get_patrol_queue", () => owner.viewJson("get_patrol_queue", [25]), (d) => Array.isArray(d.queue) && d.queue.every((a) => typeof a.mandate === "string" && String(a.explorer).endsWith("blockscout.com"))],
+  ["get_agents_by_type", () => owner.viewJson("get_agents_by_type", ["TRADING", 50]), (d) => d.agent_type === "TRADING" && Array.isArray(d.agents) && d.agents.every((a) => a.agent_type === "TRADING")],
   ["get_compliance_score", () => owner.viewJson("get_compliance_score", [AGENT_A]), (d) => typeof d.compliance_bps === "number" && typeof d.basis === "string"],
   ["get_leaderboard", () => owner.viewJson("get_leaderboard", [25]), (d) => Array.isArray(d.watchers)],
   ["verify_challenge", () => owner.viewJson("verify_challenge", [CH_A]), (d) => d.all_ok === true && d.conservation.balanced === true],

@@ -147,6 +147,81 @@ export default function DocsPage() {
         because it is neither.
       </P>
 
+      <H2>The public compliance API</H2>
+      <P>
+        A compliance record is only worth something if the party about to take the
+        risk can read it. So there is one endpoint, with no key, no account and no
+        rate limit — everything it returns is already public on chain.
+      </P>
+
+      <div className="mono mt-4 overflow-x-auto rounded-lg border border-line bg-panel p-4 text-[12px] leading-relaxed">
+        <div className="text-ink-3"># is this wallet under a mandate, and how has it behaved?</div>
+        <div className="mt-2 text-signal">curl &apos;https://sentinel-tau-ashen.vercel.app/api/check?wallet=0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5&amp;chain=ethereum&apos;</div>
+      </div>
+
+      <P>
+        <span className="text-ink">If the wallet is not registered</span> — the common
+        case, and deliberately cheap:
+      </P>
+      <div className="mono mt-3 overflow-x-auto rounded-lg border border-line bg-panel p-4 text-[12px] leading-relaxed">
+        <pre className="text-ink-2">{`{
+  "registered": false,
+  "wallet": "0x…",
+  "chain": "ethereum",
+  "checked_at": "2026-09-03T…Z"
+}`}</pre>
+      </div>
+
+      <P><span className="text-ink">If it is registered:</span></P>
+      <div className="mono mt-3 overflow-x-auto rounded-lg border border-line bg-panel p-4 text-[12px] leading-relaxed">
+        <pre className="text-ink-2">{`{
+  "registered": true,
+  "agent_id": 0,
+  "name": "Uniswap Rebalancer",
+  "agent_type": "TRADING",
+  "status": "ACTIVE",
+  "mandate": "Only trade ETH and USDC on Uniswap…",
+  "compliance": {
+    "score_bps": 0,          // basis points, for thresholds
+    "score_percent": 0,      // for badges
+    "decided": 5,
+    "compliant": 0,
+    "violations": 5,
+    "inconclusive": 0,
+    "pending": 0,
+    "untested": false,       // true when a perfect score just means untested
+    "basis": "0 of 5 decided found it compliant"
+  },
+  "bond": { "wei": "327680000000000000", "total_slashed_wei": "672320000000000000",
+            "challengeable": false },
+  "activity": { "challenges": 5, "violations": 5, "pending": 0,
+                "registered_at": 1788…, "last_checked": 1788… },
+  "recent_verdicts": [
+    { "challenge_id": 4, "tx_hash": "0x…", "verdict": "VIOLATION",
+      "status": "SETTLED", "settled_at": 1788… }
+  ],
+  "explorer": "https://eth.blockscout.com/address/0x…",
+  "agent_url": "https://sentinel-tau-ashen.vercel.app/agent/0"
+}`}</pre>
+      </div>
+
+      <P>
+        <span className="text-ink">Read <code className="mono text-[13px]">untested</code> before you
+        trust a score.</span> An agent with no decided challenges scores 100%, because
+        unproven is not guilty — but that is not the same claim as &ldquo;tested and
+        clean&rdquo;, and a caller that conflates the two is exactly who this endpoint
+        exists to protect. <code className="mono text-[13px]">decided</code> is the
+        honest denominator.
+      </P>
+      <P>
+        Parameters: <code className="mono text-[13px]">wallet</code> (required, 0x-prefixed
+        40 characters) and <code className="mono text-[13px]">chain</code> (optional,
+        defaults to <code className="mono text-[13px]">ethereum</code>; one of ethereum,
+        base, arbitrum, polygon). A malformed wallet or an unknown chain returns 400;
+        an unreachable register returns 502. CORS is open, so it can be called from a
+        browser.
+      </P>
+
       <H2>The compliance score</H2>
       <P>
         The share of <em>decided</em> challenges that came back COMPLIANT. Inconclusive

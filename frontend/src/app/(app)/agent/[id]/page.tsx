@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { Panel, Label, ChainTag, StatusTag, ScoreRing, VerdictBadge, Empty, Spinner } from "@/components/ui";
+import { Panel, Label, ChainTag, StatusTag, TypeTag, ScoreRing, VerdictBadge, Empty, Spinner } from "@/components/ui";
 import { ChallengeForm } from "@/components/ChallengeForm";
 import { AgentTransactions } from "@/components/AgentTransactions";
 import { useWallet } from "@/components/WalletProvider";
@@ -63,6 +63,7 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
         <ScoreRing bps={agent.compliance_bps} decided={agent.decided_count} size={76} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
+            <TypeTag type={agent.agent_type} />
             <ChainTag chain={agent.chain} />
             <StatusTag status={agent.status} />
             {agent.pending_count > 0 && (
@@ -72,15 +73,34 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
               </span>
             )}
           </div>
-          <h1 className="mono mt-2.5 break-all text-xl font-semibold tracking-tight sm:text-2xl">
-            {agent.wallet}
-          </h1>
+          {agent.name ? (
+            <>
+              <h1 className="mt-2.5 text-xl font-semibold tracking-tight sm:text-2xl">{agent.name}</h1>
+              <div className="mono mt-1 break-all text-[13px] text-ink-2">{agent.wallet}</div>
+            </>
+          ) : (
+            <h1 className="mono mt-2.5 break-all text-xl font-semibold tracking-tight sm:text-2xl">
+              {agent.wallet}
+            </h1>
+          )}
+          {agent.description && (
+            <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink-2">{agent.description}</p>
+          )}
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-ink-3">
             <span>Agent #{agent.agent_id}</span>
             <span>operator {shortAddress(agent.operator, 5)}</span>
             <span>registered {relativeTime(agent.registered_at)}</span>
             <a href={blockscoutUrl(agent.chain, "address", agent.wallet)} target="_blank" rel="noreferrer"
               className="text-signal hover:underline">on {agent.explorer} ↗</a>
+            {/*
+              * The scheme is validated on chain (_url_problem refuses anything
+              * but http/https), so this cannot be a javascript: href. rel is
+              * still set: an operator link is attacker-supplied by definition.
+              */}
+            {agent.operator_url && (
+              <a href={agent.operator_url} target="_blank" rel="noreferrer nofollow ugc"
+                className="text-signal hover:underline">operator ↗</a>
+            )}
           </div>
         </div>
       </div>

@@ -307,25 +307,57 @@ have caught this.
 
 ---
 
-## 9. The build has two stages, and the ceiling was measured rather than guessed
+## 9. The profile fields are descriptive, and that is a security property
+
+`agent_name`, `agent_type`, `description` and `operator_url` exist so a register
+of bare hex addresses is legible. None of them reaches the judgement prompt, none
+is read by a validator, and none can move money — a test asserts the prompt
+contains no profile text, and a second asserts a flattering description does not
+change a verdict.
+
+Two things about them are not cosmetic:
+
+**The operator URL is scheme-restricted ON CHAIN.** The agent page renders it as
+a link, so a `javascript:` or `data:` href stored here would be a stored XSS
+executed by every visitor. `_url_problem` refuses anything but `http://` and
+`https://`, and a registration carrying one is **refunded**, not stored. Doing
+this in the contract rather than the frontend is the only place it cannot later
+be forgotten — a second client would otherwise have to re-derive the rule.
+
+**The text fields are defanged at write time**, not at render time. They sit
+beside the mandate in the challenge prompt's vicinity, and a profile carrying a
+zero-width-split fence token would otherwise reach a model intact. `_clean_text`
+runs `_defang` before truncating.
+
+A name or description that is too long is **truncated, not refused** — refusing
+a registration over a cosmetic field would be absurd. A type that is not one of
+the five is stored as `CUSTOM` rather than rejected or stored blank, so an
+operator who says nothing lands somewhere honest rather than somewhere
+flattering.
+
+---
+
+## 10. The build has two stages, and the ceiling was measured rather than guessed
 
 `test/size_gate.py` deploys a contract padded to an exact byte size to Bradbury
 and reads a value back from it — proving the transport rather than guessing at
 it:
 
 ```
-  51,257 bytes  ACCEPTED   0xcb5AE095c9B2B511B894AB98930dB80C5dA753a7
-  53,500 bytes  REFUSED    (BlockPubdataLimitReached)
-  56,000 bytes  REFUSED    (BlockPubdataLimitReached)
+  51,257 bytes  ACCEPTED     52,400 bytes  ACCEPTED
+  51,692 bytes  ACCEPTED     53,000 bytes  ACCEPTED
+  53,500 bytes  REFUSED (BlockPubdataLimitReached)
+  56,000 bytes  REFUSED (BlockPubdataLimitReached)
 ```
 
-So the ceiling is between 51,257 and 53,500, and the artifact ships under the
-proven-accepted figure:
+Re-measured when the profile fields were added rather than assumed to still
+hold. The ceiling is between **53,000 and 53,500**, and the artifact ships under
+the proven-accepted figure:
 
 ```
-contracts/Sentinel.py        ~90,000   readable, committed, unchanged
-build/Sentinel.premangle.py  ~62,000   comments and docstrings stripped
-build/Sentinel.min.py        ~49,900   identifiers shortened  <- deployed
+contracts/Sentinel.py        ~93,000   readable, committed, unchanged
+build/Sentinel.premangle.py  ~64,000   comments and docstrings stripped
+build/Sentinel.min.py         51,692   identifiers shortened  <- deployed
 ```
 
 `tools/mangle_names.py` renames locals, parameters, module functions and

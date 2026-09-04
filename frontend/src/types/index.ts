@@ -4,6 +4,7 @@ export type Chain = "ethereum" | "base" | "arbitrum" | "polygon";
 export type AgentStatus = "ACTIVE" | "WITHDRAWN" | "SLASHED_OUT";
 export type ChallengeStatus = "PENDING" | "SETTLED" | "REFUNDED";
 export type Verdict = "" | "VIOLATION" | "COMPLIANT" | "INCONCLUSIVE";
+export type AgentType = "TRADING" | "DEFI" | "SHOPPING" | "CONTENT" | "CUSTOM";
 
 export interface Config {
   owner: string;
@@ -24,6 +25,10 @@ export interface Config {
   chains: Chain[];
   explorers: Record<Chain, string>;
   verdicts: string[];
+  agent_types: AgentType[];
+  max_name_chars: number;
+  max_description_chars: number;
+  max_url_chars: number;
 }
 
 export interface Agent {
@@ -33,6 +38,10 @@ export interface Agent {
   chain: Chain;
   explorer: string;
   mandate: string;
+  name: string;
+  agent_type: AgentType;
+  description: string;
+  operator_url: string;
   bond: string;
   status: AgentStatus;
   registered_at: number;
@@ -52,7 +61,9 @@ export interface Agent {
 
 /** What list views return: the agent record minus detail-only fields. */
 export interface AgentSummary
-  extends Omit<Agent, "mandate" | "explorer" | "total_topped_up" | "mandate_updated_at" | "inconclusive_count"> {
+  extends Omit<Agent,
+    "mandate" | "explorer" | "total_topped_up" | "mandate_updated_at" |
+    "inconclusive_count" | "description" | "operator_url"> {
   mandate_preview: string;
   /** Present only on the patrol queue, which re-adds them. */
   mandate?: string;

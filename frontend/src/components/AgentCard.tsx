@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChainTag, ScoreRing, StatusTag } from "./ui";
+import { ChainTag, ScoreRing, StatusTag, TypeTag } from "./ui";
 import { formatGen, relativeTime, shortAddress } from "@/lib/format";
 import type { AgentSummary } from "@/types";
 
@@ -11,6 +11,7 @@ export function AgentCard({ agent }: { agent: AgentSummary }) {
         <ScoreRing bps={agent.compliance_bps} decided={agent.decided_count} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
+            <TypeTag type={agent.agent_type} />
             <ChainTag chain={agent.chain} />
             <StatusTag status={agent.status} />
             {agent.pending_count > 0 && (
@@ -20,9 +21,20 @@ export function AgentCard({ agent }: { agent: AgentSummary }) {
               </span>
             )}
           </div>
-          <div className="mono mt-2.5 truncate text-sm text-ink group-hover:text-signal">
-            {shortAddress(agent.wallet, 6)}
-          </div>
+          {agent.name ? (
+            <>
+              <div className="mt-2.5 truncate text-sm font-medium text-ink group-hover:text-signal">
+                {agent.name}
+              </div>
+              <div className="mono mt-0.5 truncate text-[11px] text-ink-3">
+                {shortAddress(agent.wallet, 6)}
+              </div>
+            </>
+          ) : (
+            <div className="mono mt-2.5 truncate text-sm text-ink group-hover:text-signal">
+              {shortAddress(agent.wallet, 6)}
+            </div>
+          )}
           <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-ink-2">
             {agent.mandate_preview}
           </p>

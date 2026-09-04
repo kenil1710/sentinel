@@ -52,6 +52,22 @@ export function ChainTag({ chain, className = "" }: { chain: string; className?:
   );
 }
 
+/**
+ * What an agent DOES. Deliberately monochrome: the three verdict colours mean
+ * exactly one thing each in this app, and a type badge is not a judgement.
+ */
+export function TypeTag({ type, className = "" }: { type: string; className?: string }) {
+  const label: Record<string, string> = {
+    TRADING: "Trading", DEFI: "DeFi", SHOPPING: "Shopping",
+    CONTENT: "Content", CUSTOM: "Custom",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-md bg-panel-2 px-2 py-0.5 text-[11px] font-medium text-ink-2 ring-1 ring-line-2 ${className}`}>
+      {label[type] ?? "Custom"}
+    </span>
+  );
+}
+
 export function StatusTag({ status }: { status: string }) {
   const tone: Record<string, string> = {
     ACTIVE: "text-compliant bg-compliant/10 ring-compliant/25",

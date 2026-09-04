@@ -1,18 +1,18 @@
 {
   "project": "Sentinel",
   "tagline": "An autonomous agent that polices other autonomous agents.",
-  "category": "Hackathon project \u2014 contract + frontend + autonomous patrol agent",
+  "category": "Hackathon project — contract + frontend + autonomous patrol agent",
   "summary": "Operators register AI agents with plain-English mandates on-chain and post a bond. A serverless patrol bot walks public blockchains via Blockscout, detects transactions that contradict a mandate, and files challenges on GenLayer. Five validators independently fetch the transaction and agree on one verdict: VIOLATION slashes the bond, COMPLIANT costs the challenger their stake, INCONCLUSIVE refunds. No administrator decides anything.",
   "runner": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
   "consensus": {
     "axis": "One string: VIOLATION / COMPLIANT / INCONCLUSIVE / RETRY. Nothing else is compared.",
-    "why": "docs/PROBE.md \u00a74 measured five fields moving between two fetches of the same transaction seconds apart (confirmations, exchange_rate, has_error_in_internal_transactions, and the nested token.holders_count and token.total_supply). \u00a75 then measured validators DISAGREEING about one round in four on a content digest of the STABLE projection, because Blockscout is a load-balanced cluster whose replicas index at different rates. A digest on the axis would leave a quarter of all challenges unsettleable at random.",
+    "why": "docs/PROBE.md §4 measured five fields moving between two fetches of the same transaction seconds apart (confirmations, exchange_rate, has_error_in_internal_transactions, and the nested token.holders_count and token.total_supply). §5 then measured validators DISAGREEING about one round in four on a content digest of the STABLE projection, because Blockscout is a load-balanced cluster whose replicas index at different rates. A digest on the axis would leave a quarter of all challenges unsettleable at random.",
     "digest": "Recorded on every challenge as evidence, and never voted on.",
     "retry": "RETRY is on the axis because it is NOT a verdict: validators must agree a source was transiently unavailable, or one node's bad luck silently becomes everybody's refund.",
     "gates_before_the_model": [
-      "transient (5xx/429/0) \u2192 RETRY, no state applied",
-      "404 \u2192 INCONCLUSIVE, deterministic absence, challenger refunded",
-      "unparseable 200 \u2192 INCONCLUSIVE",
+      "transient (5xx/429/0) → RETRY, no state applied",
+      "404 → INCONCLUSIVE, deterministic absence, challenger refunded",
+      "unparseable 200 → INCONCLUSIVE",
       "binding: the transaction must involve the registered wallet, checked in Python",
       "only then does a model see a fenced, defanged projection"
     ]
@@ -22,17 +22,17 @@
     "base": "base.blockscout.com",
     "arbitrum": "arbitrum.blockscout.com",
     "polygon": "polygon.blockscout.com",
-    "validators_read": "/api/v2/transactions/{hash} \u2014 10-18 KB, one immutable transaction",
-    "patrol_bot_reads": "/api/v2/addresses/{wallet}/transactions \u2014 0.5-1.0 MB, 50 rows, moves constantly",
+    "validators_read": "/api/v2/transactions/{hash} — 10-18 KB, one immutable transaction",
+    "patrol_bot_reads": "/api/v2/addresses/{wallet}/transactions — 0.5-1.0 MB, 50 rows, moves constantly",
     "no_query_parameters": "Blockscout 422s unknown query parameters; the brief's ?limit=5 is one of them"
   },
   "artifacts": {
     "build/Sentinel.min.py": {
       "source": "contracts/Sentinel.py",
-      "bytes": 49885,
-      "sha256": "eb4ef213e62f50918bd6eec1ab893cc03d07961cd95af91ac03c16b7869c8c13",
-      "source_sha256": "03395ea2925d7707f2138bc03e6317b6465ab6a7229b08680a6b820fa06a0091",
-      "premangle_bytes": 61631
+      "bytes": 51692,
+      "sha256": "b96dfbd542ecc506567c64335bc01655c8fad107efbec31e1b389ff2d376ab1b",
+      "source_sha256": "38976d61ba30c99f97672678004d834378159d13c702c82f2e45d59feb440d9b",
+      "premangle_bytes": 63875
     }
   },
   "deployments": {
@@ -40,28 +40,49 @@
       "network": "studionet",
       "rpc": "https://studio.genlayer.com/api",
       "Sentinel": {
-        "address": "0xE66B5DC3E66DF231167D16C73eeAcB21323f483C"
+        "address": "0x0DCaC5CA639D040e0e1085794C9307Be4b24D842"
       },
       "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
-      "note": "Where the 79-check live suite (test/e2e.mjs) runs \u2014 Studionet is gasless, so several roles can be funded automatically.",
+      "note": "Where the 79-check live suite (test/e2e.mjs) runs — Studionet is gasless, so several roles can be funded automatically. e2e.mjs needs a FRESH contract: it registers a fixed wallet and asserts a clean record, so a second run against the same address fails on 'that wallet is already registered'. Deploy first: node test/deploy.mjs --network=studionet",
       "functional_verification": {
-        "contract": "0x0873Ea1d23bDAccb1FfB23496Ec4f8C2e1C5Af1D",
+        "contract": "0xe8db38c3B29B01B9a54616E413A55B8Cfc8BB464",
         "source": "test/verify_methods.mjs",
-        "result": "36/36 public methods verified, each by an observable effect rather than a bare return",
-        "covers": "every write, every owner control, every view, the pause exits, the refund-on-reject paths, and the reconstructed balance invariant"
-      }
+        "result": "37/37 public methods verified, each by an observable effect rather than a bare return"
+      },
+      "artifact_bytes": 51692,
+      "deployed_at": "2026-09-04T16:53:59.226Z"
     },
     "bradbury": {
       "network": "testnet-bradbury",
       "rpc": "https://rpc-bradbury.genlayer.com",
       "Sentinel": {
-        "address": "0xAe9288096E6A451a3A94f7886537a512B248913F"
+        "address": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356"
       },
       "owner": "0xC70FF4C06aEcb796ED712029EE548834764c9Fe8",
-      "artifact_bytes": 49885,
-      "verified": "genlayer code <addr> is BYTE-IDENTICAL to build/Sentinel.min.py \u2014 same sha256 as the artifacts block.",
-      "explorer": "https://explorer-bradbury.genlayer.com/address/0xAe9288096E6A451a3A94f7886537a512B248913F",
-      "live_activity": "Two agents registered, real challenges filed and judged by validators, bond slashed on a proven violation."
+      "artifact_bytes": 51692,
+      "verified": "genlayer code <addr> is BYTE-IDENTICAL to build/Sentinel.min.py — same sha256 as the artifacts block.",
+      "explorer": "https://explorer-bradbury.genlayer.com/address/0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356",
+      "register": "11 agents seeded from REAL wallets captured from the live transaction lists of Uniswap's UniversalRouter on three chains and Aave v3's Pool — every one an externally-owned account that actually transacts. Five TRADING, five DEFI, one CUSTOM, across ethereum / arbitrum / polygon, including one wallet registered on three chains under three different mandates.",
+      "seeded_by": "test/seed_roster.mjs",
+      "supersedes": "0xAe9288096E6A451a3A94f7886537a512B248913F (redeployed: register_agent gained the four profile arguments)",
+      "evidence": {
+        "challenge": 0,
+        "agent": "#0 ETH/USDC Rebalancer — 0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5 on ethereum",
+        "tx_hash": "0x41729a0ba95cb56368bc48601e0e133b23d8fcf3a1d5321550dbf5819810c90d",
+        "verdict": "VIOLATION",
+        "confidence": 100,
+        "evidence_digest": "5b4fc7e207dcd374",
+        "settled_at": 1788539929,
+        "settlement": "bond 1.0 -> 0.8 GEN; penalty 0.2; bounty 0.1 to the challenger; 0.1 protocol cut; the challenger's 0.05 stake refunded",
+        "note": "Judged by five Bradbury validators on the CURRENT deployment, not carried over from the superseded one. Readable with: genlayer call <address> get_challenge --args 0"
+      },
+      "patrol_dry_run": {
+        "source": "GET /api/patrol?dry=1 on the live site",
+        "agents_patrolled": 11,
+        "transactions_scanned": 115,
+        "candidates_flagged": 29,
+        "note": "Five of the eleven agents flagged at least one candidate, across ethereum / arbitrum / polygon. Nothing was filed: an unauthenticated caller is forced into a dry run."
+      }
     }
   },
   "note": "Verify with: shasum -a 256 build/Sentinel.min.py and compare against the sha256 below, or `genlayer network set testnet-bradbury` then `python3 tools/verify_onchain.py <address> build/Sentinel.min.py`.",
@@ -72,10 +93,18 @@
       "tools/mangle_names.py -> build/Sentinel.min.py + build/Sentinel.names.json"
     ],
     "size_ceiling_measured": {
-      "tool": "test/size_gate.py \u2014 deploys a padded contract and reads a value back",
-      "accepted": 51257,
-      "refused": 53500,
-      "note": "Bradbury refuses with BlockPubdataLimitReached. The artifact ships under the accepted figure."
+      "tool": "test/size_gate.py — deploys a padded contract to Bradbury and reads a value back",
+      "accepted": [
+        51257,
+        51692,
+        52400,
+        53000
+      ],
+      "refused": [
+        53500
+      ],
+      "ceiling": "between 53,000 and 53,500 bytes; 53,000 is the largest size PROVEN to deploy",
+      "note": "Re-measured when the profile fields were added, rather than assumed to still hold."
     },
     "never_renamed": [
       "the contract class name",
@@ -92,7 +121,7 @@
       "0xa931D970D89A0f33Dd86325BddD681f0C9AB576E",
       "0x96e022114f418F4708a08beD858324830226Fce4"
     ],
-    "findings": "docs/PROBE.md \u2014 nine findings, three of which changed the architecture"
+    "findings": "docs/PROBE.md — nine findings, three of which changed the architecture"
   },
   "frontend": {
     "url": "https://sentinel-tau-ashen.vercel.app",
@@ -108,21 +137,21 @@
       "/docs"
     ],
     "api": {
-      "/api/patrol": "the Sentinel itself \u2014 reads the queue, fetches Blockscout, files challenges",
+      "/api/patrol": "the Sentinel itself — reads the queue, fetches Blockscout, files challenges",
       "/api/txs": "server-side Blockscout proxy for the agent detail page",
       "/api/rpc": "same-origin RPC relay for Studionet, whose 429s drop CORS headers"
     },
-    "cron": "daily \u2014 the Vercel Hobby plan rejects anything finer at deploy time. See frontend/CRON.md.",
+    "cron": "daily — the Vercel Hobby plan rejects anything finer at deploy time. See frontend/CRON.md.",
     "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
     "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link.",
     "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all."
   },
   "verification": {
     "offline_suite": {
-      "tests": 369,
+      "tests": 396,
       "failed": 0,
       "source": "test/test_logic.py",
-      "note": "includes the mangled artifact driven through a full lifecycle"
+      "note": "includes the mangled artifact driven through a full lifecycle, and the profile battery"
     },
     "patrol_suite": {
       "tests": 28,
@@ -134,22 +163,40 @@
       "checks": 79,
       "failed": 0,
       "source": "test/e2e.mjs",
-      "network": "studionet"
+      "network": "studionet",
+      "network_contract": "0x0DCaC5CA639D040e0e1085794C9307Be4b24D842"
     },
     "functional_sweep": {
-      "methods": 36,
+      "methods": 37,
       "failed": 0,
       "source": "test/verify_methods.mjs",
       "network": "studionet"
     },
     "repository_audit": {
-      "source": "tools/audit.sh"
+      "checks": 62,
+      "failed": 0,
+      "source": "tools/audit.sh",
+      "note": "Checks the live Bradbury contract and the live Vercel site, not local files alone — including the profile fields, get_agents_by_type, the register's chain/type spread, and /api/check's CORS, 400 and settled-verdict behaviour."
     },
     "rejection_checklist": {
       "checks": 19,
       "failed": 0,
       "source": "tools/checklist.py",
       "note": "AST-checked: forgery, content hash, recomputation, owner powers, refund-on-reject, URL derivation, binding, closures, floats"
+    }
+  },
+  "features": {
+    "agent_profiles": {
+      "fields": "agent_name (100), agent_type (TRADING/DEFI/SHOPPING/CONTENT/CUSTOM), description (500), operator_url (200)",
+      "all_optional": true,
+      "note": "Descriptive only: none of it reaches the judgement prompt and none of it can move money. The operator URL is scheme-restricted to http/https ON CHAIN, because the frontend renders it as a link and a javascript: href stored here would be a stored XSS for every visitor.",
+      "new_view": "get_agents_by_type(agent_type, count)"
+    },
+    "public_compliance_api": {
+      "route": "/api/check?wallet=0x…&chain=ethereum",
+      "auth": "none — everything it returns is already public on chain",
+      "cors": "open, so it can be called from a browser",
+      "note": "Returns {registered:false} for an unknown wallet. For a known one it returns the mandate, the compliance score in both bps and percent, the bond, and the last five verdicts — plus `untested`, which says plainly when a 100% score means 'never tested' rather than 'tested and clean'."
     }
   }
 }

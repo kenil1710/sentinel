@@ -106,6 +106,14 @@ JUDGE_LOCK_SECONDS = 1200
 # the owner money already promised to a challenger.
 SWEEP_DELAY_SECONDS = 3600
 
+# The profile fields. All optional except the type, which falls back to CUSTOM
+# so an operator who says nothing still lands somewhere honest rather than
+# somewhere flattering.
+AGENT_TYPES = ("TRADING", "DEFI", "SHOPPING", "CONTENT", "CUSTOM")
+MAX_NAME_CHARS = 100
+MAX_DESCRIPTION_CHARS = 500
+MAX_URL_CHARS = 200
+
 MIN_MANDATE_CHARS = 20
 MAX_MANDATE_CHARS = 1000                 # the plan's ceiling
 MIN_REASON_CHARS = 10
@@ -292,6 +300,50 @@ def _mandate_problem(raw) -> str:
 	if len(body) > MAX_MANDATE_CHARS:
 		return ("A mandate is capped at " + str(MAX_MANDATE_CHARS)
 			+ "; this one is " + str(len(body)))
+	return ""
+
+
+def _norm_type(value) -> str:
+	"""An agent type, or CUSTOM. Never empty, never something invented."""
+	s = str(value).strip().upper()
+	if s in AGENT_TYPES:
+		return s
+	return "CUSTOM"
+
+
+def _clean_text(raw, limit: int) -> str:
+	"""Whitespace-normalised, defanged and truncated.
+
+	Defanged HERE rather than at render time because these strings are operator
+	supplied and end up in the challenge prompt beside the mandate. A profile
+	field carrying a zero-width-split fence token would otherwise reach the
+	model intact.
+	"""
+	if not isinstance(raw, str):
+		return ""
+	return _defang(" ".join(raw.split()))[:limit]
+
+
+def _url_problem(raw) -> str:
+	"""An optional operator URL, or a reason it is refused.
+
+	Only http and https. The frontend renders this as a link, and a
+	`javascript:` or `data:` href stored on chain would be a stored XSS that
+	every visitor to the agent page executes. Refusing the scheme here is the
+	only place that cannot be forgotten later.
+	"""
+	if not isinstance(raw, str):
+		return ""
+	body = " ".join(raw.split())
+	if not body:
+		return ""
+	if len(body) > MAX_URL_CHARS:
+		return "The operator URL is capped at " + str(MAX_URL_CHARS) + " characters"
+	low = body.lower()
+	if not (low.startswith("https://") or low.startswith("http://")):
+		return "The operator URL must start with https:// or http://"
+	if low.find(" ") >= 0:
+		return "The operator URL may not contain spaces"
 	return ""
 
 
@@ -843,6 +895,14 @@ class Agent:
 	bond: u128
 	status: str
 
+	# Profile. Descriptive only: nothing here is read by a validator, and none
+	# of it can move money. It is what makes a register of wallets legible to a
+	# person deciding whether to trust one.
+	name: str
+	agent_type: str
+	description: str
+	operator_url: str
+
 	registered_at: u64
 	mandate_updated_at: u64
 	# Stamped by mark_patrolled and by every challenge filed. get_patrol_queue
@@ -1055,7 +1115,7 @@ class Sentinel(gl.Contract):
 	# ── 1. register_agent ───────────────────────────────────────────────────
 
 	def _register_problem(self, value: int, wallet: str, chain: str,
-			mandate: str) -> str:
+			mandate: str, operator_url: str) -> str:
 		if bool(self.paused):
 			return "Sentinel is paused and is not taking new registrations"
 		if not chain:
@@ -1065,6 +1125,9 @@ class Sentinel(gl.Contract):
 		if wallet == ZERO_ADDRESS:
 			return "The zero address cannot be registered as an agent"
 		problem = _mandate_problem(mandate)
+		if problem:
+			return problem
+		problem = _url_problem(operator_url)
 		if problem:
 			return problem
 		if int(self.wallet_claimed.get(chain + ":" + wallet, u32(0))) > 0:
@@ -1079,9 +1142,17 @@ class Sentinel(gl.Contract):
 		return ""
 
 	@gl.public.write.payable
-	def register_agent(self, wallet_address: str, chain: str, mandate: str) -> str:
+	def register_agent(self, wallet_address: str, chain: str, mandate: str,
+			agent_name: str, agent_type: str, description: str,
+			operator_url: str) -> str:
 		"""Register an autonomous agent under a plain-English mandate, and post a
 		bond that answers for its conduct.
+
+		The four profile arguments are descriptive and all four may be empty: a
+		name, one of TRADING / DEFI / SHOPPING / CONTENT / CUSTOM, a description,
+		and a link to whoever operates it. None of them is read by a validator
+		and none can move money — they exist so that a register of bare hex
+		addresses is legible to a person deciding whether to trust one.
 
 		Payable, so it may never raise. Every rejection below refunds and returns
 		`ok: false`; read the return value, not just the receipt.
@@ -1092,7 +1163,8 @@ class Sentinel(gl.Contract):
 
 		w = _norm_wallet(wallet_address)
 		c = _norm_chain(chain)
-		problem = self._register_problem(value, w, c, mandate)
+		url = " ".join(str(operator_url).split()) if isinstance(operator_url, str) else ""
+		problem = self._register_problem(value, w, c, mandate, url)
 		if problem:
 			return self._reject(sender, value, problem)
 
@@ -1108,6 +1180,10 @@ class Sentinel(gl.Contract):
 			mandate=clean_mandate,
 			bond=u128(value),
 			status=AGENT_ACTIVE,
+			name=_clean_text(agent_name, MAX_NAME_CHARS),
+			agent_type=_norm_type(agent_type),
+			description=_clean_text(description, MAX_DESCRIPTION_CHARS),
+			operator_url=url[:MAX_URL_CHARS],
 			registered_at=u64(now),
 			mandate_updated_at=u64(now),
 			last_checked=u64(0),
@@ -1136,7 +1212,8 @@ class Sentinel(gl.Contract):
 		self.total_bonded = u128(int(self.total_bonded) + value)
 
 		return json.dumps({"ok": True, "agent_id": agent_id, "chain": c,
-			"wallet": w, "bond": str(value), "status": AGENT_ACTIVE})
+			"wallet": w, "bond": str(value), "status": AGENT_ACTIVE,
+			"agent_type": _norm_type(agent_type)})
 
 	# ── 2. update_mandate ───────────────────────────────────────────────────
 
@@ -1765,6 +1842,10 @@ class Sentinel(gl.Contract):
 			"chain": str(agent.chain),
 			"explorer": CHAIN_HOSTS.get(str(agent.chain), ""),
 			"mandate": str(agent.mandate),
+			"name": str(agent.name),
+			"agent_type": str(agent.agent_type),
+			"description": str(agent.description),
+			"operator_url": str(agent.operator_url),
 			"bond": str(int(agent.bond)),
 			"status": str(agent.status),
 			"registered_at": int(agent.registered_at),
@@ -1837,7 +1918,8 @@ class Sentinel(gl.Contract):
 		row["mandate_preview"] = (mandate if len(mandate) <= 160
 			else mandate[:157] + "...")
 		for drop in ("mandate", "explorer", "total_topped_up",
-				"mandate_updated_at", "inconclusive_count"):
+				"mandate_updated_at", "inconclusive_count",
+				"description", "operator_url"):
 			if drop in row:
 				del row[drop]
 		return row
@@ -1933,6 +2015,22 @@ class Sentinel(gl.Contract):
 				if int(found.last_checked) > 0 else -1)
 			out.append(item)
 		return json.dumps({"count": len(out), "now": now, "queue": out})
+
+	@gl.public.view
+	def get_agents_by_type(self, agent_type: str, count: int) -> str:
+		"""Every agent of one kind. The register is browsed by what an agent DOES
+		long before anyone cares which chain it does it on."""
+		now = self._now()
+		want = _norm_type(agent_type)
+		limit = _clamp(_as_int(count, 50), 1, MAX_LIST_PAGE)
+		out = []
+		for raw in [int(x) for x in self.agent_ids][-SCAN_CAP:]:
+			if len(out) >= limit:
+				break
+			found = self.agents.get(u32(raw))
+			if found is not None and str(found.agent_type) == want:
+				out.append(self._summary(found, now))
+		return json.dumps({"agent_type": want, "count": len(out), "agents": out})
 
 	@gl.public.view
 	def get_compliance_score(self, agent_id: int) -> str:
@@ -2221,6 +2319,10 @@ class Sentinel(gl.Contract):
 			"chains": list(CHAINS),
 			"explorers": dict(CHAIN_HOSTS),
 			"verdicts": [V_VIOLATION, V_COMPLIANT, V_INCONCLUSIVE],
+			"agent_types": list(AGENT_TYPES),
+			"max_name_chars": MAX_NAME_CHARS,
+			"max_description_chars": MAX_DESCRIPTION_CHARS,
+			"max_url_chars": MAX_URL_CHARS,
 		})
 
 	@gl.public.view

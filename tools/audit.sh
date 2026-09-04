@@ -22,11 +22,15 @@ SITE=$(python3 -c "import json;print(json.load(open('deployments.json')).get('fr
 sec "Build artifact"
 # ─────────────────────────────────────────────────────────────────────────────
 # This gate runs FIRST because it is the constraint that decides whether the
-# project can deploy at all. test/size_gate.py measured 51,257 accepted and
-# 53,500 refused on Bradbury.
+# project can deploy at all. test/size_gate.py deploys a padded contract to
+# Bradbury and reads a value back from it; re-measured when the profile fields
+# were added:
+#
+#   51,257 ACCEPTED   51,692 ACCEPTED   52,400 ACCEPTED
+#   53,000 ACCEPTED   53,500 REFUSED (BlockPubdataLimitReached)
 if [ -f build/Sentinel.min.py ]; then
   BYTES=$(wc -c < build/Sentinel.min.py | tr -d ' ')
-  if [ "$BYTES" -lt 50500 ]; then ok "artifact is ${BYTES} bytes, under the 50,500 budget (measured ceiling 51,257 < x < 53,500)"
+  if [ "$BYTES" -lt 53000 ]; then ok "artifact is ${BYTES} bytes, under the 53,000 budget (MEASURED: 53,000 accepted, 53,500 refused)"
   else bad "artifact is ${BYTES} bytes — over budget"; fi
   head -1 build/Sentinel.min.py | grep -q 'py-genlayer:' && ok "runner pin survived the mangle" || bad "runner pin missing from the artifact"
   python3 -c "import ast;ast.parse(open('build/Sentinel.min.py').read())" 2>/dev/null && ok "artifact parses" || bad "artifact does not parse"
@@ -95,6 +99,8 @@ else
     echo "$CFG" | grep -q '"challenge_stake": "50000000000000000"' && ok "challenge stake is the shipped 0.05 GEN" || bad "challenge stake is not 0.05 GEN"
     echo "$CFG" | grep -q '"penalty_bps": 2000' && ok "penalty is the shipped 2000 bps" || bad "penalty is not 2000 bps"
     echo "$CFG" | grep -q '"max_mandate_chars": 1000' && ok "mandate ceiling is the plan's 1000 chars" || bad "mandate ceiling is not 1000"
+    echo "$CFG" | grep -q '"agent_types"' && echo "$CFG" | grep -q 'TRADING' && echo "$CFG" | grep -q 'SHOPPING' \
+      && ok "the five agent types are published on chain" || bad "agent_types missing from get_config"
     echo "$CFG" | grep -q 'eth.blockscout.com' && echo "$CFG" | grep -q 'base.blockscout.com' \
       && echo "$CFG" | grep -q 'arbitrum.blockscout.com' && echo "$CFG" | grep -q 'polygon.blockscout.com' \
       && ok "all four chains are configured with their explorers" || bad "chain/explorer table incomplete"
@@ -107,7 +113,40 @@ else
     AGENTS=$(echo "$STATS" | python3 -c "import json,sys;print(json.load(sys.stdin)['agents_registered'])" 2>/dev/null || echo 0)
     VIOL=$(echo "$STATS" | python3 -c "import json,sys;print(json.load(sys.stdin)['violations'])" 2>/dev/null || echo 0)
     SETTLED=$(echo "$STATS" | python3 -c "import json,sys;print(json.load(sys.stdin)['challenges_settled'])" 2>/dev/null || echo 0)
-    [ "$AGENTS" -gt 0 ] && ok "the register is not empty (${AGENTS} agents)" || bad "no agents registered on the live contract"
+    [ "$AGENTS" -ge 8 ] && ok "the register is populated (${AGENTS} agents)" || bad "only ${AGENTS} agents registered — the register looks empty"
+
+    # The profile must actually be stored, not merely accepted.
+    A0=$(genlayer call "$CONTRACT" get_agent --args 0 2>/dev/null | grep -o '{.*}' | head -1)
+    echo "$A0" | grep -q '"name"' && echo "$A0" | grep -q '"agent_type"' \
+      && ok "agents carry a stored profile (name, type, description, operator URL)" \
+      || bad "the agent record has no profile fields"
+    echo "$A0" | grep -qE '"operator_url": "(https?://[^"]*)?"' \
+      && ok "the stored operator URL is http/https or empty (never javascript:)" \
+      || bad "an operator URL with a non-http scheme is stored on chain"
+    # The new type view has to FILTER, not merely answer. A view that returns
+    # every agent whatever you ask it for would pass a bare "it responded" check.
+    BYTYPE=$(genlayer call "$CONTRACT" get_agents_by_type --args TRADING --args 50 2>/dev/null | grep -o '{.*}' | head -1)
+    NTYPE=$(echo "$BYTYPE" | python3 -c "
+import json,sys
+d=json.load(sys.stdin); a=d.get('agents',[])
+print(len(a) if a and all(x.get('agent_type')=='TRADING' for x in a) else -1)
+" 2>/dev/null || echo -1)
+    [ "$NTYPE" -gt 0 ] && ok "get_agents_by_type(TRADING) returns ${NTYPE} agents, all of them TRADING" \
+      || bad "get_agents_by_type did not filter by type"
+
+    # The register has to be DIVERSE. Eleven agents that are all the same type on
+    # the same chain would satisfy the count above and prove nothing.
+    ACTIVE=$(genlayer call "$CONTRACT" get_active_agents --args 50 2>/dev/null | grep -o '{.*}' | head -1)
+    DIV=$(echo "$ACTIVE" | python3 -c "
+import json,sys
+a=json.load(sys.stdin).get('agents',[])
+print(len({x.get('chain') for x in a}), len({x.get('agent_type') for x in a}))
+" 2>/dev/null || echo "0 0")
+    NCHAIN=$(echo "$DIV" | cut -d' ' -f1); NKIND=$(echo "$DIV" | cut -d' ' -f2)
+    { [ "$NCHAIN" -ge 3 ] && [ "$NKIND" -ge 3 ]; } \
+      && ok "the register spans ${NCHAIN} chains and ${NKIND} agent types" \
+      || bad "the register is not diverse (chains=${NCHAIN}, types=${NKIND})"
+
     [ "$SETTLED" -gt 0 ] && ok "challenges have been judged by validators (${SETTLED} settled)" || bad "no challenge has been settled"
     [ "$VIOL" -gt 0 ] && ok "a real violation was proven on chain (${VIOL})" || skip "no violation proven yet"
   else bad "get_stats did not answer"; fi
@@ -129,6 +168,47 @@ if [ -z "$SITE" ]; then skip "no frontend URL recorded"; else
   TXS=$(curl -s --max-time 45 "${SITE}/api/txs?chain=ethereum&wallet=0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5" \
     | python3 -c "import json,sys;print(json.load(sys.stdin).get('ok'))" 2>/dev/null || echo "error")
   [ "$TXS" = "True" ] && ok "/api/txs reads live Blockscout" || bad "/api/txs failed (got: $TXS)"
+
+  # The public compliance API, on the live site.
+  CHK=$(curl -s --max-time 45 "${SITE}/api/check?wallet=0x0000000000000000000000000000000000000001&chain=ethereum" \
+    | python3 -c "import json,sys;print(json.load(sys.stdin).get('registered'))" 2>/dev/null || echo "error")
+  [ "$CHK" = "False" ] && ok "/api/check answers {registered:false} for an unknown wallet" \
+    || bad "/api/check did not answer for an unknown wallet (got: $CHK)"
+  CHK2=$(curl -s --max-time 45 "${SITE}/api/check?wallet=0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5&chain=ethereum" \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print('ok' if d.get('registered') and d.get('mandate') and 'untested' in (d.get('compliance') or {}) else 'bad')
+" 2>/dev/null || echo "error")
+  [ "$CHK2" = "ok" ] && ok "/api/check returns the mandate, score and the untested flag" \
+    || bad "/api/check response is incomplete (got: $CHK2)"
+  CHK3=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${SITE}/api/check?wallet=nope")
+  [ "$CHK3" = "400" ] && ok "/api/check rejects a malformed wallet with 400" || bad "/api/check gave $CHK3 for a bad wallet"
+
+  # The endpoint is advertised as callable from a browser. That is a header, not
+  # a promise, so read the header off the live response.
+  ACAO=$(curl -s -D - -o /dev/null --max-time 45 \
+    "${SITE}/api/check?wallet=0x0000000000000000000000000000000000000001&chain=ethereum" \
+    | grep -i '^access-control-allow-origin:' | tr -d '\r' | awk '{print $2}')
+  [ "$ACAO" = "*" ] && ok "/api/check sends an open CORS header, so a browser can call it" \
+    || bad "/api/check CORS header is '${ACAO}' — a browser could not call it"
+
+  # The end-to-end tie: a verdict the validators reached on chain has to be
+  # readable by somebody else's software through the public endpoint.
+  CHK4=$(curl -s --max-time 45 "${SITE}/api/check?wallet=0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5&chain=ethereum" \
+    | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+v=d.get('recent_verdicts') or []
+c=d.get('compliance') or {}
+print('ok' if any(x.get('verdict')=='VIOLATION' for x in v) and c.get('untested') is False else 'bad')
+" 2>/dev/null || echo "error")
+  [ "$CHK4" = "ok" ] && ok "/api/check surfaces the settled VIOLATION and clears the untested flag" \
+    || bad "/api/check does not show the settled verdict (got: $CHK4)"
+
+  DOCS=$(curl -s --max-time 30 "${SITE}/docs")
+  echo "$DOCS" | grep -q "/api/check" && ok "/docs documents the public compliance API" \
+    || bad "/docs does not document /api/check"
 
   # The marketing / app split, verified on the served HTML rather than asserted.
   # The landing page must offer no wallet prompt and name no network; every page

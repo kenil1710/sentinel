@@ -7,9 +7,22 @@ import { Panel, Label, ChainTag, Spinner } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
 import { getConfig, registerAgent } from "@/lib/contract";
 import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, percentFromBps } from "@/lib/format";
-import type { WriteResult } from "@/types";
+import type { AgentType, WriteResult } from "@/types";
 
 const CHAINS = ["ethereum", "base", "arbitrum", "polygon"] as const;
+
+/**
+ * The five types the contract accepts. Anything else it stores as CUSTOM, so
+ * this list is a convenience for the operator rather than the rule — the rule
+ * is `_norm_type` on chain, and get_config publishes the same list.
+ */
+const TYPES: { id: AgentType; label: string; hint: string }[] = [
+  { id: "TRADING", label: "Trading", hint: "Swaps, market making, arbitrage" },
+  { id: "DEFI", label: "DeFi", hint: "Lending, staking, yield" },
+  { id: "SHOPPING", label: "Shopping", hint: "Purchasing and procurement" },
+  { id: "CONTENT", label: "Content", hint: "Publishing, minting, curation" },
+  { id: "CUSTOM", label: "Custom", hint: "Anything else" },
+];
 
 const EXAMPLES = [
   "Only trade ETH and USDC on Uniswap. Maximum 0.5 ETH per trade. Never interact with unverified contracts.",
@@ -26,6 +39,10 @@ export default function RegisterPage() {
   const [chain, setChain] = useState<(typeof CHAINS)[number]>("ethereum");
   const [mandate, setMandate] = useState("");
   const [bond, setBond] = useState("1");
+  const [name, setName] = useState("");
+  const [agentType, setAgentType] = useState<AgentType>("TRADING");
+  const [description, setDescription] = useState("");
+  const [operatorUrl, setOperatorUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<WriteResult | null>(null);
 
@@ -46,6 +63,14 @@ export default function RegisterPage() {
   if (bond && bondWei === null) problems.push("The bond must be a plain decimal amount of GEN.");
   if (bondWei !== null && bondWei < minBond)
     problems.push(`The bond must be at least ${formatGen(minBond)} GEN.`);
+  if (name.length > (cfg?.max_name_chars ?? 100))
+    problems.push(`The name is capped at ${cfg?.max_name_chars ?? 100} characters.`);
+  if (description.length > (cfg?.max_description_chars ?? 500))
+    problems.push(`The description is capped at ${cfg?.max_description_chars ?? 500} characters.`);
+  // Mirrors the contract's own rule. It is enforced on chain regardless — this
+  // just says so before the transaction is sent rather than after it refunds.
+  if (operatorUrl.trim() && !/^https?:\/\/\S+$/i.test(operatorUrl.trim()))
+    problems.push("The operator URL must start with https:// or http:// and contain no spaces.");
 
   const ready = Boolean(account) && isAddress(wallet) && mandate.trim().length >= (cfg?.min_mandate_chars ?? 20)
     && bondWei !== null && bondWei >= minBond && problems.length === 0;
@@ -55,7 +80,10 @@ export default function RegisterPage() {
     setBusy(true);
     setResult(null);
     try {
-      const out = await registerAgent(account, wallet.trim(), chain, mandate.trim(), bondWei);
+      const out = await registerAgent(account, wallet.trim(), chain, mandate.trim(), {
+        name: name.trim(), agentType,
+        description: description.trim(), operatorUrl: operatorUrl.trim(),
+      }, bondWei);
       setResult(out);
       if (out.kind === "ok") {
         const id = (out.data as { agent_id?: number })?.agent_id;
@@ -101,6 +129,69 @@ export default function RegisterPage() {
               ))}
             </div>
             <div className="mono mt-2 text-[11px] text-ink-3">{EXPLORER_HOST[chain]}</div>
+          </div>
+
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label className="text-sm font-medium">Name <span className="text-ink-3 font-normal">(optional)</span></label>
+              <span className={`mono text-[11px] ${name.length > (cfg?.max_name_chars ?? 100) ? "text-violation" : "text-ink-3"}`}>
+                {name.length}/{cfg?.max_name_chars ?? 100}
+              </span>
+            </div>
+            <p className="mt-1 text-[13px] text-ink-3">
+              What people should call this agent. A register of bare hex addresses is
+              hard to read.
+            </p>
+            <input value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Uniswap Rebalancer"
+              className="mt-2.5 w-full rounded-lg border border-line bg-panel px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3" />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">What it does</label>
+            <p className="mt-1 text-[13px] text-ink-3">
+              Descriptive only — nothing here is read by a validator, and none of it
+              can move money.
+            </p>
+            <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {TYPES.map((t) => (
+                <button key={t.id} onClick={() => setAgentType(t.id)} title={t.hint}
+                  className={`rounded-lg border px-2 py-2.5 text-[13px] transition-colors ${
+                    agentType === t.id ? "border-signal bg-signal/10 text-signal" : "border-line bg-panel text-ink-2 hover:text-ink"}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1.5 text-[11px] text-ink-3">
+              {TYPES.find((t) => t.id === agentType)?.hint}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label className="text-sm font-medium">Description <span className="text-ink-3 font-normal">(optional)</span></label>
+              <span className={`mono text-[11px] ${description.length > (cfg?.max_description_chars ?? 500) ? "text-violation" : "text-ink-3"}`}>
+                {description.length}/{cfg?.max_description_chars ?? 500}
+              </span>
+            </div>
+            <p className="mt-1 text-[13px] text-ink-3">
+              Context for anyone deciding whether to trust it. This is not the mandate
+              and is never judged against.
+            </p>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+              placeholder="Rebalances an ETH/USDC book every four hours, funded by a single LP."
+              className="mt-2.5 w-full resize-y rounded-lg border border-line bg-panel px-3.5 py-2.5 text-sm leading-relaxed text-ink placeholder:text-ink-3" />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Operator URL <span className="text-ink-3 font-normal">(optional)</span></label>
+            <p className="mt-1 text-[13px] text-ink-3">
+              Where to find whoever runs this agent. Must be https:// or http:// —
+              the contract refuses anything else, because the page renders it as a link.
+            </p>
+            <input value={operatorUrl} onChange={(e) => setOperatorUrl(e.target.value)}
+              placeholder="https://example.org/our-agents" spellCheck={false}
+              className="mono mt-2.5 w-full rounded-lg border border-line bg-panel px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3" />
           </div>
 
           <div>
@@ -201,9 +292,18 @@ export default function RegisterPage() {
                 On duty
               </span>
             </div>
-            <div className="mono mt-3 truncate text-sm text-ink">
+            <div className="mt-3 flex items-center gap-2">
+              <span className="rounded-md bg-panel-2 px-2 py-0.5 text-[11px] font-medium text-ink-2 ring-1 ring-line">
+                {TYPES.find((t) => t.id === agentType)?.label}
+              </span>
+              {name && <span className="truncate text-sm font-medium text-ink">{name}</span>}
+            </div>
+            <div className="mono mt-2 truncate text-[13px] text-ink-2">
               {wallet || "0x…"}
             </div>
+            {description && (
+              <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-ink-3">{description}</p>
+            )}
             <p className="mt-3 min-h-[4.5rem] text-[13px] leading-relaxed text-ink-2">
               {mandate || <span className="text-ink-3">Your mandate appears here.</span>}
             </p>

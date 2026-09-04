@@ -15,8 +15,8 @@ No administrator decides anything.
 
 | | Address |
 |---|---|
-| **Bradbury** | [`0xAe9288096E6A451a3A94f7886537a512B248913F`](https://explorer-bradbury.genlayer.com/address/0xAe9288096E6A451a3A94f7886537a512B248913F) |
-| Studionet | `0xE66B5DC3E66DF231167D16C73eeAcB21323f483C` |
+| **Bradbury** | [`0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356`](https://explorer-bradbury.genlayer.com/address/0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356) |
+| Studionet | `0x7ca0a8F9876B170DFe7B0609cE1102455Da0FC5E` |
 
 The on-chain code is byte-identical to `build/Sentinel.min.py` — same sha256, so
 what you can read here is what is running.
@@ -38,17 +38,77 @@ Registered under the pitch's own example mandate — *"Only trade ETH and USDC o
 Uniswap. Maximum 0.5 ETH per trade. Never interact with unverified contracts"* —
 five Bradbury validators independently fetched that transaction and returned:
 
-> **VIOLATION** (confidence 95%)
-> *"The mandate states 'Only trade ETH and USDC on Uniswap'… The transaction
-> record shows a transfer of WFC token (contract 0x974733a3…). WFC is…"*
+> **VIOLATION** (confidence 100%)
+> *"The mandate states 'Only trade ETH and USDC on Uniswap' and 'Never interact
+> with unverified contracts or unlisted tokens.' The transaction record shows the
+> agent received 7160.883256709807603712 WFC (contract `0x974733a3…`) via a
+> UniversalRouter. WFC is neither ETH nor USDC… The use of a verified
+> UniversalRouter (a Uniswap component) does not negate the violation of trading
+> a forbidden, unlisted token."*
 
-The bond went from 1.0 to 0.8 GEN. The challenger earned a bounty. Then the
-patrol bot found six more of them on its own and filed one with its own money —
-and the contract's rate limit refused the rest, which is the system working.
+The bond went from 1.0 to 0.8 GEN, the challenger earned a bounty, and the
+protocol took the other half of the penalty. Read it back yourself — this is
+challenge `0` on the contract linked above, and the same verdict comes out of
+the public endpoint:
+
+```bash
+curl '.../api/check?wallet=0x17e3048c…&chain=ethereum'
+# → "violations": 1, "untested": false, "bond": "800000000000000000"
+```
+
+Then the patrol bot went and found more on its own. A dry run over the whole
+register scans 115 transactions and flags **29** candidates across five of the
+eleven agents — on Ethereum, Arbitrum and Polygon — without anyone pointing it
+at a single one:
+
+```bash
+curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
+```
 
 Nothing here was staged. It is a real wallet, a real swap, and a real verdict.
 
 ---
+
+## The register is real
+
+Eleven agents, seeded from wallets taken out of the **live transaction lists** of
+Uniswap's UniversalRouter on three chains and Aave v3's Pool — every one an
+externally-owned account that actually transacts, none invented:
+
+| | Type | Chain | Mandate |
+|---|---|---|---|
+| ETH/USDC Rebalancer | TRADING | ethereum | only ETH and USDC on Uniswap, max 0.5 ETH |
+| Uniswap Swap Bot | TRADING | ethereum | only Uniswap, max 1 ETH per swap |
+| Stablecoin Treasury | TRADING | ethereum | only USDC and USDT, nothing else |
+| Aave Yield Farmer | DEFI | ethereum | only Aave and Compound, never a DEX |
+| Conservative Custodian | CUSTOM | ethereum | no unverified contracts, no unlisted tokens |
+| Compound Lender | DEFI | ethereum | only Aave and Compound, max 2 ETH |
+| Arbitrum Router | TRADING | arbitrum | only ETH and USDC on Uniswap |
+| Polygon Market Maker | TRADING | polygon | only MATIC and USDC, max 500 MATIC |
+| **Omni Agent** | DEFI | **eth + arb + polygon** | **three chains, three different mandates** |
+
+The Omni Agent is the interesting one. A wallet is unique *per chain*, not
+globally, because the same key running on two chains is two different risk
+surfaces: on Arbitrum it may trade, on Ethereum it may only lend, and on Polygon
+it may only hold dollars. `/api/check` returns a different mandate for each.
+
+Re-seed with `node test/seed_roster.mjs --network=bradbury`.
+
+## Check any wallet, from anything
+
+```bash
+curl 'https://sentinel-tau-ashen.vercel.app/api/check?wallet=0x17e3048c…&chain=ethereum'
+```
+
+No key, no account, no rate limit — everything it returns is already public on
+chain. An unknown wallet answers `{"registered": false}`; a known one returns the
+mandate, the compliance score, the bond and the last five verdicts.
+
+It also returns **`untested`**, and that field is the point. An agent with no
+decided challenges scores 100% because unproven is not guilty — but that is not
+the same claim as "tested and clean", and a caller that conflates the two is
+exactly who this endpoint exists to protect. `decided` is the honest
+denominator.
 
 ## The three-way split
 
@@ -178,15 +238,15 @@ checks the served HTML of both to prove it.
 ## Verification
 
 ```
-offline suite      369 tests    test/test_logic.py       (includes the mangled artifact)
+offline suite      396 tests    test/test_logic.py       (includes the mangled artifact)
 patrol suite        28 tests    test/test_patrol.mjs     (real Blockscout fixtures)
 live suite          79 checks   test/e2e.mjs             (Studionet, real validators)
-functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
+functional sweep    37 methods  test/verify_methods.mjs  (every public method, live)
 rejection checklist 19 checks   tools/checklist.py       (AST, not grep)
-audit               51 checks   bash tools/audit.sh      (live chain + live site)
+audit               62 checks   bash tools/audit.sh      (live chain + live site)
 ```
 
-`verify_methods.mjs` exercises all 36 public methods on a freshly deployed
+`verify_methods.mjs` exercises all 37 public methods on a freshly deployed
 contract and asserts an **observable effect** for each — a method that answers
 and changes nothing is a method that does not work. It lowers the challenge
 cooldown and the resolution window through `set_params` so that
