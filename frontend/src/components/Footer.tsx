@@ -18,6 +18,7 @@ export function Footer({ variant = "app" }: { variant?: "app" | "marketing" } = 
         <div className="flex gap-5 text-ink-3 sm:ml-auto">
           <Link href="/docs" className="hover:text-ink">How it works</Link>
           <Link href="/patrol" className="hover:text-ink">Patrol</Link>
+          <Link href="/analytics" className="hover:text-ink">Analytics</Link>
           {variant === "app" && <span className="text-ink-3/70">{NETWORK_LABEL}</span>}
         </div>
       </div>

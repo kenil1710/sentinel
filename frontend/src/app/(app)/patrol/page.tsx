@@ -63,6 +63,10 @@ export default function PatrolPage() {
           <span className="text-ink-2">dry run</span> — a public URL must not be able to spend
           the bot&apos;s stake.
         </span>
+        <Link href="/analytics"
+          className="ml-auto rounded-lg border border-line bg-panel px-3.5 py-2 text-[13px] text-ink-2 hover:border-signal/40 hover:text-ink">
+          Analytics →
+        </Link>
       </div>
 
       {running && <div className="mt-5"><Spinner label="Reading the queue and fetching transactions…" /></div>}

@@ -11,6 +11,7 @@ import { formatGen, shortAddress } from "@/lib/format";
 const NAV = [
   { href: "/agents", label: "Agents" },
   { href: "/patrol", label: "Patrol" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/leaderboard", label: "Watchers" },
   { href: "/docs", label: "How it works" },
 ];
