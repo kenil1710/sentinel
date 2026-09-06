@@ -37,8 +37,20 @@ if [ -f build/Sentinel.min.py ]; then
 else bad "build/Sentinel.min.py missing — run bash tools/build.sh"; fi
 
 if [ -x "$HOME/.local/bin/genvm-lint" ]; then
-  "$HOME/.local/bin/genvm-lint" check build/Sentinel.min.py 2>&1 | grep -q "Lint passed" \
-    && ok "genvm-lint passes on the artifact" || bad "genvm-lint fails on the artifact"
+  # Captured to a variable rather than piped into `grep -q`. Under `pipefail` a
+  # `grep -q` that matches EXITS EARLY, the linter gets SIGPIPE, and the
+  # pipeline's status becomes 141 — so a linter that passed was reported as a
+  # failure. A check that cries wolf is worse than no check.
+  LINT_OUT=$("$HOME/.local/bin/genvm-lint" check build/Sentinel.min.py 2>&1)
+  case "$LINT_OUT" in
+    *"Lint passed"*) ok "genvm-lint passes on the artifact" ;;
+    *) bad "genvm-lint fails on the artifact" ;;
+  esac
+  # The linter counts the ABI independently of the source, so this is the one
+  # number in the repository that cannot drift from the contract by accident.
+  METHODS=$(printf '%s' "$LINT_OUT" | sed -n 's/.*Methods: \([0-9]*\) .*/\1/p' | head -1)
+  [ "$METHODS" = "36" ] && ok "the ABI is the documented 36 public methods" \
+    || bad "the ABI has ${METHODS:-?} public methods, not the documented 36"
 else skip "genvm-lint not installed"; fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -143,9 +155,12 @@ a=json.load(sys.stdin).get('agents',[])
 print(len({x.get('chain') for x in a}), len({x.get('agent_type') for x in a}))
 " 2>/dev/null || echo "0 0")
     NCHAIN=$(echo "$DIV" | cut -d' ' -f1); NKIND=$(echo "$DIV" | cut -d' ' -f2)
-    { [ "$NCHAIN" -ge 3 ] && [ "$NKIND" -ge 3 ]; } \
-      && ok "the register spans ${NCHAIN} chains and ${NKIND} agent types" \
-      || bad "the register is not diverse (chains=${NCHAIN}, types=${NKIND})"
+    # Four, not three. `get_config` advertises four chains, and a chain the
+    # contract claims but the register cannot demonstrate is a claim nobody can
+    # check. Base was missing until base.blockscout.com came back up.
+    { [ "$NCHAIN" -ge 4 ] && [ "$NKIND" -ge 3 ]; } \
+      && ok "the register spans all ${NCHAIN} configured chains and ${NKIND} agent types" \
+      || bad "the register is not diverse (chains=${NCHAIN} of 4, types=${NKIND})"
 
     [ "$SETTLED" -gt 0 ] && ok "challenges have been judged by validators (${SETTLED} settled)" || bad "no challenge has been settled"
     [ "$VIOL" -gt 0 ] && ok "a real violation was proven on chain (${VIOL})" || skip "no violation proven yet"
@@ -162,7 +177,10 @@ if [ -z "$SITE" ]; then skip "no frontend URL recorded"; else
   done
   # The security property that matters most: a public URL must never be able to
   # spend the bot's stake.
-  DRY=$(curl -s --max-time 120 "${SITE}/api/patrol?dry=0" | python3 -c "import json,sys;print(json.load(sys.stdin)['dry_run'])" 2>/dev/null || echo "error")
+  # A full patrol walks eleven agents and ~120 transactions through Blockscout
+  # one at a time; measured at 111s on the live site. A 120s ceiling was close
+  # enough to that to fail on a cold start and report a working endpoint broken.
+  DRY=$(curl -s --max-time 280 "${SITE}/api/patrol?dry=0" | python3 -c "import json,sys;print(json.load(sys.stdin)['dry_run'])" 2>/dev/null || echo "error")
   [ "$DRY" = "True" ] && ok "/api/patrol forces a DRY RUN for an unauthenticated caller" \
     || bad "/api/patrol did not force a dry run for a public caller (got: $DRY)"
   TXS=$(curl -s --max-time 45 "${SITE}/api/txs?chain=ethereum&wallet=0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5" \

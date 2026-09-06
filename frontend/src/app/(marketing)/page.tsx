@@ -14,7 +14,7 @@ const STEPS = [
   },
   {
     n: "02", title: "Patrol",
-    body: "Sentinel walks the register every ten minutes, pulls each agent's recent transactions from Blockscout, and looks for ones that visibly contradict a rule it can check.",
+    body: "Sentinel walks the register on a schedule, pulls each agent's recent transactions from Blockscout, and looks for ones that visibly contradict a rule it can check. Nobody points it at a transaction.",
   },
   {
     n: "03", title: "Challenge",

@@ -40,17 +40,35 @@
       "network": "studionet",
       "rpc": "https://studio.genlayer.com/api",
       "Sentinel": {
-        "address": "0x0DCaC5CA639D040e0e1085794C9307Be4b24D842"
+        "address": "0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19"
       },
       "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
       "note": "Where the 79-check live suite (test/e2e.mjs) runs — Studionet is gasless, so several roles can be funded automatically. e2e.mjs needs a FRESH contract: it registers a fixed wallet and asserts a clean record, so a second run against the same address fails on 'that wallet is already registered'. Deploy first: node test/deploy.mjs --network=studionet",
       "functional_verification": {
-        "contract": "0xe8db38c3B29B01B9a54616E413A55B8Cfc8BB464",
+        "contract": "0xb3b079914769823947399b7E37E40C2C3F89b319",
         "source": "test/verify_methods.mjs",
-        "result": "37/37 public methods verified, each by an observable effect rather than a bare return"
+        "result": "36/36 public methods verified — the count genvm-lint reads off the ABI itself, 21 view and 15 write — each by an observable effect rather than a bare return. The run reports 37 checks because it also reconstructs the balance invariant."
       },
       "artifact_bytes": 51692,
-      "deployed_at": "2026-09-04T16:53:59.226Z"
+      "deployed_at": "2026-09-06T07:55:38.538Z",
+      "live_suite_result": "79/79 checks passed on this address",
+      "adversarial_suite": {
+        "contract": "0xB43D0eB6DE9D6F368A1604e15129407e38fDA277",
+        "source": "test/edge_cases.mjs",
+        "result": "99/99 checks passed",
+        "covers": [
+          "every register_agent and challenge_agent rejection refunds in full, and none moves a counter",
+          "update_mandate and withdraw_bond are both frozen while a challenge is pending",
+          "the pending-challenge quota, the self-challenge rule and the SLASHED_OUT rule",
+          "resolve_challenge, settle_stalled and top_up_bond all survive a pause",
+          "a second violation compounds on the REDUCED bond: 1.1 -> 0.88 -> 0.704 GEN",
+          "a bond falling under the floor deactivates the agent; top_up_bond restores it",
+          "owner-only enforced on all seven dials; withdraw_protocol capped at the accrued balance",
+          "every view agrees with every other, and no agent is in an impossible state",
+          "DOCUMENTED: a stalled challenge retires its transaction permanently (NOTES.md 11)",
+          "DOCUMENTED: settlement terms are read at settlement, not snapshotted at filing (NOTES.md 11)"
+        ]
+      }
     },
     "bradbury": {
       "network": "testnet-bradbury",
@@ -62,7 +80,7 @@
       "artifact_bytes": 51692,
       "verified": "genlayer code <addr> is BYTE-IDENTICAL to build/Sentinel.min.py — same sha256 as the artifacts block.",
       "explorer": "https://explorer-bradbury.genlayer.com/address/0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356",
-      "register": "11 agents seeded from REAL wallets captured from the live transaction lists of Uniswap's UniversalRouter on three chains and Aave v3's Pool — every one an externally-owned account that actually transacts. Five TRADING, five DEFI, one CUSTOM, across ethereum / arbitrum / polygon, including one wallet registered on three chains under three different mandates.",
+      "register": "12 agents seeded from REAL wallets captured from the live transaction lists of Uniswap's UniversalRouter on four chains and Aave v3's Pool — every one an externally-owned account that actually transacts. Six TRADING, five DEFI, one CUSTOM, across ethereum / base / arbitrum / polygon — all four chains the contract configures — including one wallet registered on three chains under three different mandates.",
       "seeded_by": "test/seed_roster.mjs",
       "supersedes": "0xAe9288096E6A451a3A94f7886537a512B248913F (redeployed: register_agent gained the four profile arguments)",
       "evidence": {
@@ -77,11 +95,12 @@
         "note": "Judged by five Bradbury validators on the CURRENT deployment, not carried over from the superseded one. Readable with: genlayer call <address> get_challenge --args 0"
       },
       "patrol_dry_run": {
-        "source": "GET /api/patrol?dry=1 on the live site",
-        "agents_patrolled": 11,
-        "transactions_scanned": 115,
-        "candidates_flagged": 29,
-        "note": "Five of the eleven agents flagged at least one candidate, across ethereum / arbitrum / polygon. Nothing was filed: an unauthenticated caller is forced into a dry run."
+        "source": "GET /api/patrol?dry=1",
+        "measured": "2026-09-06",
+        "agents_patrolled": 12,
+        "transactions_scanned": 144,
+        "candidates_flagged": 38,
+        "note": "Six of the twelve agents flagged at least one candidate, across all four chains. Nothing was filed: an unauthenticated caller is forced into a dry run. These figures are a SNAPSHOT — the wallets are real and keep transacting, so a later run returns different numbers."
       }
     }
   },
@@ -164,25 +183,33 @@
       "failed": 0,
       "source": "test/e2e.mjs",
       "network": "studionet",
-      "network_contract": "0x0DCaC5CA639D040e0e1085794C9307Be4b24D842"
+      "network_contract": "0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19"
     },
     "functional_sweep": {
-      "methods": 37,
+      "methods": 36,
       "failed": 0,
       "source": "test/verify_methods.mjs",
-      "network": "studionet"
+      "network": "studionet",
+      "note": "37 reported checks: 36 methods plus the balance invariant."
     },
     "repository_audit": {
-      "checks": 62,
+      "checks": 63,
       "failed": 0,
       "source": "tools/audit.sh",
-      "note": "Checks the live Bradbury contract and the live Vercel site, not local files alone — including the profile fields, get_agents_by_type, the register's chain/type spread, and /api/check's CORS, 400 and settled-verdict behaviour."
+      "note": "Checks the live Bradbury contract and the live Vercel site, not local files alone — including the profile fields, get_agents_by_type, that the register spans all four configured chains, and /api/check's CORS, 400 and settled-verdict behaviour."
     },
     "rejection_checklist": {
       "checks": 19,
       "failed": 0,
       "source": "tools/checklist.py",
       "note": "AST-checked: forgery, content hash, recomputation, owner powers, refund-on-reject, URL derivation, binding, closures, floats"
+    },
+    "adversarial_suite": {
+      "checks": 99,
+      "failed": 0,
+      "source": "test/edge_cases.mjs",
+      "network": "studionet",
+      "note": "The rejection, pause, compounding-slash and state-consistency battery."
     }
   },
   "features": {

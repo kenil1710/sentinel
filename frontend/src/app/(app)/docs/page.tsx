@@ -31,7 +31,7 @@ export default function DocsPage() {
       <div className="mt-4 space-y-3">
         {[
           ["Register", "An operator publishes their agent's wallet, chain and mandate, and posts a bond of at least 0.5 GEN. The mandate is stored verbatim — it is exactly what validators will read."],
-          ["Patrol", "Every ten minutes the bot reads the on-chain patrol queue (least-recently-checked first), pulls each agent's recent transactions from Blockscout, and applies mechanical checks: a value over a stated ceiling, a token the mandate does not name, an explorer-flagged scam counterparty, an unverified contract where the mandate forbids one."],
+          ["Patrol", "On every scheduled run the bot reads the on-chain patrol queue (least-recently-checked first), pulls each agent's recent transactions from Blockscout, and applies mechanical checks: a value over a stated ceiling, a token the mandate does not name, an explorer-flagged scam counterparty, an unverified contract where the mandate forbids one."],
           ["Challenge", "A flagged transaction becomes an on-chain challenge naming that exact hash, with a 0.05 GEN stake attached. The bot stakes its own money like anyone else — it is an accuser that pays to accuse."],
           ["Judge", "Five validators each fetch the transaction from Blockscout, project it to a stable subset, read it against the mandate, and vote. VIOLATION slashes 20% of the bond and pays half of that to the challenger. COMPLIANT gives 70% of the challenger's stake to the operator they accused. INCONCLUSIVE refunds the challenger and leaves the agent's record untouched."],
         ].map(([title, body], i) => (

@@ -99,6 +99,27 @@ const ROSTER = [
     description: "Quotes both sides of a MATIC/USDC pair on Polygon.",
     url: "",
   },
+  {
+    /*
+     * Base. Added after the probe's finding was re-measured: PROBE §6 recorded
+     * base.blockscout.com answering 500 to every /api/v2 endpoint for a whole
+     * day, so the register originally spanned three chains rather than the four
+     * the contract configures. The outage was transient — the host now serves
+     * this wallet's history — and a chain claimed in `get_config` but absent
+     * from the register is a claim nobody can check.
+     *
+     * This wallet really does route through Uniswap V4's Universal Router on
+     * Base, and the tokens it actually moves (BLUE, METAC) are neither of the
+     * two its mandate names.
+     */
+    role: operator, wallet: "0xFEfd6cD016A45D03ADdE794995C76eE51E0E9016", chain: "base",
+    name: "Base Swap Router", type: "TRADING", bond: GEN / 2n,
+    mandate: "Only trade ETH and USDC on Uniswap. Never acquire an unlisted token, " +
+             "and never interact with an unverified contract.",
+    description: "Routes swaps through Uniswap's Universal Router on Base, where the " +
+                 "fees make small rebalances worthwhile.",
+    url: "https://app.uniswap.org",
+  },
   // ── the multi-chain agent: ONE wallet, THREE chains, three mandates ──────
   // The contract allows this deliberately: a wallet is only unique per chain,
   // because the same key running on two chains is two different risk surfaces
@@ -131,12 +152,21 @@ const ROSTER = [
   },
 ];
 
+/*
+ * `--chain=base` seeds only that chain's entries. Re-running the whole roster
+ * against a populated register is harmless — a duplicate is refused and
+ * refunded — but it is eleven pointless transactions to add a twelfth agent.
+ */
+const onlyChain = argOf("chain", null);
+const SELECTED = onlyChain ? ROSTER.filter((a) => a.chain === onlyChain) : ROSTER;
+
 console.log(`\nSeeding the register → ${address} on ${networkName}`);
+if (onlyChain) console.log(`  filtered to chain=${onlyChain} (${SELECTED.length} of ${ROSTER.length})`);
 const cfg = await operator.viewJson("get_config");
 console.log(`  min bond ${cfg.min_bond_text} GEN   types ${cfg.agent_types.join(", ")}\n`);
 
 let ok = 0, skipped = 0, failed = 0;
-for (const a of ROSTER) {
+for (const a of SELECTED) {
   const label = `${a.name} (${a.chain})`;
   const out = await a.role.send("register_agent",
     [a.wallet, a.chain, a.mandate, a.name, a.type, a.description, a.url], a.bond);

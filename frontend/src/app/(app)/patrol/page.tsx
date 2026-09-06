@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { Panel, Label, ChainTag, VerdictBadge, Empty, Spinner, Stat } from "@/components/ui";
@@ -18,7 +18,23 @@ export default function PatrolPage() {
   const [err, setErr] = useState<string | null>(null);
   const [history, setHistory] = useState<PatrolReport[]>([]);
 
+  /*
+   * A patrol reads ~120 transactions from Blockscout one at a time and takes
+   * close to two minutes. Without a clock ticking, a button that sits on
+   * "Patrolling…" for that long reads as hung rather than as working, and the
+   * first thing anyone does with a hung button is reload the page.
+   */
+  const [elapsed, setElapsed] = useState(0);
+  const startedAt = useRef(0);
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt.current) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
   async function runPatrol() {
+    startedAt.current = Date.now();
+    setElapsed(0);
     setRunning(true); setErr(null); setReport(null);
     try {
       const res = await fetch("/api/patrol", { cache: "no-store" });
@@ -56,12 +72,13 @@ export default function PatrolPage() {
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button onClick={runPatrol} disabled={running}
           className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-50">
-          {running ? "Patrolling…" : "Run patrol"}
+          {running ? `Patrolling… ${elapsed}s` : "Run patrol"}
         </button>
-        <span className="text-[12px] text-ink-3">
-          Also runs on a ten-minute cron. From this button it is a{" "}
-          <span className="text-ink-2">dry run</span> — a public URL must not be able to spend
-          the bot&apos;s stake.
+        <span className="max-w-md text-[12px] text-ink-3">
+          Also runs unattended on a <span className="text-ink-2">daily</span> Vercel cron — the
+          Hobby plan refuses anything finer, and the intended ten minutes is a one-line change on
+          Pro. From this button it is a <span className="text-ink-2">dry run</span>: a public URL
+          must not be able to spend the bot&apos;s stake. Takes about two minutes.
         </span>
         <Link href="/analytics"
           className="ml-auto rounded-lg border border-line bg-panel px-3.5 py-2 text-[13px] text-ink-2 hover:border-signal/40 hover:text-ink">
@@ -69,7 +86,15 @@ export default function PatrolPage() {
         </Link>
       </div>
 
-      {running && <div className="mt-5"><Spinner label="Reading the queue and fetching transactions…" /></div>}
+      {running && (
+        <div className="mt-5">
+          <Spinner label={
+            elapsed < 15 ? "Reading the queue from the contract…"
+            : elapsed < 100 ? `Fetching each agent's transactions from Blockscout — ${elapsed}s elapsed, usually about 110s`
+            : `Still working — ${elapsed}s elapsed`
+          } />
+        </div>
+      )}
 
       {err && (
         <div className="mt-5 rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation">

@@ -16,7 +16,7 @@ No administrator decides anything.
 | | Address |
 |---|---|
 | **Bradbury** | [`0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356`](https://explorer-bradbury.genlayer.com/address/0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356) |
-| Studionet | `0x7ca0a8F9876B170DFe7B0609cE1102455Da0FC5E` |
+| Studionet | `0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19` |
 
 The on-chain code is byte-identical to `build/Sentinel.min.py` — same sha256, so
 what you can read here is what is running.
@@ -57,9 +57,10 @@ curl '.../api/check?wallet=0x17e3048c…&chain=ethereum'
 ```
 
 Then the patrol bot went and found more on its own. A dry run over the whole
-register scans 115 transactions and flags **29** candidates across five of the
-eleven agents — on Ethereum, Arbitrum and Polygon — without anyone pointing it
-at a single one:
+register scanned 144 transactions and flagged **38** candidates across six of
+the twelve agents — on all four chains — without anyone pointing it at a single
+one. Those figures are a snapshot taken on 2026-09-06: the wallets are real and
+keep transacting, so your run will differ.
 
 ```bash
 curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
@@ -67,12 +68,18 @@ curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
 
 Nothing here was staged. It is a real wallet, a real swap, and a real verdict.
 
+And on the run that produced those figures, `polygon.blockscout.com` answered
+**521** for two of the twelve agents. The bot reported them as
+*"explorer unavailable — skipped, not cleared"* and moved on, which is the
+single behaviour this whole design exists to get right: an explorer having a bad
+afternoon must never read as a clean bill of health.
+
 ---
 
 ## The register is real
 
-Eleven agents, seeded from wallets taken out of the **live transaction lists** of
-Uniswap's UniversalRouter on three chains and Aave v3's Pool — every one an
+Twelve agents, seeded from wallets taken out of the **live transaction lists** of
+Uniswap's UniversalRouter on four chains and Aave v3's Pool — every one an
 externally-owned account that actually transacts, none invented:
 
 | | Type | Chain | Mandate |
@@ -84,6 +91,7 @@ externally-owned account that actually transacts, none invented:
 | Conservative Custodian | CUSTOM | ethereum | no unverified contracts, no unlisted tokens |
 | Compound Lender | DEFI | ethereum | only Aave and Compound, max 2 ETH |
 | Arbitrum Router | TRADING | arbitrum | only ETH and USDC on Uniswap |
+| Base Swap Router | TRADING | base | only ETH and USDC on Uniswap, no unlisted tokens |
 | Polygon Market Maker | TRADING | polygon | only MATIC and USDC, max 500 MATIC |
 | **Omni Agent** | DEFI | **eth + arb + polygon** | **three chains, three different mandates** |
 
@@ -92,7 +100,15 @@ globally, because the same key running on two chains is two different risk
 surfaces: on Arbitrum it may trade, on Ethereum it may only lend, and on Polygon
 it may only hold dollars. `/api/check` returns a different mandate for each.
 
-Re-seed with `node test/seed_roster.mjs --network=bradbury`.
+The register covers **all four chains the contract configures**. Base was the
+last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
+to every endpoint for an entire day, so the register originally spanned three.
+The outage was transient, the host serves that wallet's history now, and a chain
+advertised in `get_config` but absent from the register is a claim nobody can
+check. The patrol flags eight candidates against it.
+
+Re-seed with `node test/seed_roster.mjs --network=bradbury`, or one chain at a
+time with `--chain=base`.
 
 ## Check any wallet, from anything
 
@@ -241,17 +257,46 @@ checks the served HTML of both to prove it.
 offline suite      396 tests    test/test_logic.py       (includes the mangled artifact)
 patrol suite        28 tests    test/test_patrol.mjs     (real Blockscout fixtures)
 live suite          79 checks   test/e2e.mjs             (Studionet, real validators)
-functional sweep    37 methods  test/verify_methods.mjs  (every public method, live)
+functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
+adversarial suite   99 checks   test/edge_cases.mjs      (Studionet, the nasty states)
 rejection checklist 19 checks   tools/checklist.py       (AST, not grep)
-audit               62 checks   bash tools/audit.sh      (live chain + live site)
+audit               63 checks   bash tools/audit.sh      (live chain + live site)
 ```
 
-`verify_methods.mjs` exercises all 37 public methods on a freshly deployed
-contract and asserts an **observable effect** for each — a method that answers
-and changes nothing is a method that does not work. It lowers the challenge
+`verify_methods.mjs` exercises all **36** public methods — the count `genvm-lint`
+reads off the ABI itself, 21 view and 15 write — on a freshly deployed contract,
+and asserts an **observable effect** for each: a method that answers and changes
+nothing is a method that does not work. It then reconstructs the balance
+invariant, which is why the run reports 37 checks against 36 methods. It lowers the challenge
 cooldown and the resolution window through `set_params` so that
 `settle_stalled` is reachable without a 48-hour wait, which is what those dials
 are for.
+
+`edge_cases.mjs` is the adversarial half. It deploys a fresh contract and goes
+after the states nobody reaches by accident: every rejection path on both payable
+methods (each must refund in full and move no counter — the PackageGuard failure
+mode), the calls a pending challenge must freeze, the exits a pause must never
+close, and the arithmetic of a **second** slash. That last one is the interesting
+measurement: a bond of 1.1 GEN goes to 0.88 and then to 0.704, because each
+penalty is 20% of what the bond *is* rather than of what it started as, and the
+agent deactivates when the second slash carries it under the floor.
+
+Two of its 99 checks assert **documented limitations** rather than good news, and
+they are written down in [`contracts/NOTES.md`](contracts/NOTES.md) §11 because a
+compliance record is worth what its worst case is worth:
+
+- **A challenge retires its transaction permanently, whatever the outcome.** The
+  rule stops an accuser re-filing the same hash until a round happens to land
+  VIOLATION. The cost is that letting a challenge stall — the stake comes back in
+  full after the window — retires that hash from scrutiny for good. It is on
+  chain and legible, rate limited, and requires front-running the patrol, which
+  is why it is documented rather than closed hours before a deadline; releasing
+  the claim on `settle_stalled` alone is the fix.
+- **Settlement terms are read at settlement, not snapshotted at filing.** A
+  challenge filed under a 2000 bps penalty and settled after the owner moved the
+  dial is slashed at the new rate — measured at 4000. The owner still cannot
+  decide a verdict, reach a bond directly, or withdraw anything but the protocol's
+  own accrued share.
 
 `checklist.py` re-checks every pattern that has sunk a submission before: that a
 leader cannot forge a stored value, that the content hash is present and
@@ -275,7 +320,7 @@ on the contract's own counters would only prove they agree with themselves.
 
 ```bash
 bash tools/build.sh                      # minify → mangle → lint → checksum
-python3 test/test_logic.py               # 369 offline tests
+python3 test/test_logic.py               # 396 offline tests
 node --experimental-strip-types --no-warnings test/test_patrol.mjs
 
 cd test

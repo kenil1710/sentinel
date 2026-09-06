@@ -125,6 +125,27 @@ if the explorer never comes back.
   cheapest forgery: a leader whose stored reasoning contradicts its verdict —
   which is exactly what a reader auditing the challenge would notice.
 
+### Exactly what the axis binds, and what it does not
+
+Worth being precise, because "the validators agreed" is doing different amounts
+of work for different fields on a settled challenge:
+
+| Stored field | Bound by | A dishonest leader could… |
+|---|---|---|
+| `verdict` | **the consensus axis** — every validator re-fetches, re-judges and must return the same string | nothing; a disagreement is UNDETERMINED and applies no state |
+| `penalty` / `bounty` / `protocol_cut` / `operator_award` / `refunded` | **arithmetic in the contract**, from the verdict and stored bond | nothing; the leader never supplies a number that moves money |
+| `reasoning` | `_coherent`, checked by every validator on the leader's own calldata | write different prose, as long as it is ≥40 characters and does not contradict the agreed verdict |
+| `evidence_digest` / `confidence` / `injection_flagged` | **nothing** | record a wrong digest or an inflated confidence |
+
+The last row is deliberate and is the price of the second row of the table
+above: PROBE §5 measured validators disagreeing about one round in four on a
+digest of a projection whose every mandate-relevant field was identical, so
+putting the digest on the axis would leave a quarter of all challenges
+unsettleable at random. It is published as a hint for a reader who wants to
+re-derive the evidence themselves, and a mismatch is a reason to distrust that
+leader — it is not, and is not claimed to be, a consensus-checked value. **No
+field a leader controls alone can move a single wei.**
+
 ---
 
 ## 3. Two gates run in Python before a model ever sees anything
@@ -374,3 +395,77 @@ working mangle renamed a parameter onto a local that already held something
 else, and it parsed, passed `genvm-lint` lint *and* validation, and would have
 deployed. Two regression tests assert no replacement can shadow an existing name
 and that the map is injective.
+
+---
+
+## 11. Two behaviours a reader should know about before trusting a score
+
+Both were found by the adversarial suite (`test/edge_cases.mjs`), both are
+deliberate, and both are trade-offs rather than oversights. Neither loses money —
+every wei is still accounted for — but a reader deciding how much a compliance
+record is worth is entitled to know them.
+
+**A challenge consumes its transaction permanently, whatever the outcome.**
+`tx_claimed` is written when a challenge is FILED and is never released — not
+when the validators return INCONCLUSIVE, and not when `settle_stalled` refunds a
+challenge nobody ever judged. The rule it enforces is the important one: without
+it, an accuser could re-file the same transaction until a round happened to land
+VIOLATION, and a probabilistic judge re-rolled enough times returns any answer
+you like.
+
+The cost is the mirror image. A confederate can retire one incriminating
+transaction from scrutiny by filing a challenge against it and simply never
+resolving it: after the resolution window anyone calls `settle_stalled`, the
+stake comes back in full, and that hash can never be challenged again. It costs
+one filing, a stake locked for the window, and nothing else.
+
+Three things bound it, which is why it is documented rather than closed:
+
+- The shield is **on chain and legible**. A stalled challenge is stored with
+  `stalled: true` and shows in `get_challenges`, so an agent whose incriminating
+  transactions all have stalled challenges beside them is *more* suspicious, not
+  less.
+- It is **rate limited** — one challenge per wallet per cooldown, ten pending per
+  agent — so shielding a busy agent's history means many wallets and many
+  windows.
+- It requires **front-running the patrol**, which walks the register on a
+  schedule and files against whatever it finds first.
+
+Releasing the claim on `settle_stalled` only — where nothing was judged, so
+nothing was decided — would close it without reopening the grinding attack.
+That is the change to make with a redeployment in hand; it is not made here
+because it would invalidate the register and the settled evidence this
+submission is read against.
+
+**Settlement terms are read when the challenge SETTLES, not snapshotted when it
+is filed.** `_settle_violation` reads `self.penalty_bps` and `self.bounty_bps`
+at judgement time, so an owner who moves a dial between the filing and the
+judgement moves that challenge's arithmetic with it. `edge_cases.mjs` measures
+this directly: a challenge filed under 2000 bps and settled under 4000 bps is
+slashed 4000.
+
+`verify_challenge` recomputes against the same current terms, so the two always
+agree with each other — the recomputation checks the contract's arithmetic, not
+that the terms were fixed. What the owner CANNOT do is decide a verdict, reach a
+bond directly, or take anything but `protocol_balance`; the checklist asserts all
+three. Snapshotting `penalty_bps`, `bounty_bps` and `vindication_bps` onto the
+`Challenge` record at filing time is the honest fix and costs three `u32` fields.
+
+---
+
+## 12. One state that looks impossible and is not
+
+An agent can be `SLASHED_OUT` while holding a bond at or above the floor.
+
+`_settle_violation` sets the status when a slash carries the bond under
+`min_bond`. Two other paths can then raise it again without revisiting the
+status: `_settle_compliant` adds the vindication award to the bond (a second
+challenge, filed before the first settled, that the operator wins), and the owner
+can lower `min_bond` for everyone.
+
+It is not a money bug — the bond is intact and withdrawable — and it fails
+**safe**: a SLASHED_OUT agent is not challengeable, so the effect is that an
+agent sits out until its operator calls `top_up_bond`, which re-checks the floor
+and restores it. The alternative, re-evaluating the status on every path that can
+raise a bond, is more code in more places for a state that resolves itself with
+one call the operator already has a reason to make.

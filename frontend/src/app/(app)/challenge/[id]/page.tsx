@@ -70,23 +70,23 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
 
       {/* The side-by-side: what was promised, and what happened. */}
       <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <Panel className="p-5">
+        <Panel className="min-w-0 p-5">
           <Label>The mandate</Label>
-          <p className="mt-3 text-[14px] leading-relaxed text-ink">
+          <p className="mt-3 break-words text-[14px] leading-relaxed text-ink">
             {agent ? agent.mandate : <span className="text-ink-3">Loading…</span>}
           </p>
         </Panel>
-        <Panel className="p-5">
+        <Panel className="min-w-0 p-5">
           <Label>The transaction</Label>
           <a href={blockscoutUrl(ch.chain, "tx", ch.tx_hash)} target="_blank" rel="noreferrer"
             className="mono mt-3 block break-all text-[12px] text-signal hover:underline">
             {ch.tx_hash}
           </a>
-          <div className="mt-3 text-[13px] leading-relaxed text-ink-2">
+          <div className="mt-3 break-words text-[13px] leading-relaxed text-ink-2">
             <span className="text-ink-3">Alleged: </span>{ch.reason}
           </div>
           <a href={ch.tx_url} target="_blank" rel="noreferrer"
-            className="mono mt-3 block truncate text-[11px] text-ink-3 hover:text-signal">
+            className="mono mt-3 block min-w-0 truncate text-[11px] text-ink-3 hover:text-signal">
             evidence the validators read: {ch.tx_url} ↗
           </a>
         </Panel>
@@ -128,7 +128,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
           </div>
         ) : (
           <div className="mt-3">
-            <p className="text-[15px] leading-relaxed text-ink">{ch.reasoning}</p>
+            <p className="text-[15px] leading-relaxed text-ink break-words">{ch.reasoning}</p>
             <div className="mono mt-4 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-line pt-3.5 text-[11px] text-ink-3">
               <span>evidence digest {ch.evidence_digest || "—"}</span>
               {verify && <span className={verify.coherent ? "text-compliant" : "text-violation"}>

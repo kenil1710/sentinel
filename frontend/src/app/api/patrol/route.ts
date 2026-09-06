@@ -187,27 +187,38 @@ export async function GET(req: Request) {
     patrolled.push(agent.agent_id);
 
     const mandate = agent.mandate ?? "";
-    let enriched = 0;
-    for (const listRow of fresh) {
-      /*
-       * The list endpoint returns `token_transfers: null` on EVERY row — a
-       * measured asymmetry, not an oversight of this code. So a transaction
-       * that touched a contract is re-fetched by hash to see which tokens
-       * actually moved; without it the unlisted-token rule can never fire,
-       * and that rule is the whole motivating example.
-       */
-      let tx = listRow;
-      if (listRow.toIsContract && enriched < MAX_ENRICH_PER_AGENT) {
-        enriched++;
+
+    /*
+     * The list endpoint returns `token_transfers: null` on EVERY row — a
+     * measured asymmetry, not an oversight of this code. So a transaction that
+     * touched a contract is re-fetched by hash to see which tokens actually
+     * moved; without it the unlisted-token rule can never fire, and that rule
+     * is the whole motivating example.
+     *
+     * These are independent reads, so they go out TOGETHER. Sequentially they
+     * were the run: twelve agents at eight enrichments each is ninety-six
+     * round trips one after another, which measured 236s against this route's
+     * 300s ceiling — a patrol that would start failing as the register grew,
+     * and time out in front of anyone who pressed the button. Concurrency is
+     * bounded by MAX_ENRICH_PER_AGENT and one agent is in flight at a time, so
+     * this never opens more than eight sockets to one explorer.
+     */
+    const toEnrich = fresh.filter((t) => t.toIsContract).slice(0, MAX_ENRICH_PER_AGENT);
+    const enriched = new Map<string, (typeof fresh)[number]>();
+    await Promise.all(
+      toEnrich.map(async (listRow) => {
         try {
           const full = await oneTransaction(agent.chain, listRow.hash);
-          if (full) tx = full;
+          if (full) enriched.set(listRow.hash, full);
         } catch {
           // A transient failure on ONE transaction is not a reason to abandon
           // the agent; judge what the list already showed.
         }
-      }
+      }),
+    );
 
+    for (const listRow of fresh) {
+      const tx = enriched.get(listRow.hash) ?? listRow;
       const flags = flagsFor(tx, mandate, agent.chain);
       if (flags.length === 0) continue;
 

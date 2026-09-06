@@ -36,6 +36,11 @@ meta["bytes"] = os.path.getsize("build/Sentinel.min.py")
 meta["sha256"] = hashlib.sha256(open("build/Sentinel.min.py", "rb").read()).hexdigest()
 meta["source_sha256"] = hashlib.sha256(open(meta["source"], "rb").read()).hexdigest()
 meta["premangle_bytes"] = os.path.getsize("build/Sentinel.premangle.py")
-json.dump(d, open("deployments.json", "w"), indent=2)
+# ensure_ascii=False, and a trailing newline: without either, every build
+# rewrites every § and → in this file as a \uXXXX escape and drops the final
+# newline, so `git diff` after a no-op build is 60 lines of noise.
+with open("deployments.json", "w", encoding="utf-8") as fh:
+    json.dump(d, fh, indent=2, ensure_ascii=False)
+    fh.write("\n")
 print(f"  {meta['bytes']:>7,} bytes  build/Sentinel.min.py  sha256 {meta['sha256'][:16]}…")
 PY

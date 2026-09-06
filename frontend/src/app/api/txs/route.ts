@@ -28,7 +28,14 @@ export async function GET(req: Request) {
     const rows = await recentTransactions(chain, wallet);
     return NextResponse.json(
       { ok: true, count: rows.length, transactions: rows.slice(0, 25) },
-      { headers: { "cache-control": "s-maxage=20, stale-while-revalidate=40" } },
+      /*
+       * Five minutes at the edge. A cold fetch of a busy wallet's list is a
+       * measured 9s — Blockscout serves 0.5-1.0 MB and this route trims it —
+       * and an agent page that takes nine seconds to fill in reads as broken.
+       * The patrol bot does not come through here (it calls Blockscout
+       * directly), so nothing that decides a challenge is served from a cache.
+       */
+      { headers: { "cache-control": "s-maxage=300, stale-while-revalidate=600" } },
     );
   } catch (e) {
     if (e instanceof TransientBlockscout) {
