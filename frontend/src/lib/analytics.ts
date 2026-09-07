@@ -35,27 +35,32 @@ export const CHAIN_ORDER: readonly Chain[] = ["ethereum", "base", "arbitrum", "p
  * 3:1, which is why the donut ships visible labels and a table view rather than
  * leaving the reader to decode a colour.
  *
- * Robinhood is the exception to "not the ChainTag colour": it is the brand
- * green, the same value the badge uses, and it was checked rather than assumed.
- * It does not touch the worst pair — that is still ethereum/polygon at ΔE 11.5
- * under deuteranopia — its nearest chain neighbour is arbitrum at 23.9, and at
- * 8.3:1 against the panel it has the strongest step of the five.
+ * Robinhood is the exception to "not the ChainTag colour": it is the same
+ * purple the badge uses, so one chain is not two different colours in two
+ * places. That costs something measurable and it is worth stating plainly.
  *
- * The four cool hues stay clear of the three verdict hues, because red, green
- * and amber mean exactly one thing each in this app and a chain is not a
- * judgement. Robinhood's green does NOT: under deuteranopia it is ΔE 5.5 from
- * the amber INCONCLUSIVE and 8.8 from the red VIOLATION. That is tolerable only
- * because the two palettes never share a chart — chain colour is read here by
- * `byChain` and nowhere else, while the verdict hues live on the trend charts —
- * and because the donut labels its arcs in text. If a future chart ever plots a
- * chain series beside a verdict series, this entry is the one that breaks.
+ * It is ΔE 13.0 from ethereum with full colour vision and 10.2 under
+ * deuteranopia, which makes ethereum/robinhood the new worst pair and puts it
+ * under the 17.3 / 11.1 this set was originally searched to. A search over the
+ * violet band found NO purple that clears that gate: the corridor is closed on
+ * one side by ethereum's indigo and on the other by polygon's violet, and the
+ * nearest colours that do clear it are teals about ΔE 30 away — which would
+ * make Robinhood purple on its badge and teal in this donut, a worse thing for
+ * a reader than a tight ΔE.
+ *
+ * Two reasons that trade is the right way round. Colour is already not the sole
+ * channel here — the donut ships visible labels and a table view, for exactly
+ * the reason recorded above about polygon's contrast step. And the entry it
+ * replaces was worse: Robinhood's brand green sat ΔE 5.5 from the amber
+ * INCONCLUSIVE and 8.8 from the red VIOLATION under deuteranopia, borrowing the
+ * meaning of a verdict. Purple's closest approach to any reserved hue is 18.8.
  */
 export const CHAIN_SERIES: Record<string, string> = {
   ethereum: "#4D4FD5",
   base: "#2A9BCB",
   arbitrum: "#E24484",
   polygon: "#952795",
-  robinhood: "#00C805",
+  robinhood: "#9945FF",
 };
 
 export const SERIES = {

@@ -236,7 +236,7 @@
       "explorer": "robinhoodchain.blockscout.com",
       "why_it_is_not_a_table_edit": "The brief was 'same Blockscout API format as existing chains'. The schema is the same; the access path is not. Adding the host to CHAIN_HOSTS alone would have shipped a chain where every challenge settled INCONCLUSIVE forever, because a 403 falls through _judge's status != 200 gate — silent, permanent, and indistinguishable from a register full of well-behaved agents.",
       "contract": "RENDER_CHAINS + _http_render + a render-aware _transient",
-      "frontend": "chain selector, /agents filter, ChainTag badge #00C805, chart series, native ETH aliases",
+      "frontend": "chain selector, /agents filter, ChainTag badge #9945FF, chart series, native ETH aliases",
       "patrol": "browser User-Agent on every explorer fetch, and 403 treated as transient",
       "known_limits": [
         "Cloudflare decides per request, so validators can disagree about a transaction none of them dispute (PROBE.md §11)",
