@@ -37,7 +37,7 @@ export default function Home() {
           <div className="rise">
             <div className="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-[11px] text-ink-2">
               <span className="size-1.5 rounded-full bg-signal live-dot" />
-              Live on GenLayer · four chains watched
+              Live on GenLayer · five chains watched
             </div>
 
             <h1 className="mt-6 text-[2.6rem] font-semibold leading-[1.06] tracking-tight sm:text-6xl">

@@ -1,11 +1,15 @@
 /**
- * The guardian. A shield whose scan ring sweeps four orbiting chains — the
- * whole product in one figure: one watcher, four chains, agents under watch.
+ * The guardian. A shield whose scan ring sweeps five orbiting chains — the
+ * whole product in one figure: one watcher, five chains, agents under watch.
+ *
+ * The angles are spaced by hand rather than computed so that no label sits
+ * under the shield's point: five at 72° apart, started at -66°.
  */
 export function HeroVisual() {
   const chains = [
-    { label: "ETH", angle: -60 }, { label: "BASE", angle: 20 },
-    { label: "ARB", angle: 110 }, { label: "POL", angle: 195 },
+    { label: "ETH", angle: -66 }, { label: "BASE", angle: 6 },
+    { label: "ARB", angle: 78 }, { label: "POL", angle: 150 },
+    { label: "RH", angle: 222 },
   ];
   const R = 118;
   return (

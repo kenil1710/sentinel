@@ -15,7 +15,8 @@
       "unparseable 200 → INCONCLUSIVE",
       "binding: the transaction must involve the registered wallet, checked in Python",
       "only then does a model see a fenced, defanged projection"
-    ]
+    ],
+    "render_chains": "A 403 on a render chain is RETRY, not a verdict: a validator served an interstitial did not read the evidence it would vote on. PROBE.md §11 measured one validator in five classifying a transaction differently from its peers because Cloudflare challenged it and not them, so challenges on that chain converge less often and settle_stalled is a routine path there."
   },
   "data_sources": {
     "ethereum": "eth.blockscout.com",
@@ -24,15 +25,17 @@
     "polygon": "polygon.blockscout.com",
     "validators_read": "/api/v2/transactions/{hash} — 10-18 KB, one immutable transaction",
     "patrol_bot_reads": "/api/v2/addresses/{wallet}/transactions — 0.5-1.0 MB, 50 rows, moves constantly",
-    "no_query_parameters": "Blockscout 422s unknown query parameters; the brief's ?limit=5 is one of them"
+    "no_query_parameters": "Blockscout 422s unknown query parameters; the brief's ?limit=5 is one of them",
+    "robinhood": "robinhoodchain.blockscout.com",
+    "bot_checked_hosts": "robinhoodchain.blockscout.com answers a plain GET with a 403 Cloudflare interstitial from validator egress (docs/PROBE.md §10). The contract reads it with gl.nondet.web.render — a real browser — and recovers the status and body from the exception render raises on any non-2xx. The patrol bot, which fetches off chain, only needs a browser User-Agent."
   },
   "artifacts": {
     "build/Sentinel.min.py": {
       "source": "contracts/Sentinel.py",
-      "bytes": 51692,
-      "sha256": "b96dfbd542ecc506567c64335bc01655c8fad107efbec31e1b389ff2d376ab1b",
-      "source_sha256": "38976d61ba30c99f97672678004d834378159d13c702c82f2e45d59feb440d9b",
-      "premangle_bytes": 63875
+      "bytes": 52480,
+      "sha256": "cf396e9f71eb341d719df0492eec9906746d615afa46b4685470456b7b90fb6b",
+      "source_sha256": "47af34cb79df20d7884bea31f853574555eae8f7d5f05fecaa66b345fcb2eb33",
+      "premangle_bytes": 64739
     }
   },
   "deployments": {
@@ -40,17 +43,17 @@
       "network": "studionet",
       "rpc": "https://studio.genlayer.com/api",
       "Sentinel": {
-        "address": "0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19"
+        "address": "0xF7FcA188FefB160a1FB2716F44a3d77052c57208"
       },
       "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
       "note": "Where the 79-check live suite (test/e2e.mjs) runs — Studionet is gasless, so several roles can be funded automatically. e2e.mjs needs a FRESH contract: it registers a fixed wallet and asserts a clean record, so a second run against the same address fails on 'that wallet is already registered'. Deploy first: node test/deploy.mjs --network=studionet",
       "functional_verification": {
-        "contract": "0xb3b079914769823947399b7E37E40C2C3F89b319",
+        "contract": "0x47c5025852cB2434A3a89a57724D51269Db02902",
         "source": "test/verify_methods.mjs",
-        "result": "36/36 public methods verified — the count genvm-lint reads off the ABI itself, 21 view and 15 write — each by an observable effect rather than a bare return. The run reports 37 checks because it also reconstructs the balance invariant."
+        "result": "37/37 checks passed — the 36 public methods genvm-lint reads off the ABI itself, 21 view and 15 write, each by an observable effect rather than a bare return, plus the reconstructed balance invariant. get_config now asserts five chains including robinhood."
       },
-      "artifact_bytes": 51692,
-      "deployed_at": "2026-09-06T07:55:38.538Z",
+      "artifact_bytes": 52480,
+      "deployed_at": "2026-09-07T18:20:08.147Z",
       "live_suite_result": "79/79 checks passed on this address",
       "adversarial_suite": {
         "contract": "0xB43D0eB6DE9D6F368A1604e15129407e38fDA277",
@@ -68,7 +71,9 @@
           "DOCUMENTED: a stalled challenge retires its transaction permanently (NOTES.md 11)",
           "DOCUMENTED: settlement terms are read at settlement, not snapshotted at filing (NOTES.md 11)"
         ]
-      }
+      },
+      "register": "15 agents seeded by test/seed_roster.mjs, spanning all five chains. The three Robinhood Chain wallets were captured 2026-09-07 from that chain's DEX router and PositionManager; each was picked both for answering the address-transaction endpoint (four of nine wallets tried return a repeated 500) and for having the thing its mandate forbids in its recent history.",
+      "robinhood_end_to_end": "Challenge 3 against agent 13 (Robinhood LP Manager, wallet 0xc7455906fb8b53970405ac135e904db1850bb71e) named tx 0xa096698b59ac761cc5afb2779e20fc4162a851c4477b73c2fbd5aee12be94120, a call to the unverified contract 0x86B417a08BE3EEa62063045C0134D3922f912ad8. Five validators read it through the render path and returned VIOLATION at 99 confidence on the first resolve attempt: bond 1.0 -> 0.8 GEN, 0.1 bounty, 0.1 protocol cut, digest 48853c3626e4d71a."
     },
     "bradbury": {
       "network": "testnet-bradbury",
@@ -167,13 +172,13 @@
   },
   "verification": {
     "offline_suite": {
-      "tests": 396,
+      "tests": 410,
       "failed": 0,
       "source": "test/test_logic.py",
       "note": "includes the mangled artifact driven through a full lifecycle, and the profile battery"
     },
     "patrol_suite": {
-      "tests": 28,
+      "tests": 30,
       "failed": 0,
       "source": "test/test_patrol.mjs",
       "note": "the bot's accusation rules against real Blockscout fixtures"
@@ -183,14 +188,15 @@
       "failed": 0,
       "source": "test/e2e.mjs",
       "network": "studionet",
-      "network_contract": "0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19"
+      "network_contract": "0xF7FcA188FefB160a1FB2716F44a3d77052c57208"
     },
     "functional_sweep": {
       "methods": 36,
       "failed": 0,
       "source": "test/verify_methods.mjs",
       "network": "studionet",
-      "note": "37 reported checks: 36 methods plus the balance invariant."
+      "note": "37 reported checks: 36 methods plus the balance invariant.",
+      "network_contract": "0x47c5025852cB2434A3a89a57724D51269Db02902"
     },
     "repository_audit": {
       "checks": 63,
@@ -224,6 +230,19 @@
       "auth": "none — everything it returns is already public on chain",
       "cors": "open, so it can be called from a browser",
       "note": "Returns {registered:false} for an unknown wallet. For a known one it returns the mandate, the compliance score in both bps and percent, the bond, and the last five verdicts — plus `untested`, which says plainly when a 100% score means 'never tested' rather than 'tested and clean'."
+    },
+    "fifth_chain": {
+      "chain": "robinhood",
+      "explorer": "robinhoodchain.blockscout.com",
+      "why_it_is_not_a_table_edit": "The brief was 'same Blockscout API format as existing chains'. The schema is the same; the access path is not. Adding the host to CHAIN_HOSTS alone would have shipped a chain where every challenge settled INCONCLUSIVE forever, because a 403 falls through _judge's status != 200 gate — silent, permanent, and indistinguishable from a register full of well-behaved agents.",
+      "contract": "RENDER_CHAINS + _http_render + a render-aware _transient",
+      "frontend": "chain selector, /agents filter, ChainTag badge #00C805, chart series, native ETH aliases",
+      "patrol": "browser User-Agent on every explorer fetch, and 403 treated as transient",
+      "known_limits": [
+        "Cloudflare decides per request, so validators can disagree about a transaction none of them dispute (PROBE.md §11)",
+        "absence is not deterministic: the same missing hash returned 404 and then 500 (PROBE.md §10)",
+        "four of nine live wallets return a repeated 500 on the address-transaction endpoint and cannot be patrolled at all"
+      ]
     }
   }
 }

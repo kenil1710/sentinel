@@ -300,6 +300,66 @@ class RenderProbe(gl.Contract):
 
         self.statuses = json.dumps(gl.vm.run_nondet(leader_fn, validator_fn))
 
+    @gl.public.write
+    def probe_render(self, url: str) -> None:
+        """§10/§11: the bot check, and whether five validators clear it together.
+
+        Answers two questions one round:
+
+          - what a plain GET and a rendered browser each get from this URL, so a
+            403 interstitial is distinguishable from a host that is simply down;
+          - whether every validator INDEPENDENTLY renders the same thing, which
+            is the only question that decides whether the chain can be judged.
+
+        The validator re-renders rather than checking shape. That is the whole
+        point: a bot check is decided per request, so a validator can be
+        challenged while the leader was not, and the disagreement it produces is
+        invisible to any probe that only inspects the leader's answer."""
+        u = str(url)
+
+        def classify() -> dict:
+            try:
+                body = str(gl.nondet.web.render(u, mode="text"))
+            except Exception as e:
+                # render RAISES on any non-2xx and carries the real status and
+                # body in the exception context - which is where _http_render
+                # in Sentinel recovers them from.
+                return {"kind": "raise", "detail": str(e)[:200]}
+            head = body.strip()
+            if not head:
+                return {"kind": "empty", "detail": ""}
+            if "Just a moment" in head or "cf-browser-verification" in head:
+                return {"kind": "botcheck", "detail": head[:80]}
+            try:
+                doc = json.loads(head)
+            except Exception:
+                return {"kind": "unparseable", "detail": head[:80]}
+            if not isinstance(doc, dict):
+                return {"kind": "not_object", "detail": head[:80]}
+            if doc.get("message") == "Not found":
+                return {"kind": "notfound", "detail": ""}
+            return {"kind": "tx", "detail": str(doc.get("hash") or "")[:80]}
+
+        def leader_fn() -> dict:
+            st, body = _fetch(u)
+            return {
+                "plain_get": {"status": st, "len": len(body), "head": body[:160]},
+                "rendered": classify(),
+            }
+
+        def validator_fn(leader_result: gl.vm.Result) -> bool:
+            if not isinstance(leader_result, gl.vm.Return):
+                return False
+            theirs = leader_result.calldata
+            if not isinstance(theirs, dict):
+                return False
+            mine = classify()
+            other = theirs.get("rendered") or {}
+            return (mine.get("kind") == other.get("kind")
+                and mine.get("detail") == other.get("detail"))
+
+        self.statuses = json.dumps(gl.vm.run_nondet(leader_fn, validator_fn))
+
     @gl.public.view
     def get_statuses(self) -> str:
         return str(self.statuses)

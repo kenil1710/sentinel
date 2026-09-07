@@ -54,7 +54,7 @@ V_COMPLIANT = "COMPLIANT"
 V_INCONCLUSIVE = "INCONCLUSIVE"
 V_RETRY = "RETRY"
 
-# The four chains the probe confirmed share one Blockscout schema. The host is
+# The five chains the probe confirmed share one Blockscout schema. The host is
 # looked up here and NOWHERE else: rule 3 above is enforced by there being no
 # code path that accepts a URL from a caller.
 CHAIN_HOSTS = {
@@ -62,8 +62,24 @@ CHAIN_HOSTS = {
 	"base": "base.blockscout.com",
 	"arbitrum": "arbitrum.blockscout.com",
 	"polygon": "polygon.blockscout.com",
+	"robinhood": "robinhoodchain.blockscout.com",
 }
-CHAINS = ("ethereum", "base", "arbitrum", "polygon")
+CHAINS = ("ethereum", "base", "arbitrum", "polygon", "robinhood")
+
+# Chains whose explorer sits behind a bot check that a plain GET cannot pass.
+#
+# MEASURED from validator egress, docs/PROBE.md §10: every /api/v2 path on
+# robinhoodchain.blockscout.com answers `gl.nondet.web.request` with a 403 and a
+# Cloudflare "Just a moment..." interstitial, while eth.blockscout.com answered
+# 200 in the same round. The schema IS the same as the other four - the ACCESS
+# PATH is not, and adding the host to CHAIN_HOSTS alone would have produced a
+# chain where every challenge settled INCONCLUSIVE forever: silent, permanent,
+# and indistinguishable from "this agent behaves".
+#
+# `gl.nondet.web.render` drives a real browser, clears the check and returns the
+# same JSON body. It is used ONLY for these chains, because it costs a browser
+# launch per validator per fetch and the other four do not need it.
+RENDER_CHAINS = ("robinhood",)
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -391,12 +407,68 @@ def _epoch_from_iso(value) -> int:
 	return _days_from_civil(year, month, day) * 86400 + hour * 3600 + minute * 60 + second
 
 
-def _http(url: str) -> tuple:
+def _exc_field(text: str, key: str) -> str:
+	"""Pull one value out of the dict repr a failed render raises.
+
+	The exception stringifies as, exactly:
+
+	  {'causes': ['WEBPAGE_LOAD_FAILED'], 'ctx': {'body': '...', 'status': 404,
+	   'url': 'https://...'}}
+
+	So the real HTTP status and the real body ARE both recoverable, which is the
+	only reason a render-fetched chain can keep the same gates as a GET-fetched
+	one.
+
+	Searched from the RIGHT, and both directions of that choice matter. `body` is
+	rendered BEFORE `status`, and a body is an explorer document this contract
+	does not control - it could contain the needle, and a left search would read
+	it as the HTTP status. `url` is rendered AFTER `status` and cannot shadow it,
+	because rule 3 builds the URL from the fixed host table and a hex-normalised
+	hash, so no caller can put an apostrophe or a `status` key into it.
+	"""
+	needle = "'" + key + "': "
+	i = text.rfind(needle)
+	if i < 0:
+		return ""
+	return text[i + len(needle):]
+
+
+def _http_render(url: str) -> tuple:
+	"""(status, body) through a real browser, for chains behind a bot check.
+
+	render() has NO status code: it returns the body on success and RAISES on
+	every non-2xx, carrying the status and the body in the exception context. Both
+	are recovered so that _judge keeps reading one (status, body) pair whatever
+	fetched it, and the gate order stays identical across all five chains.
+
+	A status that cannot be recovered is reported as 0, which _transient reads as
+	"no connection" - the answer that settles nothing. That is the deliberate
+	direction to fail in: a challenge that waits is recoverable, and a challenge
+	settled on a fetch that never happened is not.
+	"""
+	try:
+		return (200, str(gl.nondet.web.render(url, mode="text")))
+	except Exception as e:
+		text = str(e)
+	digits = ""
+	for ch in _exc_field(text, "status"):
+		if ch.isdigit():
+			digits += ch
+		else:
+			break
+	if not digits or len(digits) > 3:
+		return (0, "")
+	return (int(digits), "")
+
+
+def _http(url: str, render: bool = False) -> tuple:
 	"""(status, body) for a plain GET. Never raises; a dead host is (0, "").
 
 	Both spellings of the web API are tried because prior projects split between
 	them and a settlement path must not die on which one a runner build exposes.
 	"""
+	if render:
+		return _http_render(url)
 	try:
 		try:
 			res = gl.nondet.web.request(url, method="GET")
@@ -416,7 +488,7 @@ def _http(url: str) -> tuple:
 		str(body) if body is not None else "")
 
 
-def _transient(status: int) -> bool:
+def _transient(status: int, render: bool = False) -> bool:
 	"""Is this failure worth waiting out rather than settling on?
 
 	MEASURED, not assumed. docs/PROBE.md §6: base.blockscout.com answered 500 to
@@ -431,11 +503,22 @@ def _transient(status: int) -> bool:
 	  0    - no connection at all
 	  429  - rate limited; validators share one datacentre IP range
 	  5xx  - the explorer is broken, which Base demonstrated all day
+	  403  - ON RENDER CHAINS ONLY: the bot check challenged THIS validator
 
 	A 404 is NOT transient. The explorer answered and said the hash is not on
 	this chain, which is a real answer - and a deterministic one, since every
 	validator sees the same `{"message":"Not found"}`.
+
+	403 is transient only where `render` is in play, and the asymmetry is the
+	point. On the four GET chains a 403 would be a standing block, and waiting
+	forever on it helps nobody. On a render chain it is Cloudflare deciding about
+	one browser on one node at one moment - PROBE.md §11 measured a validator
+	disagreeing for exactly this reason while its peers read the transaction
+	fine. A validator that was challenged did not READ the evidence, and must not
+	vote a verdict on it.
 	"""
+	if render and status == 403:
+		return True
 	return status == 0 or status == 429 or (status >= 500 and status <= 599)
 
 
@@ -769,8 +852,9 @@ def _judge(chain: str, wallet: str, mandate: str, tx_hash: str, reason: str) -> 
 			"reasoning": "Sentinel cannot read transactions for this chain.",
 			"digest": "", "flagged": False, "confidence": 0}
 
-	status, body = _http(url)
-	if _transient(status):
+	render = chain in RENDER_CHAINS
+	status, body = _http(url, render)
+	if _transient(status, render):
 		# NOT a verdict. resolve_challenge raises on this, applying no state, so
 		# the challenge stays PENDING and can be judged again in a moment.
 		return {"verdict": "", "retry": True, "reasoning": "",
@@ -788,6 +872,13 @@ def _judge(chain: str, wallet: str, mandate: str, tx_hash: str, reason: str) -> 
 	try:
 		doc = json.loads(body)
 	except Exception:
+		if render:
+			# On a render chain an unreadable 200 is a PAGE where an API document
+			# was asked for - a bot check that returned 200 rather than 403. That
+			# is the same event as the 403 above and gets the same answer: this
+			# validator did not read the evidence, so it settles nothing.
+			return {"verdict": "", "retry": True, "reasoning": "",
+				"digest": "", "flagged": False, "confidence": 0}
 		return {"verdict": V_INCONCLUSIVE, "retry": False,
 			"reasoning": ("The explorer returned an unreadable response, so no "
 				"judgement can be made from it."),

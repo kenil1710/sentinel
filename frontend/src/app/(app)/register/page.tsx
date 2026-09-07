@@ -9,7 +9,7 @@ import { getConfig, registerAgent } from "@/lib/contract";
 import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, percentFromBps } from "@/lib/format";
 import type { AgentType, WriteResult } from "@/types";
 
-const CHAINS = ["ethereum", "base", "arbitrum", "polygon"] as const;
+const CHAINS = ["ethereum", "base", "arbitrum", "polygon", "robinhood"] as const;
 
 /**
  * The five types the contract accepts. Anything else it stores as CUSTOM, so

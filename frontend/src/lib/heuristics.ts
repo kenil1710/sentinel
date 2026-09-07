@@ -40,6 +40,9 @@ const NATIVE_ALIASES: Record<string, string[]> = {
   base: ["ETH", "WETH"],
   arbitrum: ["ETH", "WETH"],
   polygon: ["MATIC", "WMATIC", "POL"],
+  // Robinhood Chain settles gas in ETH: /api/v2/stats reports the Ethereum
+  // coin image and the live ETH price as its native unit.
+  robinhood: ["ETH", "WETH"],
 };
 
 /**

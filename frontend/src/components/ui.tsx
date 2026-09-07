@@ -44,6 +44,13 @@ export function ChainTag({ chain, className = "" }: { chain: string; className?:
     base: "text-[#5C8DFF] bg-[#5C8DFF]/10 ring-[#5C8DFF]/25",
     arbitrum: "text-[#4FB3E8] bg-[#4FB3E8]/10 ring-[#4FB3E8]/25",
     polygon: "text-[#B98CF0] bg-[#B98CF0]/10 ring-[#B98CF0]/25",
+    // Robinhood's own brand green, asked for by name. It is the one chain tag
+    // that sits in a hue this app otherwise reserves: green means COMPLIANT
+    // everywhere else. Measured against that verdict green it is ΔE2000 16.1
+    // with full colour vision and 18.6 under deuteranopia, so the two are
+    // tellable apart - but a green badge on a watch console still leans
+    // "cleared", and no other chain tag carries a second meaning like that.
+    robinhood: "text-[#00C805] bg-[#00C805]/10 ring-[#00C805]/25",
   };
   return (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[chain] ?? "text-ink-2 bg-panel-2 ring-line"} ${className}`}>

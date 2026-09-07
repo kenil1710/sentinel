@@ -18,8 +18,10 @@ CHAIN_HOSTS = {
 "base": "base.blockscout.com",
 "arbitrum": "arbitrum.blockscout.com",
 "polygon": "polygon.blockscout.com",
+"robinhood": "robinhoodchain.blockscout.com",
 }
-CHAINS = ("ethereum", "base", "arbitrum", "polygon")
+CHAINS = ("ethereum", "base", "arbitrum", "polygon", "robinhood")
+RENDER_CHAINS = ("robinhood",)
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 BPS_DENOM = 10000
 DEFAULT_MIN_BOND = 5 * 10**17
@@ -214,7 +216,29 @@ def _epoch_from_iso(value) -> int:
  if hour > 23 or minute > 59 or second > 60:
   return 0
  return _days_from_civil(year, month, day) * 86400 + hour * 3600 + minute * 60 + second
-def _http(url: str) -> tuple:
+def _exc_field(text: str, key: str) -> str:
+ needle = "'" + key + "': "
+ i = text.rfind(needle)
+ if i < 0:
+  return ""
+ return text[i + len(needle):]
+def _http_render(url: str) -> tuple:
+ try:
+  return (200, str(gl.nondet.web.render(url, mode="text")))
+ except Exception as e:
+  text = str(e)
+ digits = ""
+ for ch in _exc_field(text, "status"):
+  if ch.isdigit():
+   digits += ch
+  else:
+   break
+ if not digits or len(digits) > 3:
+  return (0, "")
+ return (int(digits), "")
+def _http(url: str, render: bool = False) -> tuple:
+ if render:
+  return _http_render(url)
  try:
   try:
    res = gl.nondet.web.request(url, method="GET")
@@ -232,7 +256,9 @@ def _http(url: str) -> tuple:
   body = body.decode("utf-8", errors="ignore")
  return (int(status) if status is not None else 0,
  str(body) if body is not None else "")
-def _transient(status: int) -> bool:
+def _transient(status: int, render: bool = False) -> bool:
+ if render and status == 403:
+  return True
  return status == 0 or status == 429 or (status >= 500 and status <= 599)
 def _addr_node(o) -> dict:
  o = o if isinstance(o, dict) else {}
@@ -460,8 +486,9 @@ def _judge(chain: str, wallet: str, mandate: str, tx_hash: str, reason: str) -> 
   return {"verdict": V_INCONCLUSIVE, "retry": False,
   "reasoning": "Sentinel cannot read transactions for this chain.",
   "digest": "", "flagged": False, "confidence": 0}
- status, body = _http(url)
- if _transient(status):
+ render = chain in RENDER_CHAINS
+ status, body = _http(url, render)
+ if _transient(status, render):
   return {"verdict": "", "retry": True, "reasoning": "",
   "digest": "", "flagged": False, "confidence": 0}
  if status == 404:
@@ -477,6 +504,9 @@ def _judge(chain: str, wallet: str, mandate: str, tx_hash: str, reason: str) -> 
  try:
   doc = json.loads(body)
  except Exception:
+  if render:
+   return {"verdict": "", "retry": True, "reasoning": "",
+   "digest": "", "flagged": False, "confidence": 0}
   return {"verdict": V_INCONCLUSIVE, "retry": False,
   "reasoning": ("The explorer returned an unreadable response, so no "
 				"judgement can be made from it."),

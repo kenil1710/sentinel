@@ -94,6 +94,28 @@ export default function DocsPage() {
         converges, anyone can force a full refund after 48 hours.
       </P>
 
+      <H2>When the explorer will not talk to a robot</H2>
+      <P>
+        Four of the five explorers answer a plain HTTP GET.{" "}
+        <span className="mono text-ink">robinhoodchain.blockscout.com</span> does not: it
+        sits behind a bot check that answers an ordinary request with a{" "}
+        <span className="mono text-ink">403</span> and a &ldquo;Just a moment&hellip;&rdquo;
+        interstitial — measured from validator egress, not assumed. Adding the host to the
+        chain table and nothing else would have produced a chain where every challenge
+        settled INCONCLUSIVE forever: silent, permanent, and indistinguishable from an
+        agent that behaves.
+      </P>
+      <P>
+        So that one chain is read with a real browser instead, which clears the check and
+        returns the same JSON. Two consequences are visible in the rules above. A{" "}
+        <span className="mono text-ink">403</span> on that chain is treated as{" "}
+        <span className="text-signal">RETRY</span> rather than as an answer, because a
+        validator that was challenged did not read the evidence it would be voting on. And
+        the bot check is decided per request, so validators can disagree about a
+        transaction none of them dispute — a challenge on this chain is likelier to need a
+        second attempt, or the 48-hour refund, than one on the other four.
+      </P>
+
       <H2>What stops the obvious abuses</H2>
       <ul className="mt-4 space-y-2.5 text-[14px] leading-relaxed text-ink-2">
         <li>
@@ -217,7 +239,8 @@ export default function DocsPage() {
         Parameters: <code className="mono text-[13px]">wallet</code> (required, 0x-prefixed
         40 characters) and <code className="mono text-[13px]">chain</code> (optional,
         defaults to <code className="mono text-[13px]">ethereum</code>; one of ethereum,
-        base, arbitrum, polygon). A malformed wallet or an unknown chain returns 400;
+        base, arbitrum, polygon, robinhood). A malformed wallet or an unknown chain
+        returns 400;
         an unreachable register returns 502. CORS is open, so it can be called from a
         browser.
       </P>

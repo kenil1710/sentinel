@@ -21,12 +21,12 @@
 import type { AgentSummary, Challenge, Chain, Verdict } from "@/types";
 
 /** The contract's chain order. Series colours are keyed to it and never to rank. */
-export const CHAIN_ORDER: readonly Chain[] = ["ethereum", "base", "arbitrum", "polygon"];
+export const CHAIN_ORDER: readonly Chain[] = ["ethereum", "base", "arbitrum", "polygon", "robinhood"];
 
 /**
- * Chart colours for the four chains — deliberately NOT the `ChainTag` colours.
+ * Chart colours for the five chains — deliberately NOT the `ChainTag` colours.
  *
- * Those four are all cool blues and violets: legible as small text badges, but
+ * Those are all cool blues and violets: legible as small text badges, but
  * as adjacent arcs they collapse into one another (worst pair ΔE 0.3 under
  * deuteranopia, 7.7 with full colour vision). This set was searched against the
  * app's own panel colour and clears every gate: worst pair ΔE 11.1 under
@@ -35,14 +35,27 @@ export const CHAIN_ORDER: readonly Chain[] = ["ethereum", "base", "arbitrum", "p
  * 3:1, which is why the donut ships visible labels and a table view rather than
  * leaving the reader to decode a colour.
  *
- * They also stay clear of the three verdict hues. Red, green and amber mean
- * exactly one thing each in this app, and a chain is not a judgement.
+ * Robinhood is the exception to "not the ChainTag colour": it is the brand
+ * green, the same value the badge uses, and it was checked rather than assumed.
+ * It does not touch the worst pair — that is still ethereum/polygon at ΔE 11.5
+ * under deuteranopia — its nearest chain neighbour is arbitrum at 23.9, and at
+ * 8.3:1 against the panel it has the strongest step of the five.
+ *
+ * The four cool hues stay clear of the three verdict hues, because red, green
+ * and amber mean exactly one thing each in this app and a chain is not a
+ * judgement. Robinhood's green does NOT: under deuteranopia it is ΔE 5.5 from
+ * the amber INCONCLUSIVE and 8.8 from the red VIOLATION. That is tolerable only
+ * because the two palettes never share a chart — chain colour is read here by
+ * `byChain` and nowhere else, while the verdict hues live on the trend charts —
+ * and because the donut labels its arcs in text. If a future chart ever plots a
+ * chain series beside a verdict series, this entry is the one that breaks.
  */
 export const CHAIN_SERIES: Record<string, string> = {
   ethereum: "#4D4FD5",
   base: "#2A9BCB",
   arbitrum: "#E24484",
   polygon: "#952795",
+  robinhood: "#00C805",
 };
 
 export const SERIES = {

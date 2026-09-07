@@ -453,7 +453,55 @@ three. Snapshotting `penalty_bps`, `bounty_bps` and `vindication_bps` onto the
 
 ---
 
-## 12. One state that looks impossible and is not
+## 12. One chain is not read the way the other four are
+
+Robinhood Chain was added on the brief "same Blockscout API format as existing
+chains". Its schema is the same. Its **access path** is not, and the difference
+is measured in `docs/PROBE.md` §10-§11 rather than argued for here.
+
+`robinhoodchain.blockscout.com` sits behind a Cloudflare bot check that answers
+`gl.nondet.web.request` with a 403 interstitial on every `/api/v2` path, from
+validator egress and from a laptop alike. `eth.blockscout.com` answered 200 in
+the same round, so it is the host and not the network. The check reads the
+`User-Agent`, and the contract's web API takes no headers.
+
+Adding the host to `CHAIN_HOSTS` alone — the whole of what the brief asked for —
+would have shipped a chain where 403 falls through the `status != 200` gate to
+INCONCLUSIVE for every challenge, forever. No agent slashed, every challenger
+refunded, and the register showing a chain of well-behaved agents. It is the
+same silent success `PROBE.md` §1 warns about, and it is the reason this note
+exists instead of a one-line table edit.
+
+`gl.nondet.web.render` drives a real browser, clears the check, and returns the
+same document. `RENDER_CHAINS` names the chains read that way; `_http_render`
+reconstructs the `(status, body)` pair that `render` does not return, out of the
+exception it raises on any non-2xx. Every gate in `_judge` keeps its order and
+its meaning on all five chains.
+
+Three consequences a reader should know, none of which is closed:
+
+- **Absence is not deterministic on this chain.** The same missing hash returned
+  404 once and 500 minutes later. §3's "a 404 is a deterministic absence" holds
+  on the other four. Here a challenge naming a missing hash either refunds or
+  waits — the safe direction, but not the same direction.
+- **Cloudflare decides per request, so validators can disagree about a
+  transaction none of them dispute.** One validator in the probe classified a
+  transaction differently from four peers reading the same immutable hash,
+  seconds apart. The verdict axis survives a replica being a block behind (§2);
+  it cannot survive a validator that never saw the document. Challenges on this
+  chain converge less often, and `settle_stalled` is a routine path here rather
+  than a rare one.
+- **The patrol cannot see every wallet.** Of nine live wallets tried, four
+  answered the address-transaction endpoint with a repeated 500. Those agents
+  would sit in the queue being retried forever, which is why the registered
+  wallets were picked from the ones that answer.
+
+The honest summary is that this chain is watchable but weaker than the other
+four, and the weakness is upstream of anything the contract can fix.
+
+---
+
+## 13. One state that looks impossible and is not
 
 An agent can be `SLASHED_OUT` while holding a bond at or above the floor.
 

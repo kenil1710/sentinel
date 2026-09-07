@@ -1,6 +1,6 @@
 /** Shapes the contract's views return. Every view emits a JSON *string*. */
 
-export type Chain = "ethereum" | "base" | "arbitrum" | "polygon";
+export type Chain = "ethereum" | "base" | "arbitrum" | "polygon" | "robinhood";
 export type AgentStatus = "ACTIVE" | "WITHDRAWN" | "SLASHED_OUT";
 export type ChallengeStatus = "PENDING" | "SETTLED" | "REFUNDED";
 export type Verdict = "" | "VIOLATION" | "COMPLIANT" | "INCONCLUSIVE";

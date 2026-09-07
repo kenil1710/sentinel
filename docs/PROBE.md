@@ -239,6 +239,119 @@ outage. One extraction path serves all four, as it did in TokenScope.
 
 ---
 
+# Robinhood Chain — probed 2026-09-07, when the fifth chain was added
+
+The brief for this chain was "same Blockscout API format as existing chains".
+The **schema** is the same. The **access path** is not, and the difference is
+the whole of §10 and §11.
+
+---
+
+## 10. A plain GET cannot read this chain at all
+
+`probe_statuses` from validator egress, one round, `eth.blockscout.com` carried
+as the control:
+
+| URL | Status | Bytes | Body |
+|---|---|---|---|
+| `eth.blockscout.com/api/v2/stats` | **200** | 672 | the stats document |
+| `robinhoodchain.blockscout.com/api/v2/stats` | **403** | 5,434 | `<!DOCTYPE html>…<title>Just a moment...</title>` |
+| `robinhoodchain.blockscout.com/api/v2/main-page/blocks` | **403** | 5,467 | same interstitial |
+
+The host is behind a Cloudflare bot check. It is not down and it is not empty —
+it refuses the *caller*. The same request from a laptop with a browser
+`User-Agent` returns **200** and an ordinary Blockscout document, so the check
+reads the header, and `gl.nondet.web.request` takes no headers.
+
+A control matters here, because a wrong host would look similar but not
+identical: `definitely-not-a-real-chain-xyz.blockscout.com` answers **404**
+`default backend - 404`, since `*.blockscout.com` is a Cloudflare wildcard and
+every name resolves. A 403 interstitial means a real instance is behind it.
+
+**Had this gone unprobed**, adding the host to `CHAIN_HOSTS` and nothing else
+would have shipped a chain on which 403 falls through `_judge`'s `status != 200`
+gate to INCONCLUSIVE — for every challenge, permanently, with the challenger
+refunded and no agent ever slashed. §1's warning in a second costume: silent,
+and it looks exactly like a chain full of well-behaved agents.
+
+`gl.nondet.web.render(url, mode="text")` drives a real browser, clears the check
+and returns the identical JSON body. That is why `RENDER_CHAINS` exists.
+
+### render() has no status code, and that had to be worked around
+
+`render` returns the body on a 2xx and **raises** on everything else. The
+exception carries what was lost:
+
+```
+NondetException: {'causes': ['WEBPAGE_LOAD_FAILED'],
+                  'ctx': {'body': '{"message":"Not found"}', 'status': 404,
+                          'url': 'https://robinhoodchain.blockscout.com/…'}}
+```
+
+So `(status, body)` is recoverable, and `_http_render` reconstructs exactly the
+pair `_http` returns. Every gate in `_judge` — transient, 404, unparseable,
+binding, then the model — stays in the same order for all five chains. A status
+that cannot be parsed out becomes `0`, which is already transient: a challenge
+that waits is recoverable, one settled on a fetch that never happened is not.
+
+### the same missing hash returned 404 and then 500
+
+Two renders of one nonexistent hash, minutes apart:
+
+```
+'status': 404, 'body': '{"message":"Not found"}'      → INCONCLUSIVE, refunded
+'status': 500, 'body': '"Internal server error"'      → RETRY, nothing applied
+```
+
+This chain does not answer absence deterministically, so §3's "404 is a
+deterministic absence" holds on the other four and **not** on this one. The
+consequence is bounded and it is the safe direction — a challenge naming a
+missing hash either refunds or waits, and never slashes — but it is a real
+difference and it is written down rather than smoothed over.
+
+The address-transaction endpoint is flakier still: of nine live wallets tried,
+**four answered 500 repeatedly** while five returned 50 rows. The wallets in the
+register were chosen from the five that answer, because the patrol bot cannot
+propose a challenge about a wallet whose list it can never read.
+
+---
+
+## 11. Cloudflare does not treat five validators alike
+
+§5's method, pointed at the bot check instead of at replica lag. Every validator
+independently renders the same live transaction and votes on whether it
+classified the response as the leader did:
+
+| Round | URL | Validator votes |
+|---|---|---|
+| 1 | `/transactions/0x211f8c8d…` | AGREE, **DISAGREE**, IDLE, AGREE |
+| 2 | `/transactions/0x211f8c8d…` | AGREE, IDLE, AGREE, IDLE |
+| 3 | `/transactions/0x0000…0001` | AGREE, AGREE, IDLE, IDLE |
+
+Round 1's dissenter was reading the same immutable transaction as its peers,
+seconds apart, and did not classify it the same way — the only thing that moves
+here is whether Cloudflare challenged that particular browser at that particular
+moment.
+
+Two rules follow, and both are in the contract:
+
+1. **A 403 on a render chain is transient**, never a verdict. A validator that
+   was served an interstitial did not read the evidence it would be voting on.
+   On the four GET chains a 403 stays non-transient, because there it would be a
+   standing block and waiting on it forever helps nobody.
+2. **An unreadable 200 on a render chain is also transient.** A bot check that
+   returns a page with a 200 is the same event as one that returns 403.
+
+What this does **not** fix: a validator that is challenged while the leader is
+not will disagree about a transaction neither of them disputes. The verdict axis
+survives replica lag (§5) but it cannot survive a validator that never saw the
+document. So challenges on this chain converge less often than on the other
+four, and the 48-hour `settle_stalled` refund is a routine path here rather than
+a rare one. That is the price of the chain being readable at all, and it is
+stated rather than discovered later.
+
+---
+
 ## 9. Reproducing this
 
 ```bash
@@ -260,6 +373,19 @@ genlayer write $P probe_nested --args "https://eth.blockscout.com/api/v2/transac
 
 # 3. THE consensus question: every validator re-fetches, projects, and compares
 genlayer write $P probe_projection --args "https://eth.blockscout.com/api/v2/transactions/0x41729a0b…"
+genlayer call $P get_statuses
+
+# 4. §10: the bot check — a control that answers, beside a host that refuses
+genlayer write $P probe_statuses --args \
+  "[\"https://eth.blockscout.com/api/v2/stats\",
+    \"https://robinhoodchain.blockscout.com/api/v2/stats\"]"
+genlayer call $P get_statuses
+
+# 5. §10/§11: GET vs rendered on one URL, and whether the validators agree.
+#    Read the VALIDATOR VOTES on the receipt, not just the stored answer —
+#    the leader's result cannot show you a validator that was challenged.
+genlayer write $P probe_render --args \
+  "https://robinhoodchain.blockscout.com/api/v2/transactions/0x211f8c8d…"
 genlayer call $P get_statuses
 ```
 

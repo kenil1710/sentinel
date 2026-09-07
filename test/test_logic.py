@@ -622,7 +622,10 @@ class _serving:
 			st, bd = status_of(self.label), body_of(self.label)
 		else:
 			st, bd = self.status, self.body
-		setattr(self.module, self.http_name, lambda _u: (st, bd))
+		# Two parameters, because _http now takes the render flag that selects the
+		# browser fetch for chains behind a bot check. Defaulted, so a stub written
+		# as one argument would still bind and silently pass.
+		setattr(self.module, self.http_name, lambda _u, _r=False: (st, bd))
 		return self
 
 	def __exit__(self, *a):
@@ -745,7 +748,8 @@ class TestNormalisation(unittest.TestCase):
 
 	def test_chain_normalised(self):
 		for raw, want in (("Ethereum", "ethereum"), ("  BASE ", "base"),
-				("Arbitrum", "arbitrum"), ("POLYGON", "polygon")):
+				("Arbitrum", "arbitrum"), ("POLYGON", "polygon"),
+				(" Robinhood ", "robinhood")):
 			self.assertEqual(PURE._norm_chain(raw), want)
 
 	def test_unknown_chain_rejected(self):
@@ -759,6 +763,24 @@ class TestNormalisation(unittest.TestCase):
 
 	def test_chain_list_and_host_map_agree(self):
 		self.assertEqual(sorted(PURE.CHAINS), sorted(PURE.CHAIN_HOSTS.keys()))
+
+	def test_render_chains_are_supported_chains(self):
+		"""A render chain that is not a chain would be a table nobody reads."""
+		for chain in PURE.RENDER_CHAINS:
+			self.assertIn(chain, PURE.CHAINS)
+
+	def test_robinhood_is_a_render_chain(self):
+		"""PROBE.md §10: a plain GET gets a 403 interstitial from this host, so
+		reading it with the GET path would settle every challenge INCONCLUSIVE
+		forever - silently, and looking exactly like a well-behaved agent."""
+		self.assertIn("robinhood", PURE.RENDER_CHAINS)
+		self.assertEqual(PURE.CHAIN_HOSTS["robinhood"], "robinhoodchain.blockscout.com")
+
+	def test_the_four_get_chains_are_not_render_chains(self):
+		"""render costs a browser launch per validator per fetch. The four
+		chains that answer a plain GET must keep answering it."""
+		for chain in ("ethereum", "base", "arbitrum", "polygon"):
+			self.assertNotIn(chain, PURE.RENDER_CHAINS)
 
 
 class TestUrlDerivation(unittest.TestCase):
@@ -1266,9 +1288,96 @@ class TestTransient(unittest.TestCase):
 		# The rejected-query-parameter status. A real answer, not an outage.
 		self.assertFalse(PURE._transient(422))
 
+	def test_403_is_transient_ONLY_on_a_render_chain(self):
+		"""On a GET chain a 403 is a standing block and waiting on it helps
+		nobody. On a render chain it is Cloudflare challenging ONE browser on
+		ONE node at one moment, measured in PROBE.md §11 - and a validator that
+		was challenged did not read the evidence it would be voting on."""
+		self.assertTrue(PURE._transient(403, True))
+		self.assertFalse(PURE._transient(403))
+		self.assertFalse(PURE._transient(403, False))
+
+	def test_the_render_flag_does_not_make_a_404_transient(self):
+		"""Absence stays deterministic on every chain, or a challenge naming a
+		hash that does not exist could never be settled at all."""
+		self.assertFalse(PURE._transient(404, True))
+
+	def test_the_render_flag_does_not_make_a_200_transient(self):
+		self.assertFalse(PURE._transient(200, True))
+
 	def test_other_client_errors_are_not_transient(self):
 		for s in (400, 401, 403, 410, 451):
 			self.assertFalse(PURE._transient(s), s)
+
+
+class TestRenderStatusRecovery(unittest.TestCase):
+	"""`gl.nondet.web.render` returns NO status code. It returns the body on a
+	2xx and RAISES on everything else, carrying the real status and body in the
+	exception context.
+
+	Every string below is a VERBATIM capture from Studionet (docs/PROBE.md §10),
+	not a guess at the shape. If a runner build ever changes that repr, these
+	tests fail loudly here rather than silently turning a 404 into a 0 - and a
+	0 is transient, so the silent version would hang challenges rather than
+	settle them wrongly. That is the safe direction, but it is still a bug."""
+
+	NOT_FOUND = ("{'causes': ['WEBPAGE_LOAD_FAILED'], 'ctx': {'body': "
+		"'{\"message\":\"Not found\"}', 'status': 404, 'url': "
+		"'https://robinhoodchain.blockscout.com/api/v2/transactions/0x01'}}")
+	SERVER_ERROR = ("{'causes': ['WEBPAGE_LOAD_FAILED'], 'ctx': {'body': "
+		"'\"Internal server error\"', 'status': 500, 'url': "
+		"'https://robinhoodchain.blockscout.com/api/v2/transactions/0x01'}}")
+
+	def test_404_is_recovered(self):
+		self.assertEqual(PURE._exc_field(self.NOT_FOUND, "status")[:3], "404")
+
+	def test_500_is_recovered(self):
+		self.assertEqual(PURE._exc_field(self.SERVER_ERROR, "status")[:3], "500")
+
+	def test_a_body_carrying_the_needle_cannot_shadow_the_real_status(self):
+		"""The search runs from the RIGHT because `body` is rendered before
+		`status` in that repr. A transaction document that happened to contain
+		the needle would otherwise be read as the HTTP status."""
+		hostile = ("{'causes': ['WEBPAGE_LOAD_FAILED'], 'ctx': {'body': "
+			"\"{'status': 200}\", 'status': 404, 'url': 'https://x'}}")
+		self.assertEqual(PURE._exc_field(hostile, "status")[:3], "404")
+
+	def test_a_missing_field_is_empty(self):
+		self.assertEqual(PURE._exc_field("nothing here", "status"), "")
+
+	def _rendering(self, fn):
+		"""Swap the browser fetch for one call."""
+		saved = PURE.gl.nondet.web.render
+		PURE.gl.nondet.web.render = fn
+		try:
+			return PURE._http_render("https://robinhoodchain.blockscout.com/x")
+		finally:
+			PURE.gl.nondet.web.render = saved
+
+	def test_a_body_that_returns_is_a_200(self):
+		"""render() only returns at all on a 2xx, so a return IS the success
+		status. There is no other place to read one from."""
+		got = self._rendering(lambda *a, **k: '{"hash":"0xabc"}')
+		self.assertEqual(got, (200, '{"hash":"0xabc"}'))
+
+	def test_a_raise_becomes_its_real_status(self):
+		def boom(*a, **k):
+			raise RuntimeError(self.NOT_FOUND)
+		self.assertEqual(self._rendering(boom)[0], 404)
+
+	def test_an_unrecognisable_raise_becomes_zero_and_therefore_transient(self):
+		"""A status that cannot be recovered must not settle anything. 0 is
+		what _transient already reads as 'no connection'."""
+		def boom(*a, **k):
+			raise RuntimeError("the browser fell over")
+		status = self._rendering(boom)[0]
+		self.assertEqual(status, 0)
+		self.assertTrue(PURE._transient(status, True))
+
+	def test_an_absurd_status_is_refused_rather_than_believed(self):
+		def boom(*a, **k):
+			raise RuntimeError("{'ctx': {'status': 999999, 'url': 'x'}}")
+		self.assertEqual(self._rendering(boom)[0], 0)
 
 
 # ===========================================================================

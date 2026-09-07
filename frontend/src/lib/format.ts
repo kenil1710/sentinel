@@ -70,6 +70,7 @@ export const CHAIN_LABEL: Record<string, string> = {
   base: "Base",
   arbitrum: "Arbitrum",
   polygon: "Polygon",
+  robinhood: "Robinhood",
 };
 
 export const EXPLORER_HOST: Record<string, string> = {
@@ -77,9 +78,10 @@ export const EXPLORER_HOST: Record<string, string> = {
   base: "base.blockscout.com",
   arbitrum: "arbitrum.blockscout.com",
   polygon: "polygon.blockscout.com",
+  robinhood: "robinhoodchain.blockscout.com",
 };
 
-/** A Blockscout link for a wallet or transaction on one of the four chains. */
+/** A Blockscout link for a wallet or transaction on one of the five chains. */
 export function blockscoutUrl(chain: string, kind: "address" | "tx", value: string): string {
   const host = EXPLORER_HOST[chain] ?? EXPLORER_HOST.ethereum;
   return `https://${host}/${kind}/${value}`;

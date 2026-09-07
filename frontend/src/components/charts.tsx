@@ -200,9 +200,9 @@ export function CountBars({
 }
 
 /**
- * Part-to-whole across at most four chains.
+ * Part-to-whole across at most five chains.
  *
- * The legend is not optional decoration here: one of the four steps sits just
+ * The legend is not optional decoration here: one of the five steps sits just
  * under the 3:1 contrast line against the panel, so every slice is also named
  * and numbered beside the ring.
  */

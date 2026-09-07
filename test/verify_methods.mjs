@@ -299,7 +299,7 @@ await check("transfer_ownership", async () => {
 // ── views ──────────────────────────────────────────────────────────────────
 console.log("\n── views ──");
 const VIEWS = [
-  ["get_config", () => owner.viewJson("get_config"), (d) => d.chains.length === 4 && d.min_bond],
+  ["get_config", () => owner.viewJson("get_config"), (d) => d.chains.length === 5 && d.chains.includes("robinhood") && d.min_bond],
   ["get_stats", () => owner.viewJson("get_stats"), (d) => d.agents_registered >= 2 && Array.isArray(d.chains)],
   ["get_agent", () => owner.viewJson("get_agent", [AGENT_A]), (d) => d.agent_id === AGENT_A && d.mandate.length > 0],
   ["get_challenge", () => owner.viewJson("get_challenge", [CH_A]), (d) => d.challenge_id === CH_A && d.tx_url.includes("blockscout")],

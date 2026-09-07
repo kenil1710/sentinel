@@ -115,7 +115,8 @@ else
       && ok "the five agent types are published on chain" || bad "agent_types missing from get_config"
     echo "$CFG" | grep -q 'eth.blockscout.com' && echo "$CFG" | grep -q 'base.blockscout.com' \
       && echo "$CFG" | grep -q 'arbitrum.blockscout.com' && echo "$CFG" | grep -q 'polygon.blockscout.com' \
-      && ok "all four chains are configured with their explorers" || bad "chain/explorer table incomplete"
+      && echo "$CFG" | grep -q 'robinhoodchain.blockscout.com' \
+      && ok "all five chains are configured with their explorers" || bad "chain/explorer table incomplete"
     echo "$CFG" | grep -q '"paused": false' && ok "contract is not paused" || bad "contract is paused"
   else bad "get_config did not answer"; fi
 
@@ -155,12 +156,13 @@ a=json.load(sys.stdin).get('agents',[])
 print(len({x.get('chain') for x in a}), len({x.get('agent_type') for x in a}))
 " 2>/dev/null || echo "0 0")
     NCHAIN=$(echo "$DIV" | cut -d' ' -f1); NKIND=$(echo "$DIV" | cut -d' ' -f2)
-    # Four, not three. `get_config` advertises four chains, and a chain the
+    # Five, not four. `get_config` advertises five chains, and a chain the
     # contract claims but the register cannot demonstrate is a claim nobody can
-    # check. Base was missing until base.blockscout.com came back up.
-    { [ "$NCHAIN" -ge 4 ] && [ "$NKIND" -ge 3 ]; } \
+    # check. Base was missing until base.blockscout.com came back up; Robinhood
+    # arrived with the fifth-chain work.
+    { [ "$NCHAIN" -ge 5 ] && [ "$NKIND" -ge 3 ]; } \
       && ok "the register spans all ${NCHAIN} configured chains and ${NKIND} agent types" \
-      || bad "the register is not diverse (chains=${NCHAIN} of 4, types=${NKIND})"
+      || bad "the register is not diverse (chains=${NCHAIN} of 5, types=${NKIND})"
 
     [ "$SETTLED" -gt 0 ] && ok "challenges have been judged by validators (${SETTLED} settled)" || bad "no challenge has been settled"
     [ "$VIOL" -gt 0 ] && ok "a real violation was proven on chain (${VIOL})" || skip "no violation proven yet"

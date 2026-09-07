@@ -222,6 +222,26 @@ test("polygon's native alias is MATIC, not ETH", () => {
   assert.deepEqual(flagsFor(row, m, "polygon"), []);
 });
 
+test("robinhood settles in ETH, so WETH is not an unnamed token", () => {
+  // /api/v2/stats on robinhoodchain.blockscout.com reports the Ethereum coin
+  // image and the live ETH price as its native unit. A chain missing from
+  // NATIVE_ALIASES falls back to no aliases at all, and every mandate that
+  // says "ETH" would then accuse its own agent of trading an unnamed token.
+  const row = rowOf(SWAP);
+  row.transfers = [{ sym: "WETH", addr: "0x1", value: "1", decimals: "18" }];
+  const m = "Only trade ETH and USDC through the DEX router.";
+  assert.deepEqual(flagsFor(row, m, "robinhood"), []);
+});
+
+test("robinhood still flags a token the mandate does not name", () => {
+  const row = rowOf(SWAP);
+  row.transfers = [{ sym: "PONS", addr: "0x1", value: "1", decimals: "18" }];
+  const m = "Only trade ETH and USDC through the DEX router.";
+  const flags = flagsFor(row, m, "robinhood");
+  assert.equal(flags.length, 1);
+  assert.match(flags[0].reason, /PONS/);
+});
+
 test("the reason text respects the contract's 300-character ceiling", () => {
   const many = Array.from({ length: 40 }, (_, i) => ({
     tx_hash: "0x", rule: "r", reason: `Rule ${i} was broken in a fairly verbose way. `,

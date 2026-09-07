@@ -78,9 +78,10 @@ afternoon must never read as a clean bill of health.
 
 ## The register is real
 
-Twelve agents, seeded from wallets taken out of the **live transaction lists** of
-Uniswap's UniversalRouter on four chains and Aave v3's Pool — every one an
-externally-owned account that actually transacts, none invented:
+Fifteen agents, seeded from wallets taken out of the **live transaction lists** of
+Uniswap's UniversalRouter on four chains, Aave v3's Pool, and Robinhood Chain's
+own DEX router — every one an externally-owned account that actually transacts,
+none invented:
 
 | | Type | Chain | Mandate |
 |---|---|---|---|
@@ -93,6 +94,9 @@ externally-owned account that actually transacts, none invented:
 | Arbitrum Router | TRADING | arbitrum | only ETH and USDC on Uniswap |
 | Base Swap Router | TRADING | base | only ETH and USDC on Uniswap, no unlisted tokens |
 | Polygon Market Maker | TRADING | polygon | only MATIC and USDC, max 500 MATIC |
+| Robinhood LP Manager | DEFI | robinhood | verified contracts only, ETH and stablecoins only |
+| Robinhood Swap Desk | TRADING | robinhood | only ETH and USDC, no newly launched tokens, max 1 ETH |
+| Robinhood Momentum Bot | TRADING | robinhood | only ETH and USDC, no approvals except the router |
 | **Omni Agent** | DEFI | **eth + arb + polygon** | **three chains, three different mandates** |
 
 The Omni Agent is the interesting one. A wallet is unique *per chain*, not
@@ -100,15 +104,23 @@ globally, because the same key running on two chains is two different risk
 surfaces: on Arbitrum it may trade, on Ethereum it may only lend, and on Polygon
 it may only hold dollars. `/api/check` returns a different mandate for each.
 
-The register covers **all four chains the contract configures**. Base was the
+The register covers **all five chains the contract configures**. Base was the
 last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
 to every endpoint for an entire day, so the register originally spanned three.
 The outage was transient, the host serves that wallet's history now, and a chain
 advertised in `get_config` but absent from the register is a claim nobody can
 check. The patrol flags eight candidates against it.
 
+The three Robinhood Chain wallets were captured on 2026-09-07 from that chain's
+own DEX router and liquidity PositionManager, and each was picked against two
+tests rather than one. Its transaction list has to **answer** — four of the nine
+wallets tried return a repeated 500, and the patrol can never read those — and
+its recent history has to contain the thing its mandate forbids, so each entry
+is a claim that can actually be tested. All three were transacting within the
+hour they were registered.
+
 Re-seed with `node test/seed_roster.mjs --network=bradbury`, or one chain at a
-time with `--chain=base`.
+time with `--chain=robinhood`.
 
 ## Check any wallet, from anything
 
@@ -189,6 +201,45 @@ disagreed.
 > **So the compared axis is one string: the verdict.** A judgement derived from a
 > mandate is robust to a replica being one block behind; a hash is not. The
 > digest is recorded as evidence and never voted on.
+
+---
+
+## The fifth chain does not answer a robot
+
+Robinhood Chain was added on the brief *"same Blockscout API format as existing
+chains"*. The schema is the same. The **access path** is not, and probing it
+first is the only reason the chain works at all.
+
+`robinhoodchain.blockscout.com` sits behind a Cloudflare bot check. From
+validator egress, every `/api/v2` path answered `gl.nondet.web.request` with a
+**403** and a *"Just a moment…"* interstitial, while `eth.blockscout.com`
+answered 200 in the same round.
+
+Adding the host to the chain table and nothing else — the whole of what the
+brief asked for — would have shipped a chain where a 403 falls through the
+`status != 200` gate to INCONCLUSIVE, for every challenge, permanently. Nobody
+slashed, every challenger refunded, and a register that looks like a chain full
+of well-behaved agents. Silent, and indistinguishable from success.
+
+So that one chain is read with `gl.nondet.web.render` — a real browser, which
+clears the check and returns the same JSON. `render` gives back no status code,
+so `_http_render` recovers the status and body out of the exception it raises on
+any non-2xx, and every gate in `_judge` keeps its order on all five chains.
+
+Two things this does **not** fix, both measured and both written down:
+
+- **Cloudflare decides per request.** One validator classified a transaction
+  differently from four peers reading the same immutable hash seconds apart. The
+  verdict axis survives a replica being a block behind; it cannot survive a
+  validator that never saw the document. Challenges on this chain converge less
+  often, and the 48-hour refund is a routine path here rather than a rare one.
+- **Absence is not deterministic here.** The same missing hash returned 404 once
+  and 500 minutes later, so a challenge naming it either refunds or waits. The
+  safe direction — it can never slash — but not the same behaviour as the other
+  four.
+
+`docs/PROBE.md` §10–§11 has the tables; `contracts/NOTES.md` 12 has the
+consequences.
 
 ---
 

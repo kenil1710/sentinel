@@ -7,7 +7,7 @@ import { Empty, Label, Spinner } from "@/components/ui";
 import { getActiveAgents, getAgentsByChain, getAgentsByType } from "@/lib/contract";
 import { CHAIN_LABEL } from "@/lib/format";
 
-const CHAINS = ["all", "ethereum", "base", "arbitrum", "polygon"] as const;
+const CHAINS = ["all", "ethereum", "base", "arbitrum", "polygon", "robinhood"] as const;
 const TYPES = ["all", "TRADING", "DEFI", "SHOPPING", "CONTENT", "CUSTOM"] as const;
 const TYPE_LABEL: Record<string, string> = {
   all: "All types", TRADING: "Trading", DEFI: "DeFi",

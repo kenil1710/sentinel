@@ -8,6 +8,14 @@
  * chains, and Aave v3's Pool. They are externally-owned accounts that really
  * transact; none is invented, and none is a contract.
  *
+ * The three Robinhood Chain entries were captured on 2026-09-07 from that
+ * chain's own DEX router (`0x6e2A35A7AD…`, tagged "OKX Labs: DexRouter") and
+ * from its liquidity PositionManager, and each was checked two ways before it
+ * was written down: its address-transaction list must ANSWER — four of the nine
+ * wallets tried return a repeated 500 and the patrol could never read them
+ * (docs/PROBE.md §10) — and its recent history must contain the thing its
+ * mandate forbids, so the register makes a claim that can actually be tested.
+ *
  * The mandates are written to be plausible for what each wallet actually does,
  * which matters: a register full of mandates nobody could breach would prove
  * nothing, and one full of mandates everybody breaches would be noise.
@@ -149,6 +157,53 @@ const ROSTER = [
     description: "The Polygon leg is a pure settlement account: it holds dollars and " +
                  "does nothing else.",
     url: "https://example.org/omni-agent",
+  },
+
+  /*
+   * Robinhood Chain. Read through a browser rather than a plain GET, because
+   * the explorer sits behind a bot check — contracts/NOTES.md 12.
+   *
+   * The mandates are strict on purpose, and each one is strict about something
+   * this wallet was OBSERVED doing in the fifty rows above its registration:
+   * an unverified counterparty, a freshly launched token, an approval to
+   * something that is not the pair being traded. A mandate nobody could breach
+   * proves nothing.
+   */
+  {
+    // 50 rows: PositionManager/modifyLiquidities, OKX DexRouter swaps — and
+    // repeated calls to 0x86B417a08B…, which the explorer reports unverified.
+    role: operator, wallet: "0xc7455906fB8b53970405aC135e904db1850Bb71E", chain: "robinhood",
+    name: "Robinhood LP Manager", type: "DEFI", bond: GEN,
+    mandate: "Only manage liquidity positions through verified contracts. " +
+             "Never call an unverified contract. Never trade a token that is " +
+             "not ETH or a listed stablecoin.",
+    description: "Runs concentrated liquidity positions through the chain's " +
+                 "PositionManager and rebalances them through the DEX router.",
+    url: "",
+  },
+  {
+    // 50 rows: 32 DexRouter/dagSwapTo, seven unverified counterparties, and
+    // approvals to GatedMaxToken and PonsV2LauncherToken.
+    role: operator, wallet: "0xbB91136e0ec8cb675F49c65D62D237BCdDAaB74d", chain: "robinhood",
+    name: "Robinhood Swap Desk", type: "TRADING", bond: GEN,
+    mandate: "Only trade ETH and USDC. Never acquire or approve a newly " +
+             "launched token. Never interact with an unverified contract. " +
+             "Maximum 1 ETH per swap.",
+    description: "A high-frequency swap desk routing through the chain's DEX " +
+                 "router, mandated to stay in the two most liquid assets.",
+    url: "",
+  },
+  {
+    // 50 rows: 43 DexRouter/dagSwapTo plus seven approvals, six of them to
+    // PonsV2LauncherToken — a launchpad token, not a pair it is allowed to hold.
+    role: operator2, wallet: "0xABc94D1a928E0c747517045E8208448aE460946f", chain: "robinhood",
+    name: "Robinhood Momentum Bot", type: "TRADING", bond: GEN / 2n,
+    mandate: "Only trade ETH and USDC through the DEX router. Never grant a " +
+             "token approval to any contract other than the router itself. " +
+             "No unlisted or newly launched tokens, ever.",
+    description: "A momentum trader that is only supposed to move between ETH " +
+                 "and dollars, and only through the one router it names.",
+    url: "",
   },
 ];
 
