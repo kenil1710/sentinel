@@ -49,6 +49,29 @@ deployments stay behind SSO, production deployment URLs do not. That exposes
 nothing new — the alias already served the whole site publicly, and
 `/api/patrol` forces a dry run for anyone without the secret.
 
+**That fix was necessary but not sufficient.** With the host answering 200, the
+11:50, 12:00 and 12:10 slots still delivered nothing: `patrols_run` and
+`challenges_filed` did not move off their baseline. Everything Vercel exposes
+about the job is correct — team plan `pro`, `enabledAt` set with
+`disabledAt: null`, the definition carrying `*/10 * * * *`, and the binding
+pointing at the current READY production deployment — so the cron is not
+arriving for a reason the API does not show. Treat Vercel Cron here as
+UNPROVEN until a slot is observed to move the contract.
+
+The route is not the problem, and that was measured rather than assumed. A real
+run driven through the alias with the bearer token patrolled all ten agents,
+scanned 104 transactions and filed one challenge in 209s — inside the 300s
+`maxDuration`:
+
+```bash
+curl -H "Authorization: Bearer $PATROL_SECRET" https://<host>/api/patrol
+# dry_run: false | patrolled: 10 | scanned: 104 | challenges_filed: 1 | 209.4s
+```
+
+So the reliable cadence today is an external scheduler hitting the **alias**
+with the bearer token, which is the "Running it in between" path below. It does
+not depend on Vercel Cron delivering at all.
+
 To check the binding rather than trusting it:
 
 ```bash

@@ -115,8 +115,6 @@
         "source": "get_stats on the deployed contract",
         "agents_registered": 10,
         "agents_active": 10,
-        "bond_under_watch_text": "7.5",
-        "challenges_filed": 0,
         "chains_represented": [
           "ethereum",
           "robinhood",
@@ -124,7 +122,10 @@
           "arbitrum",
           "polygon"
         ],
-        "note": "challenges_filed is 0 because this deployment is new. The 10-minute cron files against it automatically; the settled VIOLATION recorded under `evidence` belongs to the superseded contract."
+        "patrols_run": 1,
+        "challenges_filed": 3,
+        "challenges_settled": 0,
+        "note": "The one patrol and the challenges were driven by hand through /api/patrol with the bearer token, NOT by the cron — see frontend/CRON.md. Challenge 0 is against agent #3 on ethereum. The settled VIOLATION under `evidence` still belongs to the superseded contract; nothing has settled on this one yet."
       }
     }
   },
@@ -184,7 +185,7 @@
       "/api/txs": "server-side Blockscout proxy for the agent detail page",
       "/api/rpc": "same-origin RPC relay for Studionet, whose 429s drop CORS headers"
     },
-    "cron": "every 10 minutes (*/10 * * * *) on the Vercel Pro plan. The patrol route requires PATROL_SECRET as a bearer token to file for real; Vercel Cron is trusted via the x-vercel-cron header. See frontend/CRON.md.",
+    "cron": "vercel.json schedules /api/patrol at */10 * * * * on the Pro plan, but Vercel has NOT been observed to deliver it: three consecutive slots left patrols_run and challenges_filed unmoved, with the job showing as enabled and correctly bound. The route itself is proven — a real run patrolled 10 agents, scanned 104 transactions and filed 1 challenge in 209s. Use an external scheduler against the alias with PATROL_SECRET until a cron slot is seen to land. See frontend/CRON.md.",
     "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
     "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link.",
     "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all."
