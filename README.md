@@ -38,27 +38,37 @@ Registered under the pitch's own example mandate — *"Only trade ETH and USDC o
 Uniswap. Maximum 0.5 ETH per trade. Never interact with unverified contracts"* —
 five Bradbury validators independently fetched that transaction and returned:
 
-> **VIOLATION** (confidence 100%)
-> *"The mandate states 'Only trade ETH and USDC on Uniswap' and 'Never interact
-> with unverified contracts or unlisted tokens.' The transaction record shows the
-> agent received 7160.883256709807603712 WFC (contract `0x974733a3…`) via a
-> UniversalRouter. WFC is neither ETH nor USDC… The use of a verified
-> UniversalRouter (a Uniswap component) does not negate the violation of trading
-> a forbidden, unlisted token."*
+> **VIOLATION** (confidence 95%)
+> *"The mandate states 'Only trade ETH and USDC on Uniswap.' The transaction
+> record shows a transfer of 6824.521886979730702336 WFC (contract
+> `0x974733a3…`) to the agent's wallet. WFC is not ETH or USDC, violating the
+> explicit token restriction."*
 
-The bond went from 1.0 to 0.8 GEN, the challenger earned a bounty, and the
-protocol took the other half of the penalty.
+That is challenge `0` on the contract linked above — filed by the patrol bot,
+not by hand, and judged on **this** deployment. All three challenges the bot
+filed against that agent came back VIOLATION, at 95%, 90% and 95% confidence,
+on three different transactions with three different evidence digests.
 
-That verdict was reached on the **superseded** contract
-(`0xE0AB1f5e…2F3356`), which is where challenge `0` still lives. The current
-deployment was redeployed and reseeded after it, so its own counters start at
-zero — `challenges_filed: 0` — and `/api/check` says so honestly rather than
-inheriting a verdict it never reached:
+The penalty compounds, and the arithmetic is checkable on chain:
+
+```
+bond      1.0 → 0.8 → 0.64 → 0.512 GEN     three violations at 2000 bps
+slashed   0.488 GEN                        0.200 + 0.160 + 0.128
+bounty    0.244 GEN to the challenger      5000 bps of the penalty
+protocol  0.244 GEN                        the other half — 0.488 exactly, no leakage
+```
+
+The same verdict comes out of the public endpoint:
 
 ```bash
 curl '.../api/check?wallet=0x17e3048c…&chain=ethereum'
-# → "violations": 0, "untested": true, "basis": "nothing decided against this agent yet"
+# → "violations": 3, "score_percent": 0, "basis": "0 of 3 decided found it compliant"
 ```
+
+One of the three did not converge on its first round and came back
+**UNDETERMINED**. It applied no state and stayed `PENDING` — the designed
+outcome, since a round that fails to agree must not settle anything — and
+resolved cleanly when it was put to the validators again.
 
 Then the patrol bot went and found more on its own. A dry run over the whole
 register scanned 124 transactions and flagged **24** candidates across four of
@@ -309,8 +319,8 @@ checks the served HTML of both to prove it.
 ## Verification
 
 ```
-offline suite      396 tests    test/test_logic.py       (includes the mangled artifact)
-patrol suite        28 tests    test/test_patrol.mjs     (real Blockscout fixtures)
+offline suite      410 tests    test/test_logic.py       (includes the mangled artifact)
+patrol suite        30 tests    test/test_patrol.mjs     (real Blockscout fixtures)
 live suite          79 checks   test/e2e.mjs             (Studionet, real validators)
 functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
 adversarial suite   99 checks   test/edge_cases.mjs      (Studionet, the nasty states)
@@ -400,7 +410,10 @@ patrol route forces a **dry run** for any caller without `PATROL_SECRET`,
 because the "Run patrol" button on `/patrol` is public and a public URL must
 never be able to spend it.
 
-The committed cron runs `/api/patrol` **every 10 minutes** — see
-[`frontend/CRON.md`](frontend/CRON.md). Nothing about the bot depends on the
-cadence: it is stateless, reads its queue from the contract on every run, and
+`vercel.json` schedules `/api/patrol` **every 10 minutes**, but Vercel has not
+been observed to deliver that cron on this deployment — the patrol runs recorded
+on chain were triggered with the bot's bearer token. See
+[`frontend/CRON.md`](frontend/CRON.md) for what was measured and the external
+scheduler that does work. Nothing about the bot depends on the cadence: it is
+stateless, reads its queue from the contract on every run, and
 `is_tx_challenged` makes a second pass over the same transactions a no-op.

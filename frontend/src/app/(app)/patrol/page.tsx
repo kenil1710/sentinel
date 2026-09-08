@@ -75,9 +75,11 @@ export default function PatrolPage() {
           {running ? `Patrolling… ${elapsed}s` : "Run patrol"}
         </button>
         <span className="max-w-md text-[12px] text-ink-3">
-          Also runs unattended <span className="text-ink-2">every 10 minutes</span> on a Vercel
-          cron. From this button it is a <span className="text-ink-2">dry run</span>: a public URL
-          must not be able to spend the bot&apos;s stake. Takes about two minutes.
+          A Vercel cron is configured for <span className="text-ink-2">every 10 minutes</span>,
+          though delivery has not yet been observed on this deployment — the runs recorded on
+          chain were triggered with the bot&apos;s bearer token. From this button it is a{" "}
+          <span className="text-ink-2">dry run</span>: a public URL must not be able to spend the
+          bot&apos;s stake. Takes about two minutes.
         </span>
         <Link href="/analytics"
           className="ml-auto rounded-lg border border-line bg-panel px-3.5 py-2 text-[13px] text-ink-2 hover:border-signal/40 hover:text-ink">

@@ -89,16 +89,31 @@
       "seeded_by": "test/seed_roster.mjs for #0-#6; #7-#9 registered directly from the mywallet keystore after the test wallets were exhausted",
       "supersedes": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356 (redeployed onto the 52,480-byte artifact; the Robinhood chain brought the configured chain list to five)",
       "evidence": {
-        "challenge": 0,
-        "agent": "#0 ETH/USDC Rebalancer — 0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5 on ethereum",
-        "tx_hash": "0x41729a0ba95cb56368bc48601e0e133b23d8fcf3a1d5321550dbf5819810c90d",
-        "verdict": "VIOLATION",
-        "confidence": 100,
-        "evidence_digest": "5b4fc7e207dcd374",
-        "settled_at": 1788539929,
-        "settlement": "bond 1.0 -> 0.8 GEN; penalty 0.2; bounty 0.1 to the challenger; 0.1 protocol cut; the challenger's 0.05 stake refunded",
-        "note": "Judged by five Bradbury validators on the SUPERSEDED deployment (0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356), and kept here as the record that the consensus path works end to end. It is NOT carried over: the current deployment reports challenges_filed: 0. Readable with: genlayer call 0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356 get_challenge --args 0",
-        "observed_on": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356"
+        "challenges": [
+          {
+            "challenge_id": 0,
+            "verdict": "VIOLATION",
+            "confidence": 95,
+            "evidence_digest": "a86d235637a92c22"
+          },
+          {
+            "challenge_id": 1,
+            "verdict": "VIOLATION",
+            "confidence": 90,
+            "evidence_digest": "32f961b77619e6aa"
+          },
+          {
+            "challenge_id": 2,
+            "verdict": "VIOLATION",
+            "confidence": 95,
+            "evidence_digest": "1a24db916e3be70d"
+          }
+        ],
+        "agent": "#3 ETH/USDC Rebalancer — 0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5 on ethereum",
+        "filed_by": "the patrol bot 0x81D6bF84a5b03950d910b4a2F83C68006E0b93f4, from /api/patrol",
+        "settlement": "bond 1.0 -> 0.8 -> 0.64 -> 0.512 GEN; slashed 0.488; bounty 0.244 to the challenger; 0.244 protocol cut; all three stakes refunded",
+        "undetermined": "challenge 2 returned UNDETERMINED on its first round, applied no state, stayed PENDING, and settled on a second call — the designed behaviour for a non-converging round",
+        "note": "Judged by Bradbury validators on THIS deployment. Readable with: genlayer call 0xcb068e75c4a4dC9603bDf12612583252B8A06b6C get_challenge --args 0"
       },
       "patrol_dry_run": {
         "source": "GET /api/patrol?dry=1",
@@ -124,8 +139,12 @@
         ],
         "patrols_run": 1,
         "challenges_filed": 3,
-        "challenges_settled": 0,
-        "note": "The one patrol and the challenges were driven by hand through /api/patrol with the bearer token, NOT by the cron — see frontend/CRON.md. Challenge 0 is against agent #3 on ethereum. The settled VIOLATION under `evidence` still belongs to the superseded contract; nothing has settled on this one yet."
+        "challenges_settled": 3,
+        "violations": 3,
+        "total_slashed_text": "0.488",
+        "bounties_paid_text": "0.244",
+        "watchers": 1,
+        "note": "The patrol that filed these was driven by hand through /api/patrol with the bearer token; Vercel Cron has still not been observed to deliver. See frontend/CRON.md."
       }
     }
   },
