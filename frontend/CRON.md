@@ -103,6 +103,40 @@ public and a public URL must never be able to spend real GEN.
 development. If it is unset, the bearer path is refused outright rather than
 falling open.
 
+
+## Where it stands, measured
+
+`cron-job.org` calls `/api/patrol` every 10 minutes with the bearer token and
+the route accepts it — production logs show
+`[patrol] START trusted=true (bearer token) dry_run=false` on each firing.
+
+Two bugs were found and fixed getting there, and one blocker remains.
+
+**Fixed — the token comparison was exact.** `authorised()` compared the header to
+`` `Bearer ${secret}` `` with `===`. Anything else — a lowercase scheme, stray
+whitespace — fell through to `trusted = false`, which forces `dryRun = true`,
+and the `!dryRun` guard means **`mark_patrolled` is never called**. The route
+still answered **200 with a full report**, so the scheduler recorded successful
+executions for runs that did nothing. The scheme is now matched
+case-insensitively, the token trimmed, a bare token accepted, and a refusal says
+why (lengths only, never the token).
+
+**Fixed — `after()` does not run here.** Moving the work into `after()` returned
+a 202 in a second and the callback never executed: `[patrol] START`, then
+silence, and nothing on chain. Fluid Compute is off on this project, which is
+also why `maxDuration = 800` was ignored and runs were still cut at 300.02s. The
+work is inline again. A caller that gives up early does not stop it — a run cut
+off at the client at 255s had still filed two challenges server-side.
+
+**Blocked — Bradbury is refusing the bot's writes.** Every `resolve_challenge`
+and `mark_patrolled` currently comes back as
+`transaction gas rate limit exceeded: node is at capacity, retry in ~481ms`, and
+then a revert at the consensus contract `0x0112Bf6e…271D`. This is not specific
+to Vercel: the same key from a laptop gets the same refusal. The route retries on
+the delay the node names and reports the failure rather than reporting a run it
+did not finish, so `patrols_run` stays honest at 1 until the network accepts
+writes again.
+
 ## Running it in between
 
 The same bearer token works from any external scheduler (GitHub Actions,

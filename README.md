@@ -410,10 +410,22 @@ patrol route forces a **dry run** for any caller without `PATROL_SECRET`,
 because the "Run patrol" button on `/patrol` is public and a public URL must
 never be able to spend it.
 
-`vercel.json` schedules `/api/patrol` **every 10 minutes**, but Vercel has not
-been observed to deliver that cron on this deployment — the patrol runs recorded
-on chain were triggered with the bot's bearer token. See
-[`frontend/CRON.md`](frontend/CRON.md) for what was measured and the external
-scheduler that does work. Nothing about the bot depends on the cadence: it is
-stateless, reads its queue from the contract on every run, and
-`is_tx_challenged` makes a second pass over the same transactions a no-op.
+**Patrols every 10 minutes via an external cron (cron-job.org)**, which reaches
+the route and authenticates — the production logs show
+`[patrol] START trusted=true (bearer token) dry_run=false` on each firing. The
+patrol also judges what it files: it resolves any PENDING challenge before it
+looks for new ones, and puts each newly filed challenge to the validators in the
+same run.
+
+What that does *not* yet show on chain: `patrols_run` is still 1, because
+Bradbury is currently refusing the bot's writes —
+`transaction gas rate limit exceeded: node is at capacity`, and then a revert at
+the consensus contract. That is a network condition rather than a bug in this
+route, and it reproduces from a laptop with the same key, so `mark_patrolled`
+and `resolve_challenge` both fail from anywhere right now. The route retries on
+the backoff the node itself asks for and reports the failure in `notes` instead
+of claiming a run it did not complete. See [`frontend/CRON.md`](frontend/CRON.md).
+
+Nothing about the bot depends on the cadence: it is stateless, reads its queue
+from the contract on every run, and `is_tx_challenged` makes a second pass over
+the same transactions a no-op.

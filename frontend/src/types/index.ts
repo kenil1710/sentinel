@@ -231,6 +231,8 @@ export interface PatrolReport {
   transactions_scanned: number;
   challenges_filed: number;
   dry_run: boolean;
+  /** What this run put to the validators. Empty on a dry run. */
+  challenges_resolved?: { challenge_id: number; verdict: string; error?: string }[];
   rows: PatrolRow[];
   notes: string[];
 }

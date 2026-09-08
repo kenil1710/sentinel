@@ -41,6 +41,12 @@ import { flagsFor, reasonText } from "@/lib/heuristics";
 import type { PatrolReport, PatrolRow } from "@/types";
 
 export const dynamic = "force-dynamic";
+/**
+ * MEASURED, not assumed: raising this to 800 changed nothing — two runs were cut
+ * off at exactly 300.02s — so this deployment is held at 300s whatever the
+ * export says. Everything below budgets against that number rather than wishing
+ * for a bigger one.
+ */
 export const maxDuration = 300;
 
 const CHAINS = { studionet, bradbury: testnetBradbury } as const;
@@ -61,16 +67,137 @@ const MAX_CHALLENGES_PER_RUN = 3;
 const LOOKBACK_SECONDS = 14 * 24 * 3600;
 /** Candidates enriched with a second per-transaction fetch, per agent. */
 const MAX_ENRICH_PER_AGENT = 8;
+/**
+ * Judgement is the valuable half of the job: a challenge that is filed and
+ * never judged moves no money and proves nothing. resolve_challenge runs the
+ * five-validator round on chain, so it is slow and its cost is wall clock, not
+ * gas. These ceilings keep a run inside maxDuration; whatever does not fit is
+ * left PENDING and picked up by the next run, which is safe because
+ * resolve_challenge is permissionless and idempotent on an already-settled
+ * challenge.
+ */
+const MAX_RESOLVES_PER_RUN = 2;
+const RESOLVE_POLL_MS = 85_000;
+/**
+ * The three gates that keep a run inside 300s, in the order they bite.
+ *
+ * A patrol has three jobs and they are not equally valuable. Judging what is
+ * already filed moves money and settles a dispute; scanning finds work; filing
+ * creates work. So the budget is spent in that order, and each gate stops NEW
+ * work early enough that whatever is already in flight can still finish.
+ *
+ * Nothing is lost by stopping: resolve_challenge is permissionless and
+ * idempotent, is_tx_challenged prevents a duplicate filing, and the next run is
+ * ten minutes away.
+ */
+const RESOLVE_UNTIL_MS = 150_000;   // start no new judgement after this
+const SCAN_UNTIL_MS = 200_000;      // examine no new agent after this
+const FILE_UNTIL_MS = 230_000;      // file nothing new after this
+/** Kept for the cooldown-deferral check, which reasons about the same ceiling. */
+const BUDGET_MS = FILE_UNTIL_MS;
 
-function authorised(req: Request): boolean {
+/**
+ * Every await in this file talks to a chain or an explorer over the network,
+ * and an await with no ceiling is how a serverless function dies at the
+ * platform limit with nothing in the log to say where. Wrap the slow ones.
+ */
+/**
+ * Bradbury throttles writes, and it says so precisely: "transaction gas rate
+ * limit exceeded: node is at capacity, retry in ~1295ms". Submitting straight
+ * through that is how a patrol filed nothing, judged nothing and — because
+ * mark_patrolled was refused along with everything else — left `patrols_run`
+ * unmoved while every other signal said the run had succeeded.
+ *
+ * So a write that is REFUSED FOR CAPACITY is retried, honouring the delay the
+ * node asks for. A write refused for any other reason is a real failure and is
+ * returned as one.
+ */
+const RATE_LIMITED = /at capacity|rate limit|exceeds defined limit|too many requests/i;
+
+async function writeWithRetry(
+  w: ReturnType<typeof createClient>,
+  args: Parameters<ReturnType<typeof createClient>["writeContract"]>[0],
+  label: string,
+  attempts = 4,
+): Promise<string> {
+  let lastErr: unknown = null;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return (await withTimeout(w.writeContract(args), 45_000, `${label} submit`)) as string;
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e as Error)?.message ?? e);
+      if (!RATE_LIMITED.test(msg)) throw e;
+      // The node names its own backoff; trust it, with a floor and some growth.
+      const asked = Number(msg.match(/retry in ~(\d+)\s*ms/i)?.[1] ?? 0);
+      const wait = Math.min(12_000, Math.max(1_500, asked * 2) * i);
+      console.log(`[patrol] ${label} rate-limited (attempt ${i}/${attempts}), waiting ${wait}ms`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, rej) =>
+      setTimeout(() => rej(new Error(`${label} timed out after ${ms}ms`)), ms)),
+  ]);
+}
+
+/**
+ * Who is allowed to spend the bot's stake, and — just as important — WHY not.
+ *
+ * The previous version compared the header to `Bearer ${secret}` with ===, and
+ * a caller that got the scheme's capitalisation wrong, or wrapped the token in
+ * whitespace, failed that test and was silently demoted to a dry run. A dry run
+ * still answers 200 with a full report, so an external scheduler recorded a
+ * SUCCESSFUL execution while `mark_patrolled` was never reached and
+ * `patrols_run` stayed where it was. That is the worst kind of failure: it
+ * looks exactly like success from the outside.
+ *
+ * So: the scheme is matched case-insensitively, the token is trimmed, a bare
+ * token with no scheme is accepted, and `x-patrol-secret` works too. The reason
+ * for a refusal is returned so it can be logged — lengths only, never the
+ * token itself.
+ */
+function authorised(req: Request): { ok: boolean; why: string } {
   const secret = process.env.PATROL_SECRET;
   // Vercel Cron identifies itself with this header and cannot be spoofed from
   // outside, because the platform strips it from inbound public requests.
-  if (req.headers.get("x-vercel-cron")) return true;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  if (req.headers.get("x-vercel-cron")) return { ok: true, why: "x-vercel-cron header" };
+  if (!secret) return { ok: false, why: "PATROL_SECRET is not set on this deployment" };
+
+  const raw = (req.headers.get("authorization") ?? req.headers.get("x-patrol-secret") ?? "").trim();
+  if (!raw) return { ok: false, why: "no authorization or x-patrol-secret header was sent" };
+
+  const m = raw.match(/^bearer\s+(.*)$/i);
+  const token = (m ? m[1] : raw).trim();
+  if (token === secret) return { ok: true, why: m ? "bearer token" : "bare token" };
+  return {
+    ok: false,
+    why: `token did not match (received ${token.length} chars, expected ${secret.length})`,
+  };
 }
 
+/**
+ * THE DISPATCHER.
+ *
+ * A full patrol is 200-260s of wall clock. No cron service waits that long —
+ * cron-job.org gives up around 30s — so a working patrol still looked like a
+ * FAILED execution to the scheduler, and the response never reached the caller
+ * that asked for it. Worse, the run was being cut off partway: challenges got
+ * filed and then neither judged nor stamped, which is the one state this bot
+ * must never leave behind.
+ *
+ * So a real run is ACKNOWLEDGED immediately and continues in `after()`, which
+ * Vercel keeps alive past the response. The scheduler gets its 202 in
+ * milliseconds and the work still happens.
+ *
+ * A dry run stays inline: it files nothing, it is the /patrol button's
+ * behaviour, and the page needs the report in its hand.
+ */
 export async function GET(req: Request) {
   const started = Date.now();
   const url = new URL(req.url);
@@ -87,12 +214,19 @@ export async function GET(req: Request) {
    * whatever they ask for — the "Run patrol" button on /patrol is public, and a
    * public URL must never be able to spend real GEN.
    */
-  const trusted = authorised(req);
+  const auth = authorised(req);
+  const trusted = auth.ok;
   const askedDry = url.searchParams.get("dry");
-  let dryRun = trusted ? askedDry === "1" : true;
+  const dryRun = trusted ? askedDry === "1" : true;
   if (!trusted && askedDry === "0") {
     notes.push("Unauthenticated caller — forced to a dry run. Send PATROL_SECRET as a bearer token to file for real.");
   }
+  if (!trusted) notes.push(`Not trusted: ${auth.why}.`);
+
+  // Logged so a scheduler that thinks it is succeeding can be told otherwise:
+  // an unauthenticated run answers 200 and never reaches mark_patrolled.
+  console.log(`[patrol] START trusted=${trusted} (${auth.why}) dry_run=${dryRun} ` +
+    `ua=${(req.headers.get("user-agent") ?? "none").slice(0, 60)}`);
 
   const chain = CHAINS[networkName];
   if (!chain || !address) {
@@ -102,17 +236,87 @@ export async function GET(req: Request) {
     );
   }
 
+  /*
+   * This ran through `after()` for one deployment and it was a mistake worth
+   * recording: the 202 came back in a second and the callback NEVER EXECUTED —
+   * `[patrol] START` in the logs, then silence, and nothing on chain. Vercel
+   * tore the invocation down at the response, because Fluid Compute is off on
+   * this project (the same reason `maxDuration = 800` was ignored and runs were
+   * still cut at 300s). A scheduler got a clean 202 for a patrol that did
+   * nothing at all, which is the exact failure this route already had once.
+   *
+   * So the work is inline. A caller that gives up early does NOT stop it: a run
+   * cut off at the client at 255s had still filed two challenges server-side.
+   * cron-job.org will record a timeout; the contract is the source of truth for
+   * whether the run happened.
+   */
+  return NextResponse.json(
+    await runPatrol({ started, url, chain, address, key, dryRun, notes }),
+    { headers: { "cache-control": "no-store" } },
+  );
+}
+
+/** The patrol itself. Returns the report; never throws for an expected outcome. */
+async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
+  started: number; url: URL; chain: (typeof CHAINS)[keyof typeof CHAINS];
+  address: `0x${string}`; key: string | undefined; dryRun: boolean; notes: string[];
+}): Promise<PatrolReport> {
+  let dry = dryRun;
+  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studionet") as keyof typeof CHAINS;
   const read = createClient({ chain });
   const view = async <T,>(fn: string, args: unknown[] = []): Promise<T> => {
     const raw = await read.readContract({ address, functionName: fn, args: args as never });
     return typeof raw === "string" ? (JSON.parse(raw) as T) : (raw as T);
   };
 
+  /**
+   * Put one pending challenge to the validators and wait for it to land.
+   *
+   * resolve_challenge RAISES by design when the round does not converge or the
+   * explorer was transiently unreadable — nothing is applied and the challenge
+   * stays PENDING for a later run. That is an expected outcome, not an error to
+   * abort the patrol over, so it is caught and reported.
+   */
+  const resolveOne = async (
+    cid: number,
+    w: NonNullable<typeof wallet>,
+  ): Promise<{ challenge_id: number; verdict: string; error?: string }> => {
+    try {
+      console.log(`[patrol] resolve #${cid} submitting…`);
+      const hash = await writeWithRetry(
+        w, { address, functionName: "resolve_challenge", args: [cid], value: 0n },
+        `resolve_challenge(${cid})`,
+      );
+      console.log(`[patrol] resolve #${cid} tx ${String(hash).slice(0, 14)}…`);
+      const deadline = Date.now() + RESOLVE_POLL_MS;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 5000));
+        const tx = await read.getTransaction({ hash: hash as TransactionHash }).catch(() => null);
+        const st = (tx as { status?: number })?.status;
+        const name = typeof st === "number"
+          ? ["PENDING", "PROPOSING", "COMMITTING", "REVEALING", "ACCEPTED", "FINALIZED", "UNDETERMINED", "CANCELED"][st]
+          : "";
+        if (["ACCEPTED", "FINALIZED", "UNDETERMINED", "CANCELED"].includes(name ?? "")) break;
+      }
+      // The transaction settling is not the challenge settling — read it back.
+      const after = await view<{ status: string; verdict: string }>("get_challenge", [cid])
+        .catch(() => null);
+      if (after && after.status !== "PENDING") {
+        return { challenge_id: cid, verdict: after.verdict || after.status };
+      }
+      return { challenge_id: cid, verdict: "PENDING",
+        error: "the round did not converge; still pending and can be judged again" };
+    } catch (e) {
+      return { challenge_id: cid, verdict: "PENDING",
+        error: String((e as Error)?.message ?? e).slice(0, 160) };
+    }
+  };
+
   let wallet: ReturnType<typeof createClient> | null = null;
   let botAddress: string | null = null;
-  if (!dryRun) {
+  if (!dry) {
     if (!key) {
-      dryRun = true;
+      dry = true;
       notes.push("PATROL_PRIVATE_KEY is not set — falling back to a dry run.");
     } else {
       const account = createAccount(key as `0x${string}`);
@@ -126,14 +330,55 @@ export async function GET(req: Request) {
     Math.max(1, Number(url.searchParams.get("limit") ?? MAX_AGENTS) || MAX_AGENTS),
   );
 
+  /*
+   * PHASE A — judge what is already filed, before looking for anything new.
+   *
+   * This runs first on purpose. A challenge sitting PENDING has a stake locked
+   * against a bond and has moved no money and proven nothing; finding an
+   * eleventh suspicious transaction is worth less than settling the three
+   * already on the books. Anything that does not fit the budget stays PENDING
+   * and the next run picks it up.
+   */
+  const resolved: { challenge_id: number; verdict: string; error?: string }[] = [];
+  if (!dry && wallet) {
+    console.log(`[patrol] phaseA reading pending at ${Date.now() - started}ms`);
+    const pending = await withTimeout(
+      view<{ challenges: { challenge_id: number }[] }>("get_pending_challenges", [MAX_RESOLVES_PER_RUN * 3]),
+      25_000, "get_pending_challenges",
+    ).catch((e) => {
+      console.log(`[patrol] phaseA read FAILED: ${String(e?.message ?? e).slice(0, 160)}`);
+      return { challenges: [] as { challenge_id: number }[] };
+    });
+    console.log(`[patrol] phaseA ${(pending.challenges ?? []).length} pending at ${Date.now() - started}ms`);
+    for (const c of pending.challenges ?? []) {
+      if (resolved.length >= MAX_RESOLVES_PER_RUN) break;
+      if (Date.now() - started + RESOLVE_POLL_MS > RESOLVE_UNTIL_MS) {
+        notes.push("Out of budget with challenges still pending — the next patrol takes them.");
+        break;
+      }
+      resolved.push(await resolveOne(c.challenge_id, wallet));
+    }
+    if (resolved.length) {
+      console.log(`[patrol] resolved ${resolved.length}: ` +
+        resolved.map((r) => `#${r.challenge_id}=${r.verdict}`).join(" "));
+    }
+  }
+
+  console.log(`[patrol] queue read at ${Date.now() - started}ms`);
   let queue: { queue: { agent_id: number; wallet: string; chain: string; mandate?: string; last_checked: number }[] };
   try {
     queue = await view("get_patrol_queue", [limit]);
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, error: `could not read the patrol queue: ${String((e as Error)?.message ?? e)}` },
-      { status: 502 },
-    );
+    notes.push(`could not read the patrol queue: ${String((e as Error)?.message ?? e)}`);
+    console.log(`[patrol] queue read FAILED — nothing done this run`);
+    return {
+      ok: false, started_at: new Date(started).toISOString(),
+      finished_at: new Date().toISOString(),
+      seconds: Number(((Date.now() - started) / 1000).toFixed(1)),
+      network: networkName, contract: address, patrolled: 0,
+      transactions_scanned: 0, challenges_filed: 0, dry_run: dry,
+      challenges_resolved: [], rows: [], notes,
+    };
   }
 
   const cfg = await view<{ challenge_stake: string; challenge_cooldown: number }>("get_config")
@@ -155,6 +400,13 @@ export async function GET(req: Request) {
   let filedTotal = 0;
 
   for (const agent of queue.queue ?? []) {
+    // Stop examining NEW agents in time to still stamp the ones already done.
+    // An unexamined agent keeps its place at the head of the queue, so the next
+    // run starts exactly here.
+    if (Date.now() - started > SCAN_UNTIL_MS) {
+      notes.push(`Stopped after ${rows.length} agent(s) to stay inside the run budget — the rest keep their place in the queue.`);
+      break;
+    }
     const row: PatrolRow = {
       agent_id: agent.agent_id,
       wallet: agent.wallet,
@@ -230,7 +482,13 @@ export async function GET(req: Request) {
       }
 
       const reason = reasonText(flags);
-      if (dryRun || !wallet || filedTotal >= MAX_CHALLENGES_PER_RUN) {
+      const outOfFilingTime = Date.now() - started > FILE_UNTIL_MS;
+      if (outOfFilingTime && !dry) {
+        row.flagged.push({ tx_hash: tx.hash, reason, filed: false,
+          error: "deferred to the next patrol — out of run budget" });
+        continue;
+      }
+      if (dry || !wallet || filedTotal >= MAX_CHALLENGES_PER_RUN) {
         row.flagged.push({ tx_hash: tx.hash, reason, filed: false });
         continue;
       }
@@ -238,7 +496,7 @@ export async function GET(req: Request) {
       // Wait out the bot's own rate limit, or stop if the budget cannot cover it.
       const waitFor = lastFiledAt ? Math.max(0, cooldownMs - (Date.now() - lastFiledAt)) : 0;
       if (waitFor > 0) {
-        if (Date.now() - started + waitFor > 230_000) {
+        if (Date.now() - started + waitFor > BUDGET_MS) {
           row.flagged.push({ tx_hash: tx.hash, reason, filed: false,
             error: "deferred to the next patrol — the per-wallet cooldown does not fit in this run" });
           continue;
@@ -247,10 +505,12 @@ export async function GET(req: Request) {
       }
 
       try {
-        const hash = await wallet.writeContract({
-          address, functionName: "challenge_agent",
-          args: [agent.agent_id, tx.hash, reason], value: stake,
-        });
+        const hash = await writeWithRetry(
+          wallet,
+          { address, functionName: "challenge_agent",
+            args: [agent.agent_id, tx.hash, reason], value: stake },
+          "challenge_agent",
+        );
         const deadline = Date.now() + 150_000;
         let terminal = false;
         while (Date.now() < deadline) {
@@ -291,7 +551,28 @@ export async function GET(req: Request) {
                 ? "the contract turned it down and refunded the stake"
                 : "submitted but did not settle in 150s" }),
         });
-        if (confirmed.challenged) filedTotal++;
+        if (confirmed.challenged) {
+          filedTotal++;
+          /*
+           * Judge it now rather than leaving it for the next run. The challenge
+           * id is not in the receipt — Bradbury returns no readable value — so
+           * it is found by matching this tx hash against what is still pending.
+           */
+          if (Date.now() - started + RESOLVE_POLL_MS <= RESOLVE_UNTIL_MS
+              && resolved.length < MAX_RESOLVES_PER_RUN) {
+            const pend = await view<{ challenges: { challenge_id: number; tx_hash: string }[] }>(
+              "get_pending_challenges", [50],
+            ).catch(() => ({ challenges: [] as { challenge_id: number; tx_hash: string }[] }));
+            const mine = (pend.challenges ?? []).find(
+              (c) => String(c.tx_hash).toLowerCase() === tx.hash.toLowerCase());
+            if (mine) {
+              const r = await resolveOne(mine.challenge_id, wallet);
+              resolved.push(r);
+              row.flagged[row.flagged.length - 1].challenge_id = mine.challenge_id;
+              console.log(`[patrol] filed+judged #${mine.challenge_id} => ${r.verdict}`);
+            }
+          }
+        }
       } catch (e) {
         row.flagged.push({ tx_hash: tx.hash, reason, filed: false,
           error: String((e as Error)?.message ?? e) });
@@ -302,18 +583,30 @@ export async function GET(req: Request) {
 
   // Stamp what was actually examined, so the next run starts where this one
   // stopped. Only agents whose explorer ANSWERED are stamped.
-  if (!dryRun && wallet && patrolled.length > 0) {
+  let markedPatrolled = false;
+  if (!dry && wallet && patrolled.length > 0) {
     try {
-      await wallet.writeContract({
-        address, functionName: "mark_patrolled", args: [patrolled], value: 0n,
-      });
+      console.log(`[patrol] mark_patrolled ${patrolled.length} agents at ${Date.now() - started}ms`);
+      await writeWithRetry(
+        wallet, { address, functionName: "mark_patrolled", args: [patrolled], value: 0n },
+        "mark_patrolled", 5,
+      );
+      markedPatrolled = true;
+      console.log(`[patrol] mark_patrolled OK at ${Date.now() - started}ms`);
     } catch (e) {
       notes.push(`mark_patrolled failed: ${String((e as Error)?.message ?? e)}`);
+      console.log(`[patrol] mark_patrolled FAILED: ${String((e as Error)?.message ?? e).slice(0, 160)}`);
     }
+  } else if (!dry && patrolled.length === 0) {
+    notes.push("No agent's explorer answered, so nothing was stamped as patrolled.");
   }
 
-  if (dryRun) notes.push("Dry run — nothing was filed on chain.");
+  if (dry) notes.push("Dry run — nothing was filed on chain.");
   if (botAddress) notes.push(`Filing as ${botAddress}.`);
+  if (resolved.length) {
+    const settled = resolved.filter((r) => r.verdict !== "PENDING");
+    notes.push(`Judged ${settled.length} of ${resolved.length} challenge(s) put to the validators.`);
+  }
 
   const report: PatrolReport = {
     ok: true,
@@ -325,9 +618,13 @@ export async function GET(req: Request) {
     patrolled: rows.length,
     transactions_scanned: scannedTotal,
     challenges_filed: filedTotal,
-    dry_run: dryRun,
+    dry_run: dry,
+    challenges_resolved: resolved,
     rows,
     notes,
   };
-  return NextResponse.json(report, { headers: { "cache-control": "no-store" } });
+  console.log(`[patrol] END dry_run=${dry} patrolled=${rows.length} ` +
+    `scanned=${scannedTotal} filed=${filedTotal} resolved=${resolved.length} ` +
+    `marked=${markedPatrolled} seconds=${report.seconds}`);
+  return report;
 }
