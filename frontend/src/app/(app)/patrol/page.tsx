@@ -75,9 +75,8 @@ export default function PatrolPage() {
           {running ? `Patrolling… ${elapsed}s` : "Run patrol"}
         </button>
         <span className="max-w-md text-[12px] text-ink-3">
-          Also runs unattended on a <span className="text-ink-2">daily</span> Vercel cron — the
-          Hobby plan refuses anything finer, and the intended ten minutes is a one-line change on
-          Pro. From this button it is a <span className="text-ink-2">dry run</span>: a public URL
+          Also runs unattended <span className="text-ink-2">every 10 minutes</span> on a Vercel
+          cron. From this button it is a <span className="text-ink-2">dry run</span>: a public URL
           must not be able to spend the bot&apos;s stake. Takes about two minutes.
         </span>
         <Link href="/analytics"

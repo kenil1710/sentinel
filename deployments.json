@@ -76,18 +76,18 @@
       "robinhood_end_to_end": "Challenge 3 against agent 13 (Robinhood LP Manager, wallet 0xc7455906fb8b53970405ac135e904db1850bb71e) named tx 0xa096698b59ac761cc5afb2779e20fc4162a851c4477b73c2fbd5aee12be94120, a call to the unverified contract 0x86B417a08BE3EEa62063045C0134D3922f912ad8. Five validators read it through the render path and returned VIOLATION at 99 confidence on the first resolve attempt: bond 1.0 -> 0.8 GEN, 0.1 bounty, 0.1 protocol cut, digest 48853c3626e4d71a."
     },
     "bradbury": {
-      "network": "testnet-bradbury",
+      "network": "bradbury",
       "rpc": "https://rpc-bradbury.genlayer.com",
       "Sentinel": {
-        "address": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356"
+        "address": "0xcb068e75c4a4dC9603bDf12612583252B8A06b6C"
       },
       "owner": "0xC70FF4C06aEcb796ED712029EE548834764c9Fe8",
-      "artifact_bytes": 51692,
+      "artifact_bytes": 52480,
       "verified": "genlayer code <addr> is BYTE-IDENTICAL to build/Sentinel.min.py — same sha256 as the artifacts block.",
-      "explorer": "https://explorer-bradbury.genlayer.com/address/0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356",
-      "register": "12 agents seeded from REAL wallets captured from the live transaction lists of Uniswap's UniversalRouter on four chains and Aave v3's Pool — every one an externally-owned account that actually transacts. Six TRADING, five DEFI, one CUSTOM, across ethereum / base / arbitrum / polygon — all four chains the contract configures — including one wallet registered on three chains under three different mandates.",
-      "seeded_by": "test/seed_roster.mjs",
-      "supersedes": "0xAe9288096E6A451a3A94f7886537a512B248913F (redeployed: register_agent gained the four profile arguments)",
+      "explorer": "https://explorer-bradbury.genlayer.com/address/0xcb068e75c4a4dC9603bDf12612583252B8A06b6C",
+      "register": "7 agents seeded from REAL externally-owned wallets captured from live transaction lists — 4 on ethereum, 3 on robinhood. Seeding stopped early: the test wallets ran out of GEN, so the four base / arbitrum / polygon agents of the superseded deployment were NOT re-registered here. The contract still configures all five chains.",
+      "seeded_by": "test/seed_roster.mjs (partial run — funding exhausted after 7 registrations)",
+      "supersedes": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356 (redeployed onto the 52,480-byte artifact; the Robinhood chain brought the configured chain list to five)",
       "evidence": {
         "challenge": 0,
         "agent": "#0 ETH/USDC Rebalancer — 0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5 on ethereum",
@@ -97,15 +97,33 @@
         "evidence_digest": "5b4fc7e207dcd374",
         "settled_at": 1788539929,
         "settlement": "bond 1.0 -> 0.8 GEN; penalty 0.2; bounty 0.1 to the challenger; 0.1 protocol cut; the challenger's 0.05 stake refunded",
-        "note": "Judged by five Bradbury validators on the CURRENT deployment, not carried over from the superseded one. Readable with: genlayer call <address> get_challenge --args 0"
+        "note": "Judged by five Bradbury validators on the SUPERSEDED deployment (0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356), and kept here as the record that the consensus path works end to end. It is NOT carried over: the current deployment reports challenges_filed: 0. Readable with: genlayer call 0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356 get_challenge --args 0",
+        "observed_on": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356"
       },
       "patrol_dry_run": {
         "source": "GET /api/patrol?dry=1",
         "measured": "2026-09-06",
+        "observed_on": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356",
         "agents_patrolled": 12,
         "transactions_scanned": 144,
         "candidates_flagged": 38,
-        "note": "Six of the twelve agents flagged at least one candidate, across all four chains. Nothing was filed: an unauthenticated caller is forced into a dry run. These figures are a SNAPSHOT — the wallets are real and keep transacting, so a later run returns different numbers."
+        "note": "Measured against the SUPERSEDED deployment's 12-agent register. The current deployment carries 7 agents, so a fresh run returns different figures — these have not been re-measured."
+      },
+      "deployed_at": "2026-09-08T05:19:46.531Z",
+      "live_state": {
+        "read_at": "2026-09-08",
+        "source": "get_stats on the deployed contract",
+        "agents_registered": 7,
+        "agents_active": 7,
+        "bond_under_watch_text": "6",
+        "challenges_filed": 0,
+        "chains": [
+          "ethereum",
+          "base",
+          "arbitrum",
+          "polygon",
+          "robinhood"
+        ]
       }
     }
   },
@@ -165,7 +183,7 @@
       "/api/txs": "server-side Blockscout proxy for the agent detail page",
       "/api/rpc": "same-origin RPC relay for Studionet, whose 429s drop CORS headers"
     },
-    "cron": "daily — the Vercel Hobby plan rejects anything finer at deploy time. See frontend/CRON.md.",
+    "cron": "every 10 minutes (*/10 * * * *) on the Vercel Pro plan. The patrol route requires PATROL_SECRET as a bearer token to file for real; Vercel Cron is trusted via the x-vercel-cron header. See frontend/CRON.md.",
     "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
     "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link.",
     "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all."

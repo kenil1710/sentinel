@@ -15,7 +15,7 @@ No administrator decides anything.
 
 | | Address |
 |---|---|
-| **Bradbury** | [`0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356`](https://explorer-bradbury.genlayer.com/address/0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356) |
+| **Bradbury** | [`0xcb068e75c4a4dC9603bDf12612583252B8A06b6C`](https://explorer-bradbury.genlayer.com/address/0xcb068e75c4a4dC9603bDf12612583252B8A06b6C) |
 | Studionet | `0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19` |
 
 The on-chain code is byte-identical to `build/Sentinel.min.py` — same sha256, so
@@ -396,5 +396,7 @@ patrol route forces a **dry run** for any caller without `PATROL_SECRET`,
 because the "Run patrol" button on `/patrol` is public and a public URL must
 never be able to spend it.
 
-See [`frontend/CRON.md`](frontend/CRON.md) for why the committed cron is daily
-rather than the intended ten minutes.
+The committed cron runs `/api/patrol` **every 10 minutes** — see
+[`frontend/CRON.md`](frontend/CRON.md). Nothing about the bot depends on the
+cadence: it is stateless, reads its queue from the contract on every run, and
+`is_tx_challenged` makes a second pass over the same transactions a no-op.
