@@ -47,20 +47,24 @@ five Bradbury validators independently fetched that transaction and returned:
 > a forbidden, unlisted token."*
 
 The bond went from 1.0 to 0.8 GEN, the challenger earned a bounty, and the
-protocol took the other half of the penalty. Read it back yourself — this is
-challenge `0` on the contract linked above, and the same verdict comes out of
-the public endpoint:
+protocol took the other half of the penalty.
+
+That verdict was reached on the **superseded** contract
+(`0xE0AB1f5e…2F3356`), which is where challenge `0` still lives. The current
+deployment was redeployed and reseeded after it, so its own counters start at
+zero — `challenges_filed: 0` — and `/api/check` says so honestly rather than
+inheriting a verdict it never reached:
 
 ```bash
 curl '.../api/check?wallet=0x17e3048c…&chain=ethereum'
-# → "violations": 1, "untested": false, "bond": "800000000000000000"
+# → "violations": 0, "untested": true, "basis": "nothing decided against this agent yet"
 ```
 
 Then the patrol bot went and found more on its own. A dry run over the whole
-register scanned 144 transactions and flagged **38** candidates across six of
-the twelve agents — on all four chains — without anyone pointing it at a single
-one. Those figures are a snapshot taken on 2026-09-06: the wallets are real and
-keep transacting, so your run will differ.
+register scanned 124 transactions and flagged **24** candidates across four of
+the ten agents — without anyone pointing it at a single one. Those figures are a
+snapshot taken on 2026-09-08: the wallets are real and keep transacting, so your
+run will differ.
 
 ```bash
 curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
@@ -68,8 +72,8 @@ curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
 
 Nothing here was staged. It is a real wallet, a real swap, and a real verdict.
 
-And on the run that produced those figures, `polygon.blockscout.com` answered
-**521** for two of the twelve agents. The bot reported them as
+And on the run that produced those figures, `robinhoodchain.blockscout.com`
+answered **500** for two of the ten agents. The bot reported them as
 *"explorer unavailable — skipped, not cleared"* and moved on, which is the
 single behaviour this whole design exists to get right: an explorer having a bad
 afternoon must never read as a clean bill of health.
