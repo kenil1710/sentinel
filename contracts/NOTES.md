@@ -4,7 +4,7 @@ Referenced from the header of `Sentinel.py`. Everything here is either a hazard
 that cost real debugging or a decision whose reasoning is not recoverable from
 the code.
 
-Every claim was **measured** — on Studionet, on Bradbury, or against live
+Every claim was **measured** — on a live GenLayer network or against live
 Blockscout — not inferred from documentation. Where a measurement is the whole
 argument, the numbers are given.
 
@@ -50,8 +50,8 @@ contract had accepted one and **refunded three** under the per-wallet cooldown,
 each as a perfectly successful transaction.
 
 A settled transaction is not a filed challenge. The fix reads the contract's own
-state back — `is_tx_challenged(chain, hash)` — because on Bradbury the return
-value is not readable at all (no `consensus_data`), so state is the only
+state back — `is_tx_challenged(chain, hash)` — because a return value is not
+always readable at all (no `consensus_data`), so state is the only
 authority. `frontend/src/lib/contract.ts` (`readWriteResult`) gives the UI a
 third state for the same reason: neither error nor confirmation, because it is
 neither.
@@ -309,10 +309,10 @@ have caught this.
   revert; the message is `receipt.result.payload`. A suite asserting on stderr
   can only ever check *that* something reverted, never that it reverted for the
   right reason.
-- **Studionet and Bradbury report failure in different places.** Studionet leaves
+- **Networks report failure in different places.** Studio Dev leaves
   `txExecutionResultName` undefined and puts the outcome in
-  `consensus_data.leader_receipt[0].execution_result`; Bradbury carries no
-  `consensus_data` at all, so a return value simply cannot be read there. See
+  `consensus_data.leader_receipt[0].execution_result`; a network carrying no
+  `consensus_data` at all cannot have its return value read. See
   `outcomeOf` in `test/harness.mjs`, and note that the frontend treats an
   unreadable return as success-with-refetch rather than as a rejection.
 - **The judge lock is cleared on a RETRY.** It is taken before the fetch; if an
@@ -360,9 +360,9 @@ flattering.
 
 ## 10. The build has two stages, and the ceiling was measured rather than guessed
 
-`test/size_gate.py` deploys a contract padded to an exact byte size to Bradbury
-and reads a value back from it — proving the transport rather than guessing at
-it:
+`test/size_gate.py` deploys a contract padded to an exact byte size to a live
+network and reads a value back from it — proving the transport rather than
+guessing at it:
 
 ```
   51,257 bytes  ACCEPTED     52,400 bytes  ACCEPTED

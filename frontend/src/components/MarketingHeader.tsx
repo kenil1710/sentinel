@@ -10,7 +10,7 @@ import { Shield } from "./Shield";
  * Deliberately carries NO wallet control and NO network badge. A first-time
  * reader is deciding whether the idea is worth their attention, and a "Connect
  * wallet" button asks them to commit before the page has made its case — while
- * a "Bradbury" chip names an implementation detail that means nothing yet.
+ * a "Studio Dev" chip names an implementation detail that means nothing yet.
  *
  * This is a separate component rather than a flag on AppHeader so that the
  * marketing route group has no import path to a wallet prompt at all.

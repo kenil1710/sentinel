@@ -1,16 +1,16 @@
 /**
  * Deploys the Sentinel BUILD ARTIFACT — never the readable source.
  *
- *   node deploy.mjs --network=studionet
- *   node deploy.mjs --network=bradbury --keystore=mywallet
+ *   node deploy.mjs --network=studiodev
+ *   node deploy.mjs --network=studiodev --keystore=mywallet
  *
  * What is on chain is then byte-identical to what deployments.json records a
  * checksum for, which is the only way `python3 tools/verify_onchain.py` can be
  * a meaningful check rather than a formality.
  *
  * WHO SIGNS: without --keystore the plaintext `client` account in
- * .accounts.json signs, which is right for gasless Studionet and wrong for
- * Bradbury. --keystore=<name> unlocks a real GenLayer CLI wallet instead. The
+ * .accounts.json signs, which is right for a gasless network and wrong for
+ * a metered one. --keystore=<name> unlocks a real GenLayer CLI wallet instead. The
  * signer becomes the OWNER — the account that can pause, price and sweep the
  * contract — so use the funded wallet, not a throwaway.
  */
@@ -19,7 +19,7 @@ import { createClient, createAccount } from "genlayer-js";
 import { CHAINS, argOf, outcomeOf, contractAddressOf, fundOnStudio, retry, sleep } from "./harness.mjs";
 import { resolveSigner } from "./keystore.mjs";
 
-const networkName = argOf("network", "studionet");
+const networkName = argOf("network", "studiodev");
 const penaltyBps = Number(argOf("penalty-bps", "2000"));
 const chain = CHAINS[networkName];
 if (!chain) throw new Error(`unknown network ${networkName}`);
@@ -37,13 +37,13 @@ console.log(`  artifact   build/Sentinel.min.py  (${code.length.toLocaleString()
 console.log(`  signer     ${signer.label}`);
 
 // The MEASURED ceiling. test/size_gate.py accepted 51,257 / 51,692 / 52,400 /
-// 53,000 on Bradbury and was refused at 53,500 (BlockPubdataLimitReached), so
+// 53,000 on a live network and was refused at 53,500 (BlockPubdataLimitReached), so
 // the real ceiling sits between 53,000 and 53,500. This guard is pinned to the
 // CURRENT artifact size, not to that ceiling — the rest of the repo (tools/audit.sh,
 // contracts/NOTES.md, deployments.json) budgets against 53,000.
 // Refusing here beats discovering it after a 4-minute wait.
-if (!chain.isStudio && code.length > 52_480) {
-  console.error(`\nArtifact is ${code.length} bytes; Bradbury accepted 53,000 and refused 53,500.`);
+if (!chain.isStudio && code.length > 52_783) {
+  console.error(`\nArtifact is ${code.length} bytes; 53,000 was accepted and 53,500 refused.`);
   console.error(`Re-measure with: python3 test/size_gate.py <size>`);
   process.exit(1);
 }

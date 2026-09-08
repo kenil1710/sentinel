@@ -3,7 +3,7 @@
   "tagline": "An autonomous agent that polices other autonomous agents.",
   "category": "Hackathon project — contract + frontend + autonomous patrol agent",
   "summary": "Operators register AI agents with plain-English mandates on-chain and post a bond. A serverless patrol bot walks public blockchains via Blockscout, detects transactions that contradict a mandate, and files challenges on GenLayer. Five validators independently fetch the transaction and agree on one verdict: VIOLATION slashes the bond, COMPLIANT costs the challenger their stake, INCONCLUSIVE refunds. No administrator decides anything.",
-  "runner": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
+  "runner": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng",
   "consensus": {
     "axis": "One string: VIOLATION / COMPLIANT / INCONCLUSIVE / RETRY. Nothing else is compared.",
     "why": "docs/PROBE.md §4 measured five fields moving between two fetches of the same transaction seconds apart (confirmations, exchange_rate, has_error_in_internal_transactions, and the nested token.holders_count and token.total_supply). §5 then measured validators DISAGREEING about one round in four on a content digest of the STABLE projection, because Blockscout is a load-balanced cluster whose replicas index at different rates. A digest on the axis would leave a quarter of all challenges unsettleable at random.",
@@ -32,123 +32,46 @@
   "artifacts": {
     "build/Sentinel.min.py": {
       "source": "contracts/Sentinel.py",
-      "bytes": 52480,
-      "sha256": "cf396e9f71eb341d719df0492eec9906746d615afa46b4685470456b7b90fb6b",
-      "source_sha256": "47af34cb79df20d7884bea31f853574555eae8f7d5f05fecaa66b345fcb2eb33",
-      "premangle_bytes": 64739
+      "bytes": 52783,
+      "sha256": "bdfade01fd94a6edecceb1650f4d00eb8ab8e2244f4a28dedfbb9ea3c9b7cf8d",
+      "source_sha256": "52b55730a691b35392fc5f3e20c4c36551bfd15f29485e0963cf8fa4fbc66caa",
+      "premangle_bytes": 65016
     }
   },
   "deployments": {
-    "studionet": {
-      "network": "studionet",
-      "rpc": "https://studio.genlayer.com/api",
+    "studiodev": {
+      "network": "studiodev",
+      "chain_id": 61997,
+      "rpc": "https://studio-dev.genlayer.com/api",
+      "explorer": "https://explorer-studio-dev.genlayer.com/address/0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e",
       "Sentinel": {
-        "address": "0xF7FcA188FefB160a1FB2716F44a3d77052c57208"
+        "address": "0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e"
       },
-      "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
-      "note": "Where the 79-check live suite (test/e2e.mjs) runs — Studionet is gasless, so several roles can be funded automatically. e2e.mjs needs a FRESH contract: it registers a fixed wallet and asserts a clean record, so a second run against the same address fails on 'that wallet is already registered'. Deploy first: node test/deploy.mjs --network=studionet",
-      "functional_verification": {
-        "contract": "0x47c5025852cB2434A3a89a57724D51269Db02902",
-        "source": "test/verify_methods.mjs",
-        "result": "37/37 checks passed — the 36 public methods genvm-lint reads off the ABI itself, 21 view and 15 write, each by an observable effect rather than a bare return, plus the reconstructed balance invariant. get_config now asserts five chains including robinhood."
-      },
-      "artifact_bytes": 52480,
-      "deployed_at": "2026-09-07T18:20:08.147Z",
-      "live_suite_result": "79/79 checks passed on this address",
-      "adversarial_suite": {
-        "contract": "0xB43D0eB6DE9D6F368A1604e15129407e38fDA277",
-        "source": "test/edge_cases.mjs",
-        "result": "99/99 checks passed",
-        "covers": [
-          "every register_agent and challenge_agent rejection refunds in full, and none moves a counter",
-          "update_mandate and withdraw_bond are both frozen while a challenge is pending",
-          "the pending-challenge quota, the self-challenge rule and the SLASHED_OUT rule",
-          "resolve_challenge, settle_stalled and top_up_bond all survive a pause",
-          "a second violation compounds on the REDUCED bond: 1.1 -> 0.88 -> 0.704 GEN",
-          "a bond falling under the floor deactivates the agent; top_up_bond restores it",
-          "owner-only enforced on all seven dials; withdraw_protocol capped at the accrued balance",
-          "every view agrees with every other, and no agent is in an impossible state",
-          "DOCUMENTED: a stalled challenge retires its transaction permanently (NOTES.md 11)",
-          "DOCUMENTED: settlement terms are read at settlement, not snapshotted at filing (NOTES.md 11)"
-        ]
-      },
-      "register": "15 agents seeded by test/seed_roster.mjs, spanning all five chains. The three Robinhood Chain wallets were captured 2026-09-07 from that chain's DEX router and PositionManager; each was picked both for answering the address-transaction endpoint (four of nine wallets tried return a repeated 500) and for having the thing its mandate forbids in its recent history.",
-      "robinhood_end_to_end": "Challenge 3 against agent 13 (Robinhood LP Manager, wallet 0xc7455906fb8b53970405ac135e904db1850bb71e) named tx 0xa096698b59ac761cc5afb2779e20fc4162a851c4477b73c2fbd5aee12be94120, a call to the unverified contract 0x86B417a08BE3EEa62063045C0134D3922f912ad8. Five validators read it through the render path and returned VIOLATION at 99 confidence on the first resolve attempt: bond 1.0 -> 0.8 GEN, 0.1 bounty, 0.1 protocol cut, digest 48853c3626e4d71a."
-    },
-    "bradbury": {
-      "network": "bradbury",
-      "rpc": "https://rpc-bradbury.genlayer.com",
-      "Sentinel": {
-        "address": "0xcb068e75c4a4dC9603bDf12612583252B8A06b6C"
-      },
-      "owner": "0xC70FF4C06aEcb796ED712029EE548834764c9Fe8",
-      "artifact_bytes": 52480,
-      "verified": "genlayer code <addr> is BYTE-IDENTICAL to build/Sentinel.min.py — same sha256 as the artifacts block.",
-      "explorer": "https://explorer-bradbury.genlayer.com/address/0xcb068e75c4a4dC9603bDf12612583252B8A06b6C",
-      "register": "10 agents, all from REAL externally-owned wallets that actually transact — 4 ethereum, 3 robinhood, 1 base, 1 arbitrum, 1 polygon, so all five configured chains are represented. The first seven were seeded by test/seed_roster.mjs; that run stopped when the test wallets ran out of GEN, and the three missing chains were registered afterwards from the mywallet keystore (agents #7 base, #8 arbitrum, #9 polygon), each bonded 0.5 GEN.",
-      "seeded_by": "test/seed_roster.mjs for #0-#6; #7-#9 registered directly from the mywallet keystore after the test wallets were exhausted",
-      "supersedes": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356 (redeployed onto the 52,480-byte artifact; the Robinhood chain brought the configured chain list to five)",
-      "evidence": {
-        "challenges": [
-          {
-            "challenge_id": 0,
-            "verdict": "VIOLATION",
-            "confidence": 95,
-            "evidence_digest": "a86d235637a92c22"
-          },
-          {
-            "challenge_id": 1,
-            "verdict": "VIOLATION",
-            "confidence": 90,
-            "evidence_digest": "32f961b77619e6aa"
-          },
-          {
-            "challenge_id": 2,
-            "verdict": "VIOLATION",
-            "confidence": 95,
-            "evidence_digest": "1a24db916e3be70d"
-          }
-        ],
-        "agent": "#3 ETH/USDC Rebalancer — 0x17e3048c1b20dfeb2d64b77fcd619bd74a3faca5 on ethereum",
-        "filed_by": "the patrol bot 0x81D6bF84a5b03950d910b4a2F83C68006E0b93f4, from /api/patrol",
-        "settlement": "bond 1.0 -> 0.8 -> 0.64 -> 0.512 GEN; slashed 0.488; bounty 0.244 to the challenger; 0.244 protocol cut; all three stakes refunded",
-        "undetermined": "challenge 2 returned UNDETERMINED on its first round, applied no state, stayed PENDING, and settled on a second call — the designed behaviour for a non-converging round",
-        "note": "Judged by Bradbury validators on THIS deployment. Readable with: genlayer call 0xcb068e75c4a4dC9603bDf12612583252B8A06b6C get_challenge --args 0"
-      },
-      "patrol_dry_run": {
-        "source": "GET /api/patrol?dry=1",
-        "measured": "2026-09-06",
-        "observed_on": "0xE0AB1f5e878E383ef85FbB0f69e5E5BDaC2F3356",
-        "agents_patrolled": 12,
-        "transactions_scanned": 144,
-        "candidates_flagged": 38,
-        "note": "Measured against the SUPERSEDED deployment's 12-agent register. The current deployment carries 7 agents, so a fresh run returns different figures — these have not been re-measured."
-      },
-      "deployed_at": "2026-09-08T05:19:46.531Z",
+      "owner": "0x95FA3CbC31352Ca771be5f11CA8Ce07F0a125D23",
+      "verified": "`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py` reports EQUIVALENT: the on-chain code and the local artifact are the same token stream under a bijective renaming of PRIVATE identifiers. They are not byte-identical - the deployed bytes were produced by an earlier run of the same pipeline, before the v0.3.0 migration was rebuilt here - and the public ABI, all 37 methods, is unchanged. The check reports MATCH, EQUIVALENT or DIFFER precisely so this distinction is not papered over.",
+      "artifact_bytes_on_chain": 52726,
       "live_state": {
         "read_at": "2026-09-08",
-        "source": "get_stats on the deployed contract",
-        "agents_registered": 10,
-        "agents_active": 10,
-        "chains_represented": [
+        "source": "get_stats and get_challenges on the deployed contract",
+        "agents_registered": 4,
+        "agents_active": 4,
+        "total_bonded_text": "2",
+        "challenges_filed": 1,
+        "challenges_settled": 0,
+        "patrols_run": 0,
+        "watchers": 1,
+        "chains_configured": [
           "ethereum",
-          "robinhood",
           "base",
           "arbitrum",
-          "polygon"
+          "polygon",
+          "robinhood"
         ],
-        "patrols_run": 1,
-        "challenges_filed": 3,
-        "challenges_settled": 3,
-        "violations": 3,
-        "total_slashed_text": "0.488",
-        "bounties_paid_text": "0.244",
-        "watchers": 1,
-        "note": "The patrol that filed these was driven by hand through /api/patrol with the bearer token; Vercel Cron has still not been observed to deliver. See frontend/CRON.md."
+        "note": "Challenge 0 against agent 0 is PENDING and has not been judged yet. patrols_run is 0: no patrol has been driven against this deployment."
       }
     }
   },
-  "note": "Verify with: shasum -a 256 build/Sentinel.min.py and compare against the sha256 below, or `genlayer network set testnet-bradbury` then `python3 tools/verify_onchain.py <address> build/Sentinel.min.py`.",
+  "note": "Verify with: shasum -a 256 build/Sentinel.min.py and compare against the sha256 below, or `genlayer network set studio-dev` then `python3 tools/verify_onchain.py <address> build/Sentinel.min.py`.",
   "build": {
     "command": "bash tools/build.sh",
     "stages": [
@@ -156,7 +79,7 @@
       "tools/mangle_names.py -> build/Sentinel.min.py + build/Sentinel.names.json"
     ],
     "size_ceiling_measured": {
-      "tool": "test/size_gate.py — deploys a padded contract to Bradbury and reads a value back",
+      "tool": "test/size_gate.py - deploys a padded contract to a live network and reads a value back",
       "accepted": [
         51257,
         51692,
@@ -180,15 +103,12 @@
   },
   "probe": {
     "contract": "contracts/_render_probe.py",
-    "studionet": [
-      "0xa931D970D89A0f33Dd86325BddD681f0C9AB576E",
-      "0x96e022114f418F4708a08beD858324830226Fce4"
-    ],
-    "findings": "docs/PROBE.md — nine findings, three of which changed the architecture"
+    "note": "A throwaway diagnostic, run before the contract was written. Not deployed on studiodev.",
+    "findings": "docs/PROBE.md - nine findings, three of which changed the architecture"
   },
   "frontend": {
     "url": "https://sentinel-tau-ashen.vercel.app",
-    "network": "bradbury",
+    "network": "studiodev",
     "pages": [
       "/",
       "/register",
@@ -202,19 +122,20 @@
     "api": {
       "/api/patrol": "the Sentinel itself — reads the queue, fetches Blockscout, files challenges",
       "/api/txs": "server-side Blockscout proxy for the agent detail page",
-      "/api/rpc": "same-origin RPC relay for Studionet, whose 429s drop CORS headers"
+      "/api/rpc": "same-origin RPC relay for Studio, whose 429s drop CORS headers"
     },
     "cron": "vercel.json schedules /api/patrol at */10 * * * * on the Pro plan, but Vercel has NOT been observed to deliver it: three consecutive slots left patrols_run and challenges_filed unmoved, with the job showing as enabled and correctly bound. The route itself is proven — a real run patrolled 10 agents, scanned 104 transactions and filed 1 challenge in 209s. Use an external scheduler against the alias with PATROL_SECRET until a cron slot is seen to land. See frontend/CRON.md.",
     "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
     "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link.",
-    "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all."
+    "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all.",
+    "contract": "0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e"
   },
   "verification": {
     "offline_suite": {
       "tests": 410,
       "failed": 0,
       "source": "test/test_logic.py",
-      "note": "includes the mangled artifact driven through a full lifecycle, and the profile battery"
+      "note": "includes the mangled artifact driven through a full lifecycle, and the profile battery. Re-run green after the v0.3.0 migration."
     },
     "patrol_suite": {
       "tests": 30,
@@ -226,22 +147,19 @@
       "checks": 79,
       "failed": 0,
       "source": "test/e2e.mjs",
-      "network": "studionet",
-      "network_contract": "0xF7FcA188FefB160a1FB2716F44a3d77052c57208"
+      "note": "MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/e2e.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
     },
     "functional_sweep": {
       "methods": 36,
       "failed": 0,
       "source": "test/verify_methods.mjs",
-      "network": "studionet",
-      "note": "37 reported checks: 36 methods plus the balance invariant.",
-      "network_contract": "0x47c5025852cB2434A3a89a57724D51269Db02902"
+      "note": "37 reported checks: 36 methods plus the balance invariant. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/verify_methods.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
     },
     "repository_audit": {
       "checks": 63,
       "failed": 0,
       "source": "tools/audit.sh",
-      "note": "Checks the live Bradbury contract and the live Vercel site, not local files alone — including the profile fields, get_agents_by_type, that the register spans all four configured chains, and /api/check's CORS, 400 and settled-verdict behaviour."
+      "note": "Checks the live Studio Dev contract and the live Vercel site, not local files alone - including the profile fields, get_agents_by_type, that the register spans the configured chains, and /api/check's CORS, 400 and settled-verdict behaviour."
     },
     "rejection_checklist": {
       "checks": 19,
@@ -253,8 +171,7 @@
       "checks": 99,
       "failed": 0,
       "source": "test/edge_cases.mjs",
-      "network": "studionet",
-      "note": "The rejection, pause, compounding-slash and state-consistency battery."
+      "note": "The rejection, pause, compounding-slash and state-consistency battery. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/edge_cases.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
     }
   },
   "features": {
@@ -283,5 +200,6 @@
         "four of nine live wallets return a repeated 500 on the address-transaction endpoint and cannot be patrolled at all"
       ]
     }
-  }
+  },
+  "runner_note": "The v0.3.0 runner. The contract header is TWO lines - `# v0.3.0` then the Depends pin - and the SDK surface moved with it: gl.contract.Contract, gl.storage.allow, gl.storage.TreeMap / gl.storage.DynArray, gl.message.raw."
 }

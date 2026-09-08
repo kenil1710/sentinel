@@ -17,12 +17,12 @@
  */
 import { NextResponse } from "next/server";
 import { createClient } from "genlayer-js";
-import { studionet, testnetBradbury } from "genlayer-js/chains";
+import { studioDevnet } from "genlayer-js/chains";
 import { EXPLORER_HOST } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const CHAINS = { studionet, bradbury: testnetBradbury } as const;
+const CHAINS = { studiodev: studioDevnet } as const;
 
 const CORS = {
   "access-control-allow-origin": "*",
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     );
   }
 
-  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studionet") as keyof typeof CHAINS;
+  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studiodev") as keyof typeof CHAINS;
   const address = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}` | undefined;
   const gl = CHAINS[networkName];
   if (!gl || !address) {

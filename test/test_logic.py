@@ -51,7 +51,7 @@ ARTIFACT = ROOT / "build" / "Sentinel.min.py"
 FIXTURES = ROOT / "test" / "fixtures.json"
 
 # MEASURED, not guessed, and RE-measured when the profile fields were added.
-# test/size_gate.py deploys a padded contract to Bradbury and reads a value back:
+# test/size_gate.py deploys a padded contract to a live network and reads a value back:
 #
 #   51,257 ACCEPTED    51,692 ACCEPTED    52,400 ACCEPTED
 #   53,000 ACCEPTED    53,500 REFUSED (BlockPubdataLimitReached)
@@ -303,8 +303,12 @@ def _iface(cls):
 	return _Handle
 
 
-MESSAGE = types.SimpleNamespace(sender_address=_Addr("0x" + "a" * 40), value=0)
 MESSAGE_RAW = {"datetime": "2026-08-31T12:00:00Z"}
+# `gl.message` since the v0.3.0 runner: the raw dict hangs off the same object
+# the sender and value do, rather than beside it as `gl.message_raw`. The tests
+# still mutate MESSAGE_RAW in place, so both names stay bound to one dict.
+MESSAGE = types.SimpleNamespace(sender_address=_Addr("0x" + "a" * 40), value=0,
+	raw=MESSAGE_RAW)
 
 # Feed for the run_nondet stub: what the "network" returns for a fetch.
 FETCH_QUEUE = []
@@ -323,10 +327,33 @@ def _run_nondet(leader_fn, validator_fn):
 	return result
 
 
+#: Names `genlayer.types` exports and the contract star-imports.
+_TYPE_NAMES = ("u8", "u16", "u32", "u64", "u128", "u256", "i8", "i16",
+	"i32", "i64", "bigint")
+
+
 def _install_stub():
+	"""A stand-in for the v0.3.0 `genlayer` SDK, shaped like the real one.
+
+	The contract now says `import genlayer as gl`, so `gl` IS this module - not
+	an attribute hanging off it - and the runtime surface is reached through
+	submodules: `gl.contract.Contract`, `gl.storage.allow`, `gl.storage.TreeMap`,
+	`gl.message.raw`. `genlayer.types` is registered in `sys.modules` as well,
+	because `from genlayer.types import *` is a real submodule import and will
+	not resolve against a plain module object.
+	"""
 	if "genlayer" in sys.modules:
 		return
 	mod = types.ModuleType("genlayer")
+	# Marks it a package, which is what lets `genlayer.types` be imported.
+	mod.__path__ = []
+
+	type_mod = types.ModuleType("genlayer.types")
+	type_mod.Address = _Addr
+	for name in _TYPE_NAMES:
+		type_mod.__dict__[name] = int
+	type_mod.__all__ = ("Address",) + _TYPE_NAMES
+
 	vm = types.SimpleNamespace(UserError=_UserError, Return=_Return,
 		Result=object, Rollback=_Rollback, run_nondet=_run_nondet)
 	web = types.SimpleNamespace(request=_offline, render=_offline, get=_offline)
@@ -337,17 +364,30 @@ def _install_stub():
 	write.payable = lambda fn: fn
 	public.write = write
 	evm = types.SimpleNamespace(contract_interface=_contract_interface)
-	mod.gl = types.SimpleNamespace(vm=vm, nondet=nondet, public=public,
-		evm=evm, message=MESSAGE, message_raw=MESSAGE_RAW, Contract=_Contract,
+	storage = types.SimpleNamespace(allow=lambda cls: cls, TreeMap=_TreeMap,
+		DynArray=_DynArray, Array=_DynArray)
+	contract = types.SimpleNamespace(Contract=_Contract,
 		contract_interface=_iface, get_contract_at=lambda a: ORACLE["impl"])
+
+	mod.vm = vm
+	mod.nondet = nondet
+	mod.public = public
+	mod.evm = evm
+	mod.storage = storage
+	mod.contract = contract
+	mod.message = MESSAGE
+	mod.types = type_mod
+	# Re-exported at the top level by the real SDK too, so `from genlayer
+	# import *` keeps working for the probe contract and the size gate.
 	mod.Address = _Addr
 	mod.TreeMap = _TreeMap
 	mod.DynArray = _DynArray
-	mod.allow_storage = lambda cls: cls
-	for name in ("u8", "u16", "u32", "u64", "u128", "u256", "i8", "i16",
-			"i32", "i64", "bigint"):
+	mod.gl = mod
+	for name in _TYPE_NAMES:
 		mod.__dict__[name] = int
+
 	sys.modules["genlayer"] = mod
+	sys.modules["genlayer.types"] = type_mod
 
 
 def load_pure(path: Path, name: str) -> types.ModuleType:
@@ -444,8 +484,8 @@ def _bound_names(scope) -> set:
 def undefined_names(path: Path) -> list:
 	tree = ast.parse(path.read_text(encoding="utf8"))
 	module_names = _bound_names(tree) | {
-		"gl", "u8", "u16", "u32", "u64", "u128", "u256", "i8", "i16", "i32",
-		"i64", "Address", "TreeMap", "DynArray", "allow_storage", "bigint",
+		"gl", "genlayer", "u8", "u16", "u32", "u64", "u128", "u256", "i8",
+		"i16", "i32", "i64", "Address", "TreeMap", "DynArray", "bigint",
 		"Array", "self"}
 	builtin_names = set(dir(builtins))
 	problems = []
@@ -3198,16 +3238,21 @@ class TestStatic(unittest.TestCase):
 			and n.func.attr == "replace"]
 		self.assertEqual(offenders, [])
 
-	def test_the_runner_pin_is_line_one(self):
-		first = SOURCE.read_text(encoding="utf8").split("\n")[0]
-		self.assertTrue(first.startswith('# { "Depends": "py-genlayer:'))
-
-	def test_nothing_sits_between_the_pin_and_the_import(self):
-		"""GenVM parses the whole contiguous leading `#` block as the runner
-		JSON. A comment above line 1 makes the contract undeployable and the
-		only error reported is `invalid_contract`."""
+	def test_the_runner_header_is_the_first_two_lines(self):
+		"""Since the v0.3.0 runner the header is TWO lines, in this order: the
+		version, then the pin. Either one missing or transposed and GenVM reads
+		a different runner than the artifact was built against."""
 		lines = SOURCE.read_text(encoding="utf8").split("\n")
-		self.assertEqual(lines[1].strip(), "from genlayer import *")
+		self.assertEqual(lines[0].strip(), "# v0.3.0")
+		self.assertTrue(lines[1].startswith('# { "Depends": "py-genlayer:'))
+
+	def test_nothing_sits_between_the_header_and_the_imports(self):
+		"""GenVM parses the whole contiguous leading `#` block as the runner
+		header. A third comment line there makes the contract undeployable and
+		the only error reported is `invalid_contract`."""
+		lines = SOURCE.read_text(encoding="utf8").split("\n")
+		self.assertEqual(lines[2].strip(), "import genlayer as gl")
+		self.assertEqual(lines[3].strip(), "from genlayer import *")
 
 	def test_the_source_is_within_budget(self):
 		self.assertLess(SOURCE.stat().st_size, SOURCE_BUDGET)
@@ -3275,7 +3320,7 @@ class TestArtifact(unittest.TestCase):
 	lifecycle through the artifact — which is what this does."""
 
 	def test_the_artifact_is_within_the_MEASURED_ceiling(self):
-		"""size_gate.py deployed padded contracts to Bradbury and read a value
+		"""size_gate.py deployed padded contracts to a live network and read a value
 		back from each: 53,000 ACCEPTED, 53,500 REFUSED with
 		BlockPubdataLimitReached. This is the constraint that decides whether
 		the project ships at all."""

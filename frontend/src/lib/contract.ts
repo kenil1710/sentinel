@@ -118,9 +118,10 @@ function readWriteResult<T>(hash: string, tx: unknown): WriteResult<T> {
 
   if (text === null) {
     /**
-     * Bradbury carries no `consensus_data`, so the return value is simply not
-     * readable there. That is a property of the transport, not a rejection —
-     * callers refetch the contract state instead of showing an error.
+     * A transaction can settle with no readable return value — the payload
+     * lives in `consensus_data` and is not always populated. That is a property
+     * of the transport, not a rejection: callers refetch the contract state
+     * instead of showing an error.
      */
     return { kind: "ok", hash, data: {} as T };
   }

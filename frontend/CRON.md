@@ -128,14 +128,14 @@ also why `maxDuration = 800` was ignored and runs were still cut at 300.02s. The
 work is inline again. A caller that gives up early does not stop it — a run cut
 off at the client at 255s had still filed two challenges server-side.
 
-**Blocked — Bradbury is refusing the bot's writes.** Every `resolve_challenge`
-and `mark_patrolled` currently comes back as
+**Historical note — a node once refused the bot's writes.** Every
+`resolve_challenge` and `mark_patrolled` came back as
 `transaction gas rate limit exceeded: node is at capacity, retry in ~481ms`, and
-then a revert at the consensus contract `0x0112Bf6e…271D`. This is not specific
-to Vercel: the same key from a laptop gets the same refusal. The route retries on
-the delay the node names and reports the failure rather than reporting a run it
-did not finish, so `patrols_run` stays honest at 1 until the network accepts
-writes again.
+then a revert at the consensus contract. This was not specific to Vercel: the
+same key from a laptop got the same refusal. The route retries on the delay the
+node names and reports the failure rather than reporting a run it did not
+finish, so `patrols_run` stays honest rather than counting a run that wrote
+nothing.
 
 ## Running it in between
 

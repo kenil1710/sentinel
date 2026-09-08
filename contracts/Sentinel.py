@@ -1,4 +1,6 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+import genlayer as gl
 from genlayer import *
 from dataclasses import dataclass
 import json
@@ -13,9 +15,11 @@ import json
 # challenger their stake.
 #
 # Design notes and hazards: contracts/NOTES.md. Probe evidence: docs/PROBE.md.
-# Nothing may sit between line 1 and the import above - GenVM parses the whole
-# contiguous leading `#` block as the runner JSON, and a comment there makes the
-# contract undeployable with no error reported but `invalid_contract`.
+# The two header lines above are the whole of what GenVM reads before the code:
+# the version line and the runner pin, in that order. Nothing else may sit
+# between line 1 and the imports - GenVM parses the contiguous leading `#` block
+# as the runner header, and a stray comment there makes the contract
+# undeployable with no error reported but `invalid_contract`.
 #
 # Four rules govern everything below, all four measured rather than assumed:
 #
@@ -386,7 +390,7 @@ def _days_from_civil(y: int, m: int, d: int) -> int:
 def _epoch_from_iso(value) -> int:
 	"""Seconds since the epoch from an ISO-8601 instant, by hand.
 
-	Used for both the block time (`gl.message_raw`) and the transaction
+	Used for both the block time (`gl.message.raw`) and the transaction
 	timestamp Blockscout publishes, which share the same shape.
 	"""
 	if not isinstance(value, str) or len(value) < 19:
@@ -975,7 +979,7 @@ class _Payee:
 		pass
 
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Agent:
 	agent_id: u32
@@ -1010,7 +1014,7 @@ class Agent:
 	total_topped_up: u128
 
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Challenge:
 	challenge_id: u32
@@ -1043,47 +1047,47 @@ class Challenge:
 	stalled: bool
 
 
-class Sentinel(gl.Contract):
+class Sentinel(gl.contract.Contract):
 	owner: Address
 	paused: bool
 
-	agents: TreeMap[u32, Agent]
-	agent_ids: DynArray[u32]
+	agents: gl.storage.TreeMap[u32, Agent]
+	agent_ids: gl.storage.DynArray[u32]
 	next_agent_id: u32
 
-	challenges: TreeMap[u32, Challenge]
-	challenge_ids: DynArray[u32]
+	challenges: gl.storage.TreeMap[u32, Challenge]
+	challenge_ids: gl.storage.DynArray[u32]
 	next_challenge_id: u32
 
-	agent_challenges: TreeMap[u32, DynArray[u32]]
-	chain_agents: TreeMap[str, DynArray[u32]]
-	operator_agents: TreeMap[Address, DynArray[u32]]
+	agent_challenges: gl.storage.TreeMap[u32, gl.storage.DynArray[u32]]
+	chain_agents: gl.storage.TreeMap[str, gl.storage.DynArray[u32]]
+	operator_agents: gl.storage.TreeMap[Address, gl.storage.DynArray[u32]]
 
 	# "<chain>:<lowercase tx hash>" -> challenge_id PLUS ONE. Plus one so that 0
 	# means absent and a real challenge id of 0 is not mistaken for it. This is
 	# the one-challenge-per-transaction rule: without it the same transaction
 	# could be re-filed until a round happened to land VIOLATION.
-	tx_claimed: TreeMap[str, u32]
+	tx_claimed: gl.storage.TreeMap[str, u32]
 
 	# "<chain>:<lowercase wallet>" -> agent_id PLUS ONE. One registration per
 	# wallet per chain, so an operator cannot dilute a bad record by re-registering
 	# the same agent beside itself with a fresh compliance score.
-	wallet_claimed: TreeMap[str, u32]
+	wallet_claimed: gl.storage.TreeMap[str, u32]
 
-	last_challenge_at: TreeMap[Address, u64]
-	judge_lock: TreeMap[u32, u64]
+	last_challenge_at: gl.storage.TreeMap[Address, u64]
+	judge_lock: gl.storage.TreeMap[u32, u64]
 
 	# Watcher records, updated at SETTLEMENT for every outcome - not at payout
 	# time. A challenger whose case is refuted never calls anything again, so
 	# payout-time accounting would record every win and never a single loss, and
 	# the leaderboard would read 100% accuracy for everybody.
-	watcher_won: TreeMap[Address, u32]
-	watcher_lost: TreeMap[Address, u32]
-	watcher_void: TreeMap[Address, u32]
-	watcher_earned: TreeMap[Address, u128]
-	watcher_staked: TreeMap[Address, u128]
-	watcher_list: DynArray[Address]
-	watcher_seen: TreeMap[Address, bool]
+	watcher_won: gl.storage.TreeMap[Address, u32]
+	watcher_lost: gl.storage.TreeMap[Address, u32]
+	watcher_void: gl.storage.TreeMap[Address, u32]
+	watcher_earned: gl.storage.TreeMap[Address, u128]
+	watcher_staked: gl.storage.TreeMap[Address, u128]
+	watcher_list: gl.storage.DynArray[Address]
+	watcher_seen: gl.storage.TreeMap[Address, bool]
 
 	min_bond: u128
 	challenge_stake: u128
@@ -1144,7 +1148,7 @@ class Sentinel(gl.Contract):
 	# ── Internals ───────────────────────────────────────────────────────────
 
 	def _now(self) -> int:
-		return _epoch_from_iso(gl.message_raw.get("datetime", ""))
+		return _epoch_from_iso(gl.message.raw.get("datetime", ""))
 
 	def _agent(self, agent_id: int) -> Agent:
 		found = self.agents.get(u32(_clamp(_as_int(agent_id, -1), 0, 4294967295)))

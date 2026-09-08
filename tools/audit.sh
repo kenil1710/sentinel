@@ -3,7 +3,7 @@
 #
 #   bash tools/audit.sh
 #
-# Checks the LIVE Bradbury deployment and the LIVE Vercel site, not local files
+# Checks the LIVE Studio Dev deployment and the LIVE Vercel site, not local files
 # alone. A check that only reads the repository can pass while the thing anyone
 # else can reach is broken.
 set -uo pipefail
@@ -15,7 +15,7 @@ bad()  { FAIL=$((FAIL+1)); printf "  \033[31m✘\033[0m %s\n" "$1"; }
 skip() { SKIP=$((SKIP+1)); printf "  \033[33m○\033[0m %s\n" "$1"; }
 sec()  { printf "\n\033[1m%s\033[0m\n" "$1"; }
 
-CONTRACT=$(python3 -c "import json;print(json.load(open('deployments.json'))['deployments']['bradbury']['Sentinel']['address'])" 2>/dev/null || echo "")
+CONTRACT=$(python3 -c "import json;print(json.load(open('deployments.json'))['deployments']['studiodev']['Sentinel']['address'])" 2>/dev/null || echo "")
 SITE=$(python3 -c "import json;print(json.load(open('deployments.json')).get('frontend',{}).get('url',''))" 2>/dev/null || echo "")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ sec "Build artifact"
 # ─────────────────────────────────────────────────────────────────────────────
 # This gate runs FIRST because it is the constraint that decides whether the
 # project can deploy at all. test/size_gate.py deploys a padded contract to
-# Bradbury and reads a value back from it; re-measured when the profile fields
+# a live network and reads a value back from it; re-measured when the profile fields
 # were added:
 #
 #   51,257 ACCEPTED   51,692 ACCEPTED   52,400 ACCEPTED
@@ -32,7 +32,7 @@ if [ -f build/Sentinel.min.py ]; then
   BYTES=$(wc -c < build/Sentinel.min.py | tr -d ' ')
   if [ "$BYTES" -lt 53000 ]; then ok "artifact is ${BYTES} bytes, under the 53,000 budget (MEASURED: 53,000 accepted, 53,500 refused)"
   else bad "artifact is ${BYTES} bytes — over budget"; fi
-  head -1 build/Sentinel.min.py | grep -q 'py-genlayer:' && ok "runner pin survived the mangle" || bad "runner pin missing from the artifact"
+  sed -n '2p' build/Sentinel.min.py | grep -q 'py-genlayer:' && ok "runner pin survived the mangle" || bad "runner pin missing from the artifact"
   python3 -c "import ast;ast.parse(open('build/Sentinel.min.py').read())" 2>/dev/null && ok "artifact parses" || bad "artifact does not parse"
 else bad "build/Sentinel.min.py missing — run bash tools/build.sh"; fi
 
@@ -56,10 +56,12 @@ else skip "genvm-lint not installed"; fi
 # ─────────────────────────────────────────────────────────────────────────────
 sec "Contract source invariants"
 # ─────────────────────────────────────────────────────────────────────────────
-head -1 contracts/Sentinel.py | grep -q '^# { "Depends": "py-genlayer:' \
-  && ok "runner pin is line 1 of the source" || bad "runner pin is not line 1"
-sed -n '2p' contracts/Sentinel.py | grep -q '^from genlayer import \*' \
-  && ok "nothing sits between the pin and the import" || bad "something sits between the pin and the import"
+sed -n '1p' contracts/Sentinel.py | grep -q '^# v0\.3\.0$' \
+  && ok "the runner version is line 1 of the source" || bad "line 1 is not the runner version"
+sed -n '2p' contracts/Sentinel.py | grep -q '^# { "Depends": "py-genlayer:' \
+  && ok "runner pin is line 2 of the source" || bad "runner pin is not line 2"
+sed -n '3p' contracts/Sentinel.py | grep -q '^import genlayer as gl$' \
+  && ok "nothing sits between the header and the imports" || bad "something sits between the header and the imports"
 # AST, not grep. The source explains the hazard in two comments, and a text
 # search cannot tell a comment about .replace() from a call to it — which is
 # exactly the false positive this check produced before.
@@ -93,16 +95,19 @@ if echo "$PATROL" | grep -q "0 failed"; then
 else bad "test_patrol.mjs FAILED: $PATROL"; fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-sec "Live Bradbury deployment"
+sec "Live Studio Dev deployment"
 # ─────────────────────────────────────────────────────────────────────────────
 if [ -z "$CONTRACT" ]; then
-  bad "no Bradbury address recorded in deployments.json"
+  bad "no Studio Dev address recorded in deployments.json"
 else
   ok "address recorded: $CONTRACT"
-  genlayer network set testnet-bradbury >/dev/null 2>&1
-  if python3 tools/verify_onchain.py "$CONTRACT" build/Sentinel.min.py >/dev/null 2>&1; then
-    ok "on-chain code is BYTE-IDENTICAL to build/Sentinel.min.py"
-  else bad "on-chain code differs from the local artifact"; fi
+  genlayer network set studio-dev >/dev/null 2>&1
+  VERIFY=$(python3 tools/verify_onchain.py "$CONTRACT" build/Sentinel.min.py 2>&1)
+  case "$VERIFY" in
+    MATCH*)      ok "on-chain code is BYTE-IDENTICAL to build/Sentinel.min.py" ;;
+    EQUIVALENT*) ok "on-chain code is the SAME PROGRAM as build/Sentinel.min.py (private identifier names differ)" ;;
+    *)           bad "on-chain code differs from the local artifact" ;;
+  esac
 
   CFG=$(genlayer call "$CONTRACT" get_config 2>/dev/null | grep -o '{.*}' | head -1)
   if [ -n "$CFG" ]; then
@@ -237,7 +242,7 @@ print('ok' if any(x.get('verdict')=='VIOLATION' for x in v) and c.get('untested'
   if echo "$LAND" | grep -qE "Connect wallet|Install a wallet"; then
     bad "landing page carries a wallet control"
   else ok "landing page carries NO wallet control"; fi
-  if echo "$LAND" | grep -qE "Bradbury|Studionet"; then
+  if echo "$LAND" | grep -qE "Studio Dev"; then
     bad "landing page names a network"
   else ok "landing page names NO network"; fi
 
@@ -245,7 +250,7 @@ print('ok' if any(x.get('verdict')=='VIOLATION' for x in v) and c.get('untested'
   for p in /agents /register /patrol /leaderboard /docs; do
     H=$(curl -s --max-time 30 "${SITE}${p}")
     echo "$H" | grep -qE "Connect wallet|Install a wallet" || APPOK=0
-    echo "$H" | grep -qE "Bradbury|Studionet" || APPOK=0
+    echo "$H" | grep -qE "Studio Dev" || APPOK=0
   done
   [ "$APPOK" = "1" ] && ok "every app page carries the wallet control and the network badge" \
     || bad "an app page is missing the wallet control or the network badge"

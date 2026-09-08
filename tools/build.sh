@@ -7,8 +7,8 @@
 #   1. minify   — strips comments, docstrings and blank lines
 #   2. mangle   — shortens identifiers, source untouched
 #
-# Bradbury's ceiling was MEASURED (test/size_gate.py): 51,257 bytes accepted,
-# 53,500 refused with BlockPubdataLimitReached. Stage 1 alone leaves ~62 KB,
+# The deploy ceiling was MEASURED (test/size_gate.py): 51,257 bytes accepted,
+# 53,500 refused with BlockPubdataLimitReached. Stage 1 alone leaves ~65 KB,
 # which is over it. The name map stage 2 emits is not a courtesy: test_logic.py
 # runs its battery against the artifact through that map, so the transform is
 # verified rather than assumed.
@@ -24,7 +24,27 @@ python3 tools/mangle_names.py build/Sentinel.premangle.py \
 python3 -c "import ast;ast.parse(open('build/Sentinel.min.py').read())"
 
 if [ -x "$HOME/.local/bin/genvm-lint" ]; then
-  "$HOME/.local/bin/genvm-lint" check build/Sentinel.min.py | grep -E 'Lint passed|Validation passed' | sed 's/^/  /'
+  # Two separate stages, and they fail for different reasons. The LINT is about
+  # this contract and must always pass. The VALIDATION loads the runner named in
+  # the pin, so it fails with "Failed to load SDK" whenever the local linter
+  # bundle simply has not cached that runner tarball yet — a fact about this
+  # machine, not about the artifact. Fail on the first, report the second.
+  lint_out="$(mktemp)"
+  set +e
+  "$HOME/.local/bin/genvm-lint" check build/Sentinel.min.py >"$lint_out" 2>&1
+  lint_rc=$?
+  set -e
+  sed 's/^/  /' "$lint_out"
+  if [ "$lint_rc" -ne 0 ]; then
+    if grep -q 'Failed to load SDK' "$lint_out"; then
+      echo "  note: the local genvm-lint bundle has not cached this runner pin;"
+      echo "        lint passed, validation was skipped. Not a build failure."
+    else
+      rm -f "$lint_out"
+      exit "$lint_rc"
+    fi
+  fi
+  rm -f "$lint_out"
 fi
 
 python3 - <<'PY'

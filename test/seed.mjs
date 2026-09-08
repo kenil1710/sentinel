@@ -2,7 +2,7 @@
  * Seeds a deployed Sentinel with real content, so the live site shows the
  * product working rather than an empty register.
  *
- *   node seed.mjs --network=bradbury --address=0x…
+ *   node seed.mjs --network=studiodev --address=0x…
  *
  * Everything here is REAL: a real wallet, a real Uniswap swap that really did
  * move WETH into an unlisted token, and a challenge that five validators really
@@ -11,7 +11,7 @@
 import { connect, accounts, argOf, sleep, returnedJson } from "./harness.mjs";
 import { readFileSync } from "node:fs";
 
-const networkName = argOf("network", "bradbury");
+const networkName = argOf("network", "studiodev");
 const address = argOf("address", null) ??
   JSON.parse(readFileSync(new URL("../deployments.json", import.meta.url), "utf8"))
     .deployments[networkName].Sentinel.address;
@@ -50,7 +50,7 @@ for (const a of AGENTS) {
   const body = returnedJson(out.returned);
   if (!out.ok) { console.log(`  ✘ register ${a.chain}: ${out.revertReason || out.status}`); continue; }
   if (body && body.ok === false) { console.log(`  ⊘ register ${a.chain}: ${body.reason}`); continue; }
-  // Bradbury does not return a readable value, so read the id back from state.
+  // A readable return value is not guaranteed, so read the id back from state.
   const found = await operator.viewJson("get_agent_by_wallet", [a.chain, a.wallet]);
   const id = found.found ? found.agent.agent_id : null;
   ids.push(id);
@@ -70,7 +70,7 @@ if (strictId !== null && strictId !== undefined) {
     /*
      * Read the id back by POLLING, not once.
      *
-     * A settled write is not immediately visible to a read on Bradbury, and a
+     * A settled write is not always immediately visible to a read, and a
      * single read here returned `challenge_id: undefined` — which was then
      * passed straight into resolve_challenge(undefined). The transaction
      * "succeeded" and judged nothing.

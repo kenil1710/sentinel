@@ -34,7 +34,7 @@
  */
 import { NextResponse } from "next/server";
 import { createClient, createAccount } from "genlayer-js";
-import { studionet, testnetBradbury } from "genlayer-js/chains";
+import { studioDevnet } from "genlayer-js/chains";
 import type { TransactionHash } from "genlayer-js/types";
 import { recentTransactions, oneTransaction, TransientBlockscout } from "@/lib/blockscout";
 import { flagsFor, reasonText } from "@/lib/heuristics";
@@ -49,7 +49,7 @@ export const dynamic = "force-dynamic";
  */
 export const maxDuration = 300;
 
-const CHAINS = { studionet, bradbury: testnetBradbury } as const;
+const CHAINS = { studiodev: studioDevnet } as const;
 
 /** Per-run ceilings. A cron slot is not infinite and neither is the gas budget. */
 const MAX_AGENTS = 12;
@@ -102,7 +102,7 @@ const BUDGET_MS = FILE_UNTIL_MS;
  * platform limit with nothing in the log to say where. Wrap the slow ones.
  */
 /**
- * Bradbury throttles writes, and it says so precisely: "transaction gas rate
+ * The node throttles writes, and it says so precisely: "transaction gas rate
  * limit exceeded: node is at capacity, retry in ~1295ms". Submitting straight
  * through that is how a patrol filed nothing, judged nothing and — because
  * mark_patrolled was refused along with everything else — left `patrols_run`
@@ -201,7 +201,7 @@ function authorised(req: Request): { ok: boolean; why: string } {
 export async function GET(req: Request) {
   const started = Date.now();
   const url = new URL(req.url);
-  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studionet") as keyof typeof CHAINS;
+  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studiodev") as keyof typeof CHAINS;
   const address = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}` | undefined;
   const key = process.env.PATROL_PRIVATE_KEY;
   const notes: string[] = [];
@@ -262,7 +262,7 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
   address: `0x${string}`; key: string | undefined; dryRun: boolean; notes: string[];
 }): Promise<PatrolReport> {
   let dry = dryRun;
-  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studionet") as keyof typeof CHAINS;
+  const networkName = (process.env.NEXT_PUBLIC_NETWORK ?? "studiodev") as keyof typeof CHAINS;
   const read = createClient({ chain });
   const view = async <T,>(fn: string, args: unknown[] = []): Promise<T> => {
     const raw = await read.readContract({ address, functionName: fn, args: args as never });
@@ -535,8 +535,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
          * Reading tx status alone reported four challenges filed when the
          * contract had accepted one and refunded three under the cooldown.
          *
-         * Bradbury does not return a readable value either, so the only
-         * authority is the contract's own state — read it back.
+         * A readable return value is not a safe substitute either, so the
+         * only authority is the contract's own state — read it back.
          */
         const confirmed = terminal
           ? await view<{ challenged: boolean }>("is_tx_challenged", [agent.chain, tx.hash])
@@ -555,8 +555,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
           filedTotal++;
           /*
            * Judge it now rather than leaving it for the next run. The challenge
-           * id is not in the receipt — Bradbury returns no readable value — so
-           * it is found by matching this tx hash against what is still pending.
+           * id is not carried anywhere the caller can trust, so it is found
+           * by matching this tx hash against what is still pending.
            */
           if (Date.now() - started + RESOLVE_POLL_MS <= RESOLVE_UNTIL_MS
               && resolved.length < MAX_RESOLVES_PER_RUN) {

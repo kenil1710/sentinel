@@ -1,26 +1,26 @@
 /**
  * Shared helpers for the Sentinel integration scripts.
  *
- * The important one is `outcomeOf`. Studionet and Bradbury report a revert in
+ * The important one is `outcomeOf`. GenLayer networks report a revert in TWO
  * DIFFERENT PLACES, and reading the wrong one turns every failed transaction
  * into a silent pass:
  *
- *   - Bradbury sets `tx.txExecutionResultName` to "FINISHED_WITH_ERROR".
- *   - Studionet leaves `txExecutionResultName` UNDEFINED and records the real
- *     outcome at `tx.consensus_data.leader_receipt[0].execution_result`
+ *   - some set `tx.txExecutionResultName` to "FINISHED_WITH_ERROR";
+ *   - Studio networks leave `txExecutionResultName` UNDEFINED and record the
+ *     real outcome at `tx.consensus_data.leader_receipt[0].execution_result`
  *     ("SUCCESS" | "ERROR").
  *
  * A check written against `txExecutionResultName` alone reads `undefined !==
- * "FINISHED_WITH_ERROR"` on Studionet and reports success for a transaction
+ * "FINISHED_WITH_ERROR"` on Studio Dev and reports success for a transaction
  * that reverted and rolled back. That cost a false pass on the u128 storage
  * gate before this helper existed.
  */
 import { createClient, createAccount } from "genlayer-js";
-import { studionet, testnetBradbury } from "genlayer-js/chains";
+import { studioDevnet } from "genlayer-js/chains";
 import { transactionsStatusNumberToName } from "genlayer-js/types";
 import { readFileSync } from "node:fs";
 
-export const CHAINS = { studionet, bradbury: testnetBradbury };
+export const CHAINS = { studiodev: studioDevnet };
 
 /** States that genuinely end a transaction — see deploy.mjs for why not DECIDED_STATES. */
 export const TERMINAL_STATES = ["ACCEPTED", "FINALIZED", "UNDETERMINED", "CANCELED"];
@@ -42,10 +42,10 @@ export function outcomeOf(tx) {
   const exec = receipt?.execution_result ?? null;
   const named = tx?.txExecutionResultName ?? null;
 
-  // Bradbury carries NO `consensus_data` whatsoever, so `receipt` is null there
-  // and every field derived from it reads as absent rather than as failure. The
-  // top-level `txExecutionResultName` is the only success signal that exists on
-  // that network: FINISHED_WITH_RETURN vs FINISHED_WITH_ERROR.
+  // A network that carries NO `consensus_data` leaves `receipt` null, so every
+  // field derived from it reads as absent rather than as failure. There the
+  // top-level `txExecutionResultName` is the only success signal that exists:
+  // FINISHED_WITH_RETURN vs FINISHED_WITH_ERROR.
   const returnedOk = named === "FINISHED_WITH_RETURN";
   const settled = Boolean(status && TERMINAL_STATES.includes(status));
   // Explicit ERROR on either surface is a failure. Absence of a receipt is NOT
@@ -61,14 +61,14 @@ export function outcomeOf(tx) {
     exec,
     named,
     // A receipt that carries an explicit result must say SUCCESS; one that
-    // carries none (Bradbury deploys) falls back to the transaction status.
+    // carries none falls back to the transaction status.
     ok: settled && accepted && !reverted && (exec === "SUCCESS" || returnedOk || exec === null),
     /**
      * Whether the return VALUE could be read at all.
      *
-     * False on Bradbury: the value lives inside `consensus_data`, which that
-     * network does not populate. Callers must not treat an unreadable return as
-     * a rejection — that is a property of the transport, not of the contract —
+     * False wherever `consensus_data` is not populated, since that is where
+     * the value lives. Callers must not treat an unreadable return as a
+     * rejection — that is a property of the transport, not of the contract —
      * and should fall back to observing contract state instead. See how
      * suite.mjs decides acceptance.
      */
@@ -155,7 +155,7 @@ export function failureLine(stderr) {
   return lines[lines.length - 1]?.trim() ?? "";
 }
 
-/** Studionet-only faucet. No-op elsewhere. */
+/** Studio-only faucet. No-op elsewhere. */
 export async function fundOnStudio(chain, address, wei) {
   if (!chain.isStudio) return false;
   const res = await fetch(chain.rpcUrls.default.http[0], {
@@ -175,7 +175,7 @@ export async function fundOnStudio(chain, address, wei) {
 /**
  * Retry a flaky RPC call.
  *
- * Studionet intermittently answers with an HTML error page instead of JSON,
+ * Studio intermittently answers with an HTML error page instead of JSON,
  * which surfaces as `Unexpected token '<'`. That is infrastructure noise, not a
  * contract fault, and without a retry it aborts a run mid-assertion and reads
  * like a failure of whatever call happened to be in flight.
@@ -195,7 +195,7 @@ export async function retry(fn, { attempts = 6, baseMs = 4000, label = "rpc" } =
         // was measuring something else entirely. The per-minute bucket clears
         // on its own; the daily one does not, and no retry budget outlasts it.
         /rate limit exceeded|-32029/i.test(message) ||
-        // Bradbury holds ONE transaction slot per recipient contract. A write
+        // A node may hold ONE transaction slot per recipient contract. A write
         // that arrives while the previous one is still settling is rejected at
         // the consensus contract, which surfaces as an EVM revert rather than
         // as congestion. Backing off and resubmitting is the correct response;
@@ -216,14 +216,14 @@ export async function retry(fn, { attempts = 6, baseMs = 4000, label = "rpc" } =
 /**
  * The address of a contract created by a deploy transaction.
  *
- * Studionet and Bradbury put it in DIFFERENT FIELDS, the same way they disagree
- * about where a revert is recorded:
+ * Networks put it in DIFFERENT FIELDS, the same way they disagree about where
+ * a revert is recorded:
  *
- *   - Studionet: `tx.data.contract_address`   (snake_case, under `data`)
- *   - Bradbury:  `tx.txDataDecoded.contractAddress` (camelCase, under `txDataDecoded`)
+ *   - Studio: `tx.data.contract_address`   (snake_case, under `data`)
+ *   - others: `tx.txDataDecoded.contractAddress` (camelCase, under `txDataDecoded`)
  *
- * Reading only the Studionet spelling returns `undefined` on Bradbury for a
- * deploy that fully succeeded. That is not a cosmetic bug: the address is fed
+ * Reading only the Studio spelling returns `undefined` elsewhere for a deploy
+ * that fully succeeded. That is not a cosmetic bug: the address is fed
  * straight into the next contract's constructor, so an undefined here becomes
  * `Address("None")` there, and the second deploy reverts with a message that
  * points at the wrong contract. Both spellings are checked, and callers must
@@ -245,7 +245,7 @@ export function accounts() {
 }
 
 /** Builds the read/wallet client pair plus a settle-aware `send`. */
-export function connect({ networkName = argOf("network", "studionet"), address, role = "client" } = {}) {
+export function connect({ networkName = argOf("network", "studiodev"), address, role = "client" } = {}) {
   const chain = CHAINS[networkName];
   if (!chain) throw new Error(`unknown network ${networkName}`);
   const acc = accounts();
@@ -255,7 +255,7 @@ export function connect({ networkName = argOf("network", "studionet"), address, 
   const read = createClient({ chain });
   // 20 minutes was long enough that a single unreadable transaction cost more
   // wall clock than the entire rest of the suite. Nudging covers the first 450s
-  // (10 x 45s) and the slowest real Bradbury settle observed is a 223s deploy,
+  // (10 x 45s) and the slowest real settle observed is a 223s deploy,
   // so 10 minutes is still several times the worst honest case.
   const deadline = chain.isStudio ? 240_000 : 600_000;
   const pollMs = chain.isStudio ? 1_000 : 5_000;
@@ -265,7 +265,7 @@ export function connect({ networkName = argOf("network", "studionet"), address, 
    *
    * NEVER THROWS. Every caller already branches on `out.ok`, so a give-up is
    * returned as an unsettled outcome and costs one red check. Letting it escape
-   * as an exception instead took down a whole Bradbury run at TEST 5 with seven
+   * as an exception instead took down a whole run at TEST 5 with seven
    * tests still unreported — one dropped transaction should not be able to do
    * that to six tests it never touched.
    */

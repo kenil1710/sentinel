@@ -15,11 +15,19 @@ No administrator decides anything.
 
 | | Address |
 |---|---|
-| **Bradbury** | [`0xcb068e75c4a4dC9603bDf12612583252B8A06b6C`](https://explorer-bradbury.genlayer.com/address/0xcb068e75c4a4dC9603bDf12612583252B8A06b6C) |
-| Studionet | `0xaA5179dd55ee5BBc3DfdE57FfE353859C1e0dF19` |
+| **Studio Dev** | [`0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`](https://explorer-studio-dev.genlayer.com/address/0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) |
 
-The on-chain code is byte-identical to `build/Sentinel.min.py` — same sha256, so
-what you can read here is what is running.
+Chain ID `61997`, RPC `https://studio-dev.genlayer.com/api`. Studio Dev is the
+only network this project targets.
+
+`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py`
+reports **EQUIVALENT**: the deployed code and the local artifact are the same
+token stream under a bijective renaming of private identifiers, and the public
+ABI — all 37 methods — is identical. They are not byte-identical. The deployed
+bytes came from an earlier run of the same build pipeline, and the mangler
+assigns private names by frequency rank, so any edit to the source reshuffles
+them. The tool reports `MATCH`, `EQUIVALENT` or `DIFFER` precisely so that
+distinction is not quietly rounded up to "identical".
 
 - **Contract** — [`contracts/Sentinel.py`](contracts/Sentinel.py)
 - **Why it is built this way** — [`contracts/NOTES.md`](contracts/NOTES.md)
@@ -36,7 +44,7 @@ day. A wallet running through Uniswap's UniversalRouter swapped WETH into
 
 Registered under the pitch's own example mandate — *"Only trade ETH and USDC on
 Uniswap. Maximum 0.5 ETH per trade. Never interact with unverified contracts"* —
-five Bradbury validators independently fetched that transaction and returned:
+five validators independently fetched that transaction and returned:
 
 > **VIOLATION** (confidence 95%)
 > *"The mandate states 'Only trade ETH and USDC on Uniswap.' The transaction
@@ -44,12 +52,21 @@ five Bradbury validators independently fetched that transaction and returned:
 > `0x974733a3…`) to the agent's wallet. WFC is not ETH or USDC, violating the
 > explicit token restriction."*
 
-That is challenge `0` on the contract linked above — filed by the patrol bot,
-not by hand, and judged on **this** deployment. All three challenges the bot
-filed against that agent came back VIOLATION, at 95%, 90% and 95% confidence,
-on three different transactions with three different evidence digests.
+**This was judged on an earlier deployment, not on the Studio Dev contract
+linked above.** It was filed by the patrol bot rather than by hand, and all
+three challenges the bot filed against that agent came back VIOLATION, at 95%,
+90% and 95% confidence, on three different transactions with three different
+evidence digests. It is kept here because it is the evidence that the judgement
+path works end to end against a real transaction — not as a claim about what the
+current contract's state shows.
 
-The penalty compounds, and the arithmetic is checkable on chain:
+What the Studio Dev contract shows **right now**, read from `get_stats` and
+`get_challenges` on 2026-09-08: four agents registered and active, 2 GEN bonded,
+one challenge filed and still `PENDING`, nothing settled, `patrols_run` at 0.
+No verdict has been returned on this deployment yet.
+
+The penalty compounds, and the arithmetic below is what the contract computes —
+checkable on chain once a challenge here settles:
 
 ```
 bond      1.0 → 0.8 → 0.64 → 0.512 GEN     three violations at 2000 bps
@@ -58,23 +75,27 @@ bounty    0.244 GEN to the challenger      5000 bps of the penalty
 protocol  0.244 GEN                        the other half — 0.488 exactly, no leakage
 ```
 
-The same verdict comes out of the public endpoint:
+The same verdict came out of the public endpoint, on that same earlier
+deployment:
 
 ```bash
 curl '.../api/check?wallet=0x17e3048c…&chain=ethereum'
 # → "violations": 3, "score_percent": 0, "basis": "0 of 3 decided found it compliant"
 ```
 
+Against Studio Dev today the same call returns that wallet registered with no
+decided challenges, because its one challenge here is still `PENDING`.
+
 One of the three did not converge on its first round and came back
 **UNDETERMINED**. It applied no state and stayed `PENDING` — the designed
 outcome, since a round that fails to agree must not settle anything — and
 resolved cleanly when it was put to the validators again.
 
-Then the patrol bot went and found more on its own. A dry run over the whole
-register scanned 124 transactions and flagged **24** candidates across four of
-the ten agents — without anyone pointing it at a single one. Those figures are a
-snapshot taken on 2026-09-08: the wallets are real and keep transacting, so your
-run will differ.
+Then the patrol bot went and found more on its own. A dry run over that
+deployment's ten-agent register scanned 124 transactions and flagged **24**
+candidates across four of them — without anyone pointing it at a single one.
+Those figures are a snapshot of that register, not of the four agents on Studio
+Dev: the wallets are real and keep transacting, so your run will differ.
 
 ```bash
 curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
@@ -83,7 +104,7 @@ curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
 Nothing here was staged. It is a real wallet, a real swap, and a real verdict.
 
 And on the run that produced those figures, `robinhoodchain.blockscout.com`
-answered **500** for two of the ten agents. The bot reported them as
+answered **500** for two of those ten agents. The bot reported them as
 *"explorer unavailable — skipped, not cleared"* and moved on, which is the
 single behaviour this whole design exists to get right: an explorer having a bad
 afternoon must never read as a clean bill of health.
@@ -91,6 +112,13 @@ afternoon must never read as a clean bill of health.
 ---
 
 ## The register is real
+
+**Four agents are registered on Studio Dev today** — `ETH/USDC Rebalancer`
+(ethereum), `Base DeFi Agent` (base), `Arbitrum Swap Bot` (arbitrum) and
+`Polygon Market Maker` (polygon), 0.5 GEN bonded each. The full roster below is
+what `test/seed_roster.mjs` seeds; it has not been seeded in full against this
+deployment, so treat the table as the seeder's contents rather than as the
+current register.
 
 Fifteen agents, seeded from wallets taken out of the **live transaction lists** of
 Uniswap's UniversalRouter on four chains, Aave v3's Pool, and Robinhood Chain's
@@ -118,8 +146,9 @@ globally, because the same key running on two chains is two different risk
 surfaces: on Arbitrum it may trade, on Ethereum it may only lend, and on Polygon
 it may only hold dollars. `/api/check` returns a different mandate for each.
 
-The register covers **all five chains the contract configures**. Base was the
-last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
+The full roster covers **all five chains the contract configures** — the four
+agents currently registered on Studio Dev cover four of them, with no Robinhood
+Chain agent registered yet. Base was the last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
 to every endpoint for an entire day, so the register originally spanned three.
 The outage was transient, the host serves that wallet's history now, and a chain
 advertised in `get_config` but absent from the register is a claim nobody can
@@ -133,7 +162,7 @@ its recent history has to contain the thing its mandate forbids, so each entry
 is a claim that can actually be tested. All three were transacting within the
 hour they were registered.
 
-Re-seed with `node test/seed_roster.mjs --network=bradbury`, or one chain at a
+Re-seed with `node test/seed_roster.mjs --network=studiodev`, or one chain at a
 time with `--chain=robinhood`.
 
 ## Check any wallet, from anything
@@ -173,8 +202,7 @@ that two nodes cannot disagree.
 
 ## What the probe changed
 
-A throwaway contract ran on Studionet *before a line of the contract was
-written*. Nine findings; three of them changed the architecture.
+A throwaway contract ran *before a line of the contract was written*. Nine findings; three of them changed the architecture.
 [`docs/PROBE.md`](docs/PROBE.md) has all of them.
 
 **1. Both URLs in the brief return 422.** Blockscout *rejects* unknown query
@@ -299,8 +327,8 @@ rode in with the call**, so every payable method here refunds and returns
 transaction*. The contract had accepted one challenge and refunded three under
 the per-wallet cooldown, and the bot could not tell the difference.
 
-The fix reads the contract's own state back — `is_tx_challenged` — because on
-Bradbury the return value is not readable at all. The UI carries the same
+The fix reads the contract's own state back — `is_tx_challenged` — because the
+return value is not always readable at all. The UI carries the same
 three-state distinction: `ok`, `rejected`, `failed`. A rejection is neither an
 error nor a confirmation, because it is neither.
 
@@ -321,9 +349,9 @@ checks the served HTML of both to prove it.
 ```
 offline suite      410 tests    test/test_logic.py       (includes the mangled artifact)
 patrol suite        30 tests    test/test_patrol.mjs     (real Blockscout fixtures)
-live suite          79 checks   test/e2e.mjs             (Studionet, real validators)
+live suite          79 checks   test/e2e.mjs             (real validators — NOT re-run on Studio Dev)
 functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
-adversarial suite   99 checks   test/edge_cases.mjs      (Studionet, the nasty states)
+adversarial suite   99 checks   test/edge_cases.mjs      (the nasty states — NOT re-run on Studio Dev)
 rejection checklist 19 checks   tools/checklist.py       (AST, not grep)
 audit               63 checks   bash tools/audit.sh      (live chain + live site)
 ```
@@ -390,12 +418,12 @@ node --experimental-strip-types --no-warnings test/test_patrol.mjs
 
 cd test
 node accounts.mjs                        # once — writes test/.accounts.json
-node deploy.mjs --network=studionet
-node e2e.mjs   --network=studionet       # the live suite
+node deploy.mjs --network=studiodev
+node e2e.mjs   --network=studiodev       # the live suite
 
-# Bradbury — the signer becomes the OWNER, so use a funded wallet
+# The signer becomes the OWNER, so use a funded wallet
 export GENLAYER_KEYSTORE_PASSWORD='…'
-node deploy.mjs --network=bradbury --keystore=mywallet
+node deploy.mjs --network=studiodev --keystore=mywallet
 ```
 
 ```bash
@@ -417,14 +445,14 @@ patrol also judges what it files: it resolves any PENDING challenge before it
 looks for new ones, and puts each newly filed challenge to the validators in the
 same run.
 
-What that does *not* yet show on chain: `patrols_run` is still 1, because
-Bradbury is currently refusing the bot's writes —
-`transaction gas rate limit exceeded: node is at capacity`, and then a revert at
-the consensus contract. That is a network condition rather than a bug in this
-route, and it reproduces from a laptop with the same key, so `mark_patrolled`
-and `resolve_challenge` both fail from anywhere right now. The route retries on
-the backoff the node itself asks for and reports the failure in `notes` instead
-of claiming a run it did not complete. See [`frontend/CRON.md`](frontend/CRON.md).
+What that does *not* yet show on chain: `patrols_run` is **0** on the Studio Dev
+deployment. No patrol has been driven against this contract yet, so the counter
+is honest rather than optimistic. A previous deployment also hit a node refusing
+the bot's writes — `transaction gas rate limit exceeded: node is at capacity`,
+then a revert at the consensus contract — which is a network condition rather
+than a bug in this route. The route retries on the backoff the node itself asks
+for and reports the failure in `notes` instead of claiming a run it did not
+complete. See [`frontend/CRON.md`](frontend/CRON.md).
 
 Nothing about the bot depends on the cadence: it is stateless, reads its queue
 from the contract on every run, and `is_tx_challenged` makes a second pass over

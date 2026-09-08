@@ -2,7 +2,7 @@
 """
 Strips a GenLayer contract down to what the chain actually needs to execute.
 
-Bradbury refuses deploys somewhere between 48 KB and 64 KB of source, and
+A GenLayer node refuses deploys somewhere between 48 KB and 64 KB of source, and
 `contracts/proof_work.py` is 156 KB. Just under half of that is comments,
 docstrings and blank lines — bytes that cost real deploy payload and buy the
 chain nothing. This produces the deployable artifact while the readable source
@@ -17,14 +17,14 @@ prompt strings is a bad place to be clever.
     python3 tools/minify_contract.py contracts/proof_work.py -o build/proof_work.min.py
 
 What it removes:
-  - comments (except the runner header on line 1, which the VM requires)
+  - comments (except the runner header block at the top, which the VM requires)
   - docstrings, at module, class and function level
   - blank lines
   - trailing whitespace
   - indentation beyond one space per level
 
 What it never touches:
-  - line 1, byte for byte
+  - the leading `#` header block, byte for byte
   - any string that is not a docstring — prompt templates included
   - the order or content of any statement
 """
@@ -156,11 +156,19 @@ def _reindent(source: str, spaces_per_level: int) -> str:
 
 
 def minify(source: str, spaces_per_level: int = 1) -> str:
-    header, _, rest = source.partition("\n")
-    if not header.startswith("#"):
+    # The GenVM header is the CONTIGUOUS leading `#` block, not line 1 alone.
+    # Since the v0.3.0 runner it is two lines — a version line and the runner
+    # pin — and keeping only the first would deploy a contract with no pin.
+    header_lines: list[str] = []
+    for line in source.split("\n"):
+        if not line.startswith("#"):
+            break
+        header_lines.append(line)
+    if not header_lines:
         raise SystemExit(
             "line 1 is not the GenVM runner header; refusing to minify blind"
         )
+    header = "\n".join(header_lines)
 
     doc_lines: set[int] = set()
     for start, end in _docstring_spans(source):
@@ -231,9 +239,11 @@ def minify(source: str, spaces_per_level: int = 1) -> str:
         else:
             body.append(" " * (spaces_per_level * level) + stripped.rstrip())
 
-    # The header must be line 1 and nothing else may be a comment on line 2 —
-    # a second comment there makes the contract silently undeployable.
-    if body and body[0].lstrip().startswith("#"):
+    # Nothing may follow the header block but code — a stray comment directly
+    # under it is read as part of the runner header and makes the contract
+    # silently undeployable. `_strip_comments` leaves the header behind as the
+    # only comment lines in `stage`, so drop exactly those from the body.
+    while body and body[0].lstrip().startswith("#"):
         body = body[1:]
     return header + "\n" + "\n".join(body) + "\n"
 

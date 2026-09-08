@@ -1,5 +1,5 @@
 /**
- * Same-origin relay for the Studionet JSON-RPC endpoint.
+ * Same-origin relay for the Studio Dev JSON-RPC endpoint.
  *
  * ## Why this exists
  *
@@ -30,16 +30,15 @@
  * That does not raise the quota. It makes hitting it legible: the app gets
  * "rate limited, retry in 86400s" instead of a phantom CORS error.
  *
- * Bradbury does not need this. It serves CORS headers on errors too, so the
- * browser talks to it directly — see `rpcUrl()` in `lib/genlayer.ts`.
+ * Only the browser path goes through here — see `rpcUrl()` in `lib/genlayer.ts`.
  */
-import { studionet } from "genlayer-js/chains";
+import { studioDevnet } from "genlayer-js/chains";
 
 /** Streams upstream bodies through; never prerendered. */
 export const dynamic = "force-dynamic";
 
 /**
- * Where to relay. Defaults to the SDK's own Studionet URL so this cannot drift
+ * Where to relay. Defaults to the SDK's own Studio Dev URL so this cannot drift
  * from the chain the client talks to; override with `GENLAYER_RPC_UPSTREAM`
  * (server-side var, deliberately not `NEXT_PUBLIC_` — the browser must go
  * through this route, not around it).
@@ -48,7 +47,7 @@ export const dynamic = "force-dynamic";
  * *mutates* the exported chain singleton, so a later read could hand back
  * whatever some other caller last wrote.
  */
-const UPSTREAM = process.env.GENLAYER_RPC_UPSTREAM ?? studionet.rpcUrls.default.http[0];
+const UPSTREAM = process.env.GENLAYER_RPC_UPSTREAM ?? studioDevnet.rpcUrls.default.http[0];
 
 /**
  * Backstop against a socket that never closes — deliberately *longer* than the

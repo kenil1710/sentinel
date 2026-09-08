@@ -3,7 +3,7 @@
 Measures the deploy size ceiling on a network by PROVING the transport rather
 than guessing at it.
 
-PredictStake recorded Bradbury refusing 59,278 bytes with BlockPubdataLimitReached
+PredictStake recorded a GenLayer node refusing 59,278 bytes with BlockPubdataLimitReached
 and accepting 43,342. Sentinel's artifact lands at 51,257 - inside that gap, where
 neither outcome is known. So it is measured.
 
@@ -18,11 +18,13 @@ import sys
 import tempfile
 import os
 
-HEAD = '# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }\n'
-BODY = '''from genlayer import *
+HEAD = ('# v0.3.0\n'
+        '# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }\n')
+BODY = '''import genlayer as gl
+from genlayer import *
 
 
-class SizeGate(gl.Contract):
+class SizeGate(gl.contract.Contract):
 	marker: str
 
 	def __init__(self):

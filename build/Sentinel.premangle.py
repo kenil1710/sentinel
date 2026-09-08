@@ -1,4 +1,6 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+import genlayer as gl
 from genlayer import *
 from dataclasses import dataclass
 import json
@@ -560,7 +562,7 @@ class _Payee:
   pass
  class Write:
   pass
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Agent:
  agent_id: u32
@@ -584,7 +586,7 @@ class Agent:
  pending_count: u32
  total_slashed: u128
  total_topped_up: u128
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Challenge:
  challenge_id: u32
@@ -609,29 +611,29 @@ class Challenge:
  operator_award: u128
  refunded: u128
  stalled: bool
-class Sentinel(gl.Contract):
+class Sentinel(gl.contract.Contract):
  owner: Address
  paused: bool
- agents: TreeMap[u32, Agent]
- agent_ids: DynArray[u32]
+ agents: gl.storage.TreeMap[u32, Agent]
+ agent_ids: gl.storage.DynArray[u32]
  next_agent_id: u32
- challenges: TreeMap[u32, Challenge]
- challenge_ids: DynArray[u32]
+ challenges: gl.storage.TreeMap[u32, Challenge]
+ challenge_ids: gl.storage.DynArray[u32]
  next_challenge_id: u32
- agent_challenges: TreeMap[u32, DynArray[u32]]
- chain_agents: TreeMap[str, DynArray[u32]]
- operator_agents: TreeMap[Address, DynArray[u32]]
- tx_claimed: TreeMap[str, u32]
- wallet_claimed: TreeMap[str, u32]
- last_challenge_at: TreeMap[Address, u64]
- judge_lock: TreeMap[u32, u64]
- watcher_won: TreeMap[Address, u32]
- watcher_lost: TreeMap[Address, u32]
- watcher_void: TreeMap[Address, u32]
- watcher_earned: TreeMap[Address, u128]
- watcher_staked: TreeMap[Address, u128]
- watcher_list: DynArray[Address]
- watcher_seen: TreeMap[Address, bool]
+ agent_challenges: gl.storage.TreeMap[u32, gl.storage.DynArray[u32]]
+ chain_agents: gl.storage.TreeMap[str, gl.storage.DynArray[u32]]
+ operator_agents: gl.storage.TreeMap[Address, gl.storage.DynArray[u32]]
+ tx_claimed: gl.storage.TreeMap[str, u32]
+ wallet_claimed: gl.storage.TreeMap[str, u32]
+ last_challenge_at: gl.storage.TreeMap[Address, u64]
+ judge_lock: gl.storage.TreeMap[u32, u64]
+ watcher_won: gl.storage.TreeMap[Address, u32]
+ watcher_lost: gl.storage.TreeMap[Address, u32]
+ watcher_void: gl.storage.TreeMap[Address, u32]
+ watcher_earned: gl.storage.TreeMap[Address, u128]
+ watcher_staked: gl.storage.TreeMap[Address, u128]
+ watcher_list: gl.storage.DynArray[Address]
+ watcher_seen: gl.storage.TreeMap[Address, bool]
  min_bond: u128
  challenge_stake: u128
  penalty_bps: u32
@@ -685,7 +687,7 @@ class Sentinel(gl.Contract):
   self.count_stalled = u32(0)
   self.count_patrols = u32(0)
  def _now(self) -> int:
-  return _epoch_from_iso(gl.message_raw.get("datetime", ""))
+  return _epoch_from_iso(gl.message.raw.get("datetime", ""))
  def _agent(self, agent_id: int) -> Agent:
   found = self.agents.get(u32(_clamp(_as_int(agent_id, -1), 0, 4294967295)))
   if found is None:

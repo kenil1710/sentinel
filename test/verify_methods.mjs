@@ -1,7 +1,7 @@
 /**
  * Functional verification of EVERY public method on a live network.
  *
- *   node verify_methods.mjs --network=studionet
+ *   node verify_methods.mjs --network=studiodev
  *
  * Deploys a fresh contract and exercises all 35 public methods, asserting an
  * OBSERVABLE EFFECT for each rather than merely that the call returned. A
@@ -14,7 +14,7 @@ import { CHAINS, connect, accounts, argOf, sleep, outcomeOf, contractAddressOf,
          fundOnStudio, retry, returnedJson } from "./harness.mjs";
 import { readFileSync } from "node:fs";
 
-const networkName = argOf("network", "studionet");
+const networkName = argOf("network", "studiodev");
 const chain = CHAINS[networkName];
 const GEN = 10n ** 18n;
 const ACC = accounts();

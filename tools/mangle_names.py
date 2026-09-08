@@ -4,7 +4,7 @@ Shortens identifiers in a MINIFIED GenLayer contract. Source stays readable.
 
     python3 tools/mangle_names.py build/X.min.py -o build/X.min.py --map build/X.names.json
 
-Why this exists: Bradbury refused a 59,278-byte artifact with
+Why this exists: a GenLayer node refused a 59,278-byte artifact with
 `BlockPubdataLimitReached`. Comments and docstrings were already stripped (the
 minifier saves ~32%); what is left is mostly identifiers, and a contract that
 explains itself well has long ones.
@@ -50,7 +50,7 @@ from collections import Counter
 
 # Never rename these: the runtime, the SDK, and the builtins.
 RESERVED = set(dir(__builtins__)) | set(keyword.kwlist) | {
-    "gl", "json", "typing", "dataclass", "allow_storage", "Address", "DynArray",
+    "gl", "genlayer", "json", "typing", "dataclass", "Address", "DynArray",
     "TreeMap", "u8", "u16", "u32", "u64", "u128", "u256", "i8", "i16", "i32",
     "i64", "bigint", "self", "Exception", "ValueError", "AttributeError",
     "isinstance", "getattr", "setattr", "hasattr", "len", "str", "int", "bool",
@@ -296,8 +296,17 @@ def main() -> int:
     if after["contract_class"] != info["contract_class"]:
         print("REFUSING: the contract class name changed", file=sys.stderr)
         return 1
-    if result.split("\n")[0] != src.split("\n")[0]:
-        print("REFUSING: line 1 (the runner pin) changed", file=sys.stderr)
+    def _header(text: str) -> list[str]:
+        """The contiguous leading `#` block: the version line and the pin."""
+        out = []
+        for line in text.split("\n"):
+            if not line.startswith("#"):
+                break
+            out.append(line)
+        return out
+
+    if _header(result) != _header(src):
+        print("REFUSING: the runner header (version + pin) changed", file=sys.stderr)
         return 1
 
     open(a.output, "w", encoding="utf8").write(result)

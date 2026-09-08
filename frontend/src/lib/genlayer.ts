@@ -5,7 +5,7 @@
  *   - `getWalletClient()` — browser-only, signs via an injected EIP-1193 wallet.
  */
 import { createClient } from "genlayer-js";
-import { studionet, testnetBradbury } from "genlayer-js/chains";
+import { studioDevnet } from "genlayer-js/chains";
 
 /**
  * Next inlines `process.env.NEXT_PUBLIC_*` at build time only for *literal*
@@ -21,12 +21,12 @@ const rawNetwork = process.env.NEXT_PUBLIC_NETWORK;
  * `isStudio`, which the SDK needs to poll transactions. A hand-written
  * `{ id, name, rpcUrls }` omits all of that and breaks receipt polling.
  */
-const CHAINS = { studionet, bradbury: testnetBradbury } as const;
+const CHAINS = { studiodev: studioDevnet } as const;
 
 export type NetworkName = keyof typeof CHAINS;
 
 function resolveNetwork(value: string | undefined): NetworkName {
-  if (!value) return "studionet";
+  if (!value) return "studiodev";
   if (value in CHAINS) return value as NetworkName;
   throw new Error(
     `NEXT_PUBLIC_NETWORK must be one of ${Object.keys(CHAINS).join(" | ")}, got: ${value}`,
@@ -42,11 +42,18 @@ export const IS_GASLESS = Boolean(chain.isStudio);
 /** `chain.id` as the hex string EIP-1193 expects. Derived, never transcribed. */
 export const CHAIN_ID_HEX = `0x${chain.id.toString(16)}`;
 
-export const NETWORK_LABEL: string = { studionet: "Studionet", bradbury: "Bradbury" }[NETWORK];
+export const NETWORK_LABEL: string = { studiodev: "Studio Dev" }[NETWORK];
+
+/**
+ * The SDK's `studioDevnet` carries no `blockExplorers` entry, so the explorer
+ * base is named here rather than derived. A missing one is not cosmetic: it
+ * would send MetaMask an entry with no explorer and make `explorerUrl()` emit
+ * bare paths like `/tx/0x…`.
+ */
+export const EXPLORER_BASE = "https://explorer-studio-dev.genlayer.com";
 
 const WALLET_NETWORK: Record<NetworkName, { name: string; explorer?: string }> = {
-  studionet: { name: "GenLayer Studionet", explorer: "https://studio.genlayer.com" },
-  bradbury: { name: "GenLayer Bradbury Testnet" },
+  studiodev: { name: "GenLayer Studio Dev", explorer: EXPLORER_BASE },
 };
 
 function addChainParams() {
@@ -125,13 +132,12 @@ function assertAddress(value: string | undefined, name: string): `0x${string}` {
 export const CONTRACT_ADDRESS = assertAddress(rawContractAddress, "NEXT_PUBLIC_CONTRACT_ADDRESS");
 
 /**
- * Same-origin relay for Studionet, implemented at `app/api/rpc/route.ts`.
+ * Same-origin relay for Studio, implemented at `app/api/rpc/route.ts`.
  *
  * Studio serves CORS headers on success but drops them on its 429s, so an
  * exhausted rate limit reaches the browser as "No 'Access-Control-Allow-Origin'
  * header is present" rather than as the rate-limit error it is. Going through
  * our own origin means the browser is always allowed to read the response.
- * Bradbury sets the headers on errors too, so it stays direct.
  */
 const STUDIO_PROXY_PATH = "/api/rpc";
 
@@ -142,7 +148,7 @@ const STUDIO_PROXY_PATH = "/api/rpc";
  */
 function rpcUrl(): string {
   const direct = chain.rpcUrls.default.http[0];
-  if (NETWORK !== "studionet" || typeof window === "undefined") return direct;
+  if (!IS_GASLESS || typeof window === "undefined") return direct;
   return STUDIO_PROXY_PATH;
 }
 
@@ -194,6 +200,6 @@ export async function ensureCorrectNetwork(): Promise<void> {
 }
 
 export function explorerUrl(kind: "tx" | "address", value: string): string {
-  const base = chain.blockExplorers?.default?.url?.replace(/\/$/, "") ?? "";
+  const base = (chain.blockExplorers?.default?.url ?? EXPLORER_BASE).replace(/\/$/, "");
   return `${base}/${kind}/${value}`;
 }

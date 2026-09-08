@@ -69,4 +69,4 @@ writeFileSync(target, JSON.stringify(out, null, 2) + "\n");
 
 console.log(`wrote .accounts.json — ${created} new, ${ROLES.length - created} preserved`);
 for (const role of ROLES) console.log(`  ${role.padEnd(12)} ${out[role].address}`);
-console.log(`\n(gasless on Studionet; fund these before using Bradbury)`);
+console.log(`\n(gasless on Studio Dev; a metered network needs these funded)`);

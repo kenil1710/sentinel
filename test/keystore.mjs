@@ -3,7 +3,7 @@
  *
  * Extracted from deploy.mjs so scan scripts can sign from the same real wallet
  * without duplicating the crypto — the alternative was funding a second account
- * on Bradbury just to run a scan.
+ * on a metered network just to run a scan.
  *
  * The password comes from the GENLAYER_KEYSTORE_PASSWORD environment variable
  * and is NEVER accepted as an argv flag: argv is visible to every process on the
@@ -62,7 +62,7 @@ export function unlockKeystore(name, password) {
  * Resolve a signing key from CLI args: `--keystore=<name>` unlocks a real wallet
  * (password from GENLAYER_KEYSTORE_PASSWORD), otherwise fall back to the
  * plaintext `client` test account in .accounts.json — fine for throwaway
- * Studionet work, but it holds no gas on Bradbury.
+ * gasless work, but it holds no gas on a metered network.
  */
 export function resolveSigner(argv, accountsUrl) {
   const keystoreArg = argv.find((a) => a.startsWith("--keystore="));

@@ -1,7 +1,7 @@
 /**
  * Populates a deployed Sentinel with a diverse register of REAL wallets.
  *
- *   node seed_roster.mjs --network=bradbury --address=0x…
+ *   node seed_roster.mjs --network=studiodev --address=0x…
  *
  * Every wallet below was taken from the live transaction list of a well-known
  * protocol contract on the day this ran — Uniswap's UniversalRouter on three
@@ -23,7 +23,7 @@
 import { connect, accounts, argOf, sleep, returnedJson } from "./harness.mjs";
 import { readFileSync } from "node:fs";
 
-const networkName = argOf("network", "bradbury");
+const networkName = argOf("network", "studiodev");
 const address = argOf("address", null) ??
   JSON.parse(readFileSync(new URL("../deployments.json", import.meta.url), "utf8"))
     .deployments[networkName].Sentinel.address;

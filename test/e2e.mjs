@@ -1,8 +1,8 @@
 /**
  * The live suite. Real validators, real Blockscout, real value.
  *
- *   node e2e.mjs --network=studionet
- *   node e2e.mjs --network=studionet --address=0x…
+ *   node e2e.mjs --network=studiodev
+ *   node e2e.mjs --network=studiodev --address=0x…
  *
  * What this proves that test_logic.py cannot:
  *
@@ -22,7 +22,7 @@
 import { connect, accounts, argOf, sleep, retry, returnedJson } from "./harness.mjs";
 import { readFileSync } from "node:fs";
 
-const networkName = argOf("network", "studionet");
+const networkName = argOf("network", "studiodev");
 const address = argOf("address", null) ??
   JSON.parse(readFileSync(new URL("../deployments.json", import.meta.url), "utf8"))
     .deployments[networkName].Sentinel.address;

@@ -1,7 +1,7 @@
 /**
  * Adversarial edge cases, on a live network.
  *
- *   node edge_cases.mjs --network=studionet
+ *   node edge_cases.mjs --network=studiodev
  *
  * e2e.mjs proves the happy paths and the headline rejections. This suite goes
  * after the states nobody reaches by accident: the rejections that must refund
@@ -20,7 +20,7 @@ import { CHAINS, connect, accounts, argOf, sleep, outcomeOf, contractAddressOf,
          fundOnStudio, retry, returnedJson } from "./harness.mjs";
 import { readFileSync } from "node:fs";
 
-const networkName = argOf("network", "studionet");
+const networkName = argOf("network", "studiodev");
 const chain = CHAINS[networkName];
 const GEN = 10n ** 18n;
 const ACC = accounts();
