@@ -36,10 +36,14 @@ console.log(`\nSentinel deploy → ${networkName}`);
 console.log(`  artifact   build/Sentinel.min.py  (${code.length.toLocaleString()} bytes)`);
 console.log(`  signer     ${signer.label}`);
 
-// The MEASURED ceiling. test/size_gate.py recorded 51,257 accepted and 53,500
-// refused on Bradbury. Refusing here beats discovering it after a 4-minute wait.
-if (!chain.isStudio && code.length > 51_257) {
-  console.error(`\nArtifact is ${code.length} bytes; Bradbury refused 53,500 and accepted 51,257.`);
+// The MEASURED ceiling. test/size_gate.py accepted 51,257 / 51,692 / 52,400 /
+// 53,000 on Bradbury and was refused at 53,500 (BlockPubdataLimitReached), so
+// the real ceiling sits between 53,000 and 53,500. This guard is pinned to the
+// CURRENT artifact size, not to that ceiling — the rest of the repo (tools/audit.sh,
+// contracts/NOTES.md, deployments.json) budgets against 53,000.
+// Refusing here beats discovering it after a 4-minute wait.
+if (!chain.isStudio && code.length > 52_480) {
+  console.error(`\nArtifact is ${code.length} bytes; Bradbury accepted 53,000 and refused 53,500.`);
   console.error(`Re-measure with: python3 test/size_gate.py <size>`);
   process.exit(1);
 }
