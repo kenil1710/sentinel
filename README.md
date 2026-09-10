@@ -74,11 +74,12 @@ is still moving**, because the patrol runs every ten minutes and files against
 it unattended:
 
 ```
-agents          18 registered, 13 active, 8.535 GEN under watch
-challenges      13 filed, 11 settled
-verdicts        7 VIOLATION, 1 COMPLIANT, 3 INCONCLUSIVE
+agents          18 registered, 10 on active duty, 6.385 GEN under watch
+                (5 bonds exhausted by breaches, 3 retired off Robinhood Chain)
+challenges      30 filed, 30 settled, 0 pending
+verdicts        7 VIOLATION, 11 COMPLIANT, 12 INCONCLUSIVE
 economics       0.644 GEN slashed, 0.322 GEN paid out in bounties
-patrols_run     9
+patrols_run     37
 ```
 
 Every one of those challenges was filed **and** judged by the patrol bot, not by
@@ -140,12 +141,13 @@ afternoon must never read as a clean bill of health.
 
 ## The register is real
 
-**Eighteen agents are registered on Studio Dev today**, spanning all five
-configured chains — 7 on ethereum, 3 each on arbitrum, polygon and Robinhood
-Chain, and 2 on base — across three agent types (10 TRADING, 7 DEFI, 1 CUSTOM),
-with 8.535 GEN still under watch after the slashing below. The roster below is
-what `test/seed_roster.mjs` defines and it has now been seeded against this
-deployment.
+**Ten agents are on active duty on Studio Dev today**, across the four chains
+the patrol can actually read — 6 on ethereum, 2 on polygon, and 1 each on
+arbitrum and base — in three agent types, with 6.385 GEN under watch after the
+slashing below. Eighteen were registered in total: five had their bonds
+exhausted by proven breaches, and the three on Robinhood Chain were **retired
+on purpose**, their bonds withdrawn, because that chain cannot be scanned at all
+(see below). The roster is what `test/seed_roster.mjs` defines.
 
 Fifteen agents, seeded from wallets taken out of the **live transaction lists** of
 Uniswap's UniversalRouter on four chains, Aave v3's Pool, and Robinhood Chain's
@@ -173,8 +175,9 @@ globally, because the same key running on two chains is two different risk
 surfaces: on Arbitrum it may trade, on Ethereum it may only lend, and on Polygon
 it may only hold dollars. `/api/check` returns a different mandate for each.
 
-The register covers **all five chains the contract configures**, Robinhood
-Chain included. Base was the last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
+The active register covers **the four chains the patrol can read**. The
+contract configures a fifth, Robinhood Chain, and its agents were retired rather
+than left standing — the section below says why. Base was the last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
 to every endpoint for an entire day, so the register originally spanned three.
 The outage was transient, the host serves that wallet's history now, and a chain
 advertised in `get_config` but absent from the register is a claim nobody can
@@ -272,7 +275,7 @@ disagreed.
 
 ---
 
-## The fifth chain does not answer a robot
+## The fifth chain does not answer a robot — and is now retired
 
 Robinhood Chain was added on the brief *"same Blockscout API format as existing
 chains"*. The schema is the same. The **access path** is not, and probing it
@@ -290,9 +293,25 @@ slashed, every challenger refunded, and a register that looks like a chain full
 of well-behaved agents. Silent, and indistinguishable from success.
 
 So that one chain is read with `gl.nondet.web.render` — a real browser, which
-clears the check and returns the same JSON. `render` gives back no status code,
-so `_http_render` recovers the status and body out of the exception it raises on
-any non-2xx, and every gate in `_judge` keeps its order on all five chains.
+cleared the check and returned the same JSON. `render` gives back no status
+code, so `_http_render` recovers the status and body out of the exception it
+raises on any non-2xx, and every gate in `_judge` keeps its order on all five
+chains.
+
+**Measured again on 2026-09-10, the bot check now refuses everything.** Every
+registered Robinhood wallet answers `403` on the address-transaction endpoint,
+with and without a browser User-Agent. That is the endpoint the *patrol* reads,
+off chain — so no transaction on that chain can be found, which means none can
+be challenged, which makes the validator-side render path moot in practice. The
+three agents there could only ever have shown as never checked.
+
+So they were retired: `withdraw_bond` on all three, 2.5 GEN returned to their
+operators, records left readable. The chain stays in the contract's table and
+the render machinery stays in the code — none of that work was wrong, and it is
+the reason the chain would have worked if the check had stayed clearable. What
+changed is that the site no longer offers a chain whose agents cannot be
+watched. A register of ten agents that are genuinely patrolled says more than
+thirteen where three are decoration.
 
 Two things this does **not** fix, both measured and both written down:
 

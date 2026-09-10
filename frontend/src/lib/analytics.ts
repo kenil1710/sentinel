@@ -21,7 +21,11 @@
 import type { AgentSummary, Challenge, Chain, Verdict } from "@/types";
 
 /** The contract's chain order. Series colours are keyed to it and never to rank. */
-export const CHAIN_ORDER: readonly Chain[] = ["ethereum", "base", "arbitrum", "polygon", "robinhood"];
+/* Charted chains. Robinhood is omitted for the reason in agents/page.tsx: it
+ * cannot be scanned, so a series for it would be a flat line labelled as
+ * coverage. Its colour stays in CHAIN_SERIES for any historical record that
+ * still names it. */
+export const CHAIN_ORDER: readonly Chain[] = ["ethereum", "base", "arbitrum", "polygon"];
 
 /**
  * Chart colours for the five chains — deliberately NOT the `ChainTag` colours.

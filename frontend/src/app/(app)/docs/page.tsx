@@ -96,7 +96,7 @@ export default function DocsPage() {
 
       <H2>When the explorer will not talk to a robot</H2>
       <P>
-        Four of the five explorers answer a plain HTTP GET.{" "}
+        Four of the five configured explorers answer a plain HTTP GET.{" "}
         <span className="mono text-ink">robinhoodchain.blockscout.com</span> does not: it
         sits behind a bot check that answers an ordinary request with a{" "}
         <span className="mono text-ink">403</span> and a &ldquo;Just a moment&hellip;&rdquo;
@@ -119,11 +119,18 @@ export default function DocsPage() {
         <span className="text-ink">Measured again on 2026-09-10: the bot check now refuses
         everything.</span> Every registered Robinhood wallet answers{" "}
         <span className="mono text-ink">403</span> on the address-transaction endpoint, with
-        and without a browser User-Agent, so the patrol cannot read that chain at all and
-        skips its agents rather than clearing them. The chain stays configured in the
-        contract and its agents stay in the register — nothing about them is fictional —
-        but it is deliberately not advertised as watched, because a watch that cannot read
-        its subject is not a watch. The other four are unaffected.
+        and without a browser User-Agent. That is the endpoint the <em>patrol</em> reads,
+        off chain — so no transaction there can be found, none can be challenged, and the
+        validator-side render path never gets a case to judge.
+      </P>
+      <P>
+        So the three agents on that chain were <span className="text-ink">retired</span>:{" "}
+        <span className="mono text-ink">withdraw_bond</span> on all three, 2.5 GEN returned
+        to their operators, records left readable. The chain stays in the contract&apos;s
+        table and the render machinery stays in the code — neither was wrong, and it is why
+        the chain would work if the check were clearable again. What changed is that the
+        register no longer carries agents nobody can watch. The other four chains are
+        unaffected.
       </P>
 
       <H2>What stops the obvious abuses</H2>

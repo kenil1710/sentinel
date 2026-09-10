@@ -217,7 +217,10 @@ PY
       bad "the register is too thin to demonstrate the views (chains=${NCHAIN}, types=${NKIND})"
     elif [ -n "$MISSING" ]; then
       ok "the register spans ${NCHAIN} chains and ${NKIND} agent types"
-      skip "no agent registered on: ${MISSING} — configured in get_config but not demonstrated on chain"
+      # robinhood is a DELIBERATE gap, not an oversight: its explorer answers 403
+      # to every request, so its three agents were retired with withdraw_bond
+      # rather than left in the register as permanently unscanned rows.
+      skip "no ACTIVE agent on: ${MISSING} — see README, robinhood is retired on purpose"
     else
       ok "the register spans all ${NCFG} configured chains and ${NKIND} agent types"
     fi

@@ -7,7 +7,15 @@ import { Empty, Label, Spinner } from "@/components/ui";
 import { getAgentsByChain, getAgentsByType } from "@/lib/contract";
 import { CHAIN_LABEL } from "@/lib/format";
 
-const CHAINS = ["all", "ethereum", "base", "arbitrum", "polygon", "robinhood"] as const;
+/*
+ * The four chains the patrol can actually read. Robinhood Chain is still
+ * configured in the contract and three retired agents still carry its name in
+ * their records, but robinhoodchain.blockscout.com answers every request from
+ * datacenter egress with a Cloudflare 403, so nothing on it can be scanned.
+ * Offering a filter for a chain that can only ever show unscanned agents
+ * advertises a broken watch.
+ */
+const CHAINS = ["all", "ethereum", "base", "arbitrum", "polygon"] as const;
 const TYPES = ["all", "TRADING", "DEFI", "SHOPPING", "CONTENT", "CUSTOM"] as const;
 const TYPE_LABEL: Record<string, string> = {
   all: "All types", TRADING: "Trading", DEFI: "DeFi",

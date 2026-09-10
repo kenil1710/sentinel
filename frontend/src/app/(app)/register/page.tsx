@@ -9,7 +9,12 @@ import { getConfig, registerAgent } from "@/lib/contract";
 import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, percentFromBps } from "@/lib/format";
 import type { AgentType, WriteResult } from "@/types";
 
-const CHAINS = ["ethereum", "base", "arbitrum", "polygon", "robinhood"] as const;
+/*
+ * Robinhood Chain is deliberately not offered. The contract would accept a
+ * registration on it, and then the patrol could never read the wallet — the
+ * operator would post a bond against a watch that cannot happen.
+ */
+const CHAINS = ["ethereum", "base", "arbitrum", "polygon"] as const;
 
 /**
  * The five types the contract accepts. Anything else it stores as CUSTOM, so

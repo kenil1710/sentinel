@@ -51,14 +51,14 @@
       "verified": "`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py` reports EQUIVALENT: the on-chain code and the local artifact are the same token stream under a bijective renaming of PRIVATE identifiers. They are not byte-identical - the deployed bytes were produced by an earlier run of the same pipeline, before the v0.3.0 migration was rebuilt here - and the public ABI, all 36 methods, is unchanged. The check reports MATCH, EQUIVALENT or DIFFER precisely so this distinction is not papered over.",
       "artifact_bytes_on_chain": 52726,
       "live_state": {
-        "read_at": "2026-09-10T13:36Z",
+        "read_at": "2026-09-10T18:10Z",
         "source": "get_stats, get_agents_by_chain and get_challenges on the deployed contract",
         "agents_registered": 18,
-        "agents_active": 13,
+        "agents_active": 10,
         "total_bonded_text": "11",
-        "challenges_filed": 13,
-        "challenges_settled": 11,
-        "patrols_run": 9,
+        "challenges_filed": 30,
+        "challenges_settled": 30,
+        "patrols_run": 37,
         "watchers": 2,
         "chains_configured": [
           "ethereum",
@@ -67,25 +67,24 @@
           "polygon",
           "robinhood"
         ],
-        "note": "A SNAPSHOT of a register that keeps moving: the Vercel cron fires /api/patrol every ten minutes and the bot files and judges unattended, so these counters climb between reads. All ten challenges were filed AND resolved by the bot. Verdicts span all three outcomes - 7 VIOLATION, 1 COMPLIANT, 2 INCONCLUSIVE - which matters: a judge that only ever returns VIOLATION would prove nothing. The penalty compounds, so a twice-slashed bond runs 0.5 -> 0.4 -> 0.32; five agents are SLASHED_OUT for falling under the 0.5 GEN minimum, hence 13 of 18 active. verify_challenge re-derives the settlement arithmetic for all ten with zero failed checks. Read get_stats or run tools/audit.sh for current numbers.",
-        "bond_under_watch_text": "8.535",
+        "note": "A SNAPSHOT of a register that keeps moving: the patrol runs unattended and these counters climb between reads. Of 18 registered, 10 are on active duty: five had their bonds exhausted by proven breaches, and the three on Robinhood Chain were RETIRED DELIBERATELY on 2026-09-10 with withdraw_bond (2.5 GEN returned to their operators), because robinhoodchain.blockscout.com answers the address-transaction endpoint with a Cloudflare 403 from any egress - so the patrol can never scan them and they could only ever read as 'never checked'. Their records stay readable and the chain stays in the contract's table; the site simply no longer offers a chain whose agents cannot be watched. Verdicts span all three outcomes - 7 VIOLATION, 11 COMPLIANT, 12 INCONCLUSIVE - which matters more than a clean sweep: a judge that only ever returns VIOLATION proves nothing. Read get_stats or run tools/audit.sh for current numbers.",
+        "bond_under_watch_text": "6.385",
         "violations": 7,
         "total_slashed_text": "0.644",
         "bounties_paid_text": "0.322",
         "agents_by_chain": {
-          "ethereum": 7,
-          "base": 2,
-          "arbitrum": 3,
-          "polygon": 3,
-          "robinhood": 3
+          "ethereum": 6,
+          "base": 1,
+          "arbitrum": 1,
+          "polygon": 2
         },
         "agents_by_type": {
-          "TRADING": 10,
-          "DEFI": 7,
+          "TRADING": 3,
+          "DEFI": 6,
           "CUSTOM": 1
         },
-        "compliant": 1,
-        "inconclusive": 3
+        "compliant": 11,
+        "inconclusive": 12
       }
     }
   },
