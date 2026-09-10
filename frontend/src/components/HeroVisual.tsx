@@ -1,15 +1,21 @@
 /**
- * The guardian. A shield whose scan ring sweeps five orbiting chains — the
- * whole product in one figure: one watcher, five chains, agents under watch.
+ * The guardian. A shield whose scan ring sweeps the chains being watched — the
+ * whole product in one figure: one watcher, several chains, agents under watch.
+ *
+ * FOUR, not five. The contract configures five chains and the register holds
+ * agents on all of them, but robinhoodchain.blockscout.com answers every
+ * request from datacenter egress with a Cloudflare interstitial, so the patrol
+ * cannot actually read it. Drawing it here would advertise a watch that is not
+ * happening. It stays a supported chain in the contract and on /docs, where the
+ * limitation is written down next to it.
  *
  * The angles are spaced by hand rather than computed so that no label sits
- * under the shield's point: five at 72° apart, started at -66°.
+ * under the shield's point: four at 90° apart, started at -55°.
  */
 export function HeroVisual() {
   const chains = [
-    { label: "ETH", angle: -66 }, { label: "BASE", angle: 6 },
-    { label: "ARB", angle: 78 }, { label: "POL", angle: 150 },
-    { label: "RH", angle: 222 },
+    { label: "ETH", angle: -55 }, { label: "BASE", angle: 35 },
+    { label: "ARB", angle: 125 }, { label: "POL", angle: 215 },
   ];
   const R = 118;
   return (
@@ -18,8 +24,8 @@ export function HeroVisual() {
       <svg viewBox="0 0 320 320" className="relative size-full">
         <defs>
           <radialGradient id="glow" cx="50%" cy="45%">
-            <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.30" />
-            <stop offset="70%" stopColor="#06B6D4" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--color-signal-bright)" stopOpacity="0.14" />
+            <stop offset="70%" stopColor="var(--color-signal-bright)" stopOpacity="0" />
           </radialGradient>
         </defs>
         <circle cx="160" cy="152" r="120" fill="url(#glow)" />
@@ -29,17 +35,17 @@ export function HeroVisual() {
         {/* the sweep */}
         <g style={{ transformOrigin: "160px 152px", animation: "spin 9s linear infinite" }}>
           <path d={`M160 152 L160 ${152 - R} A ${R} ${R} 0 0 1 ${160 + R * Math.sin(0.9)} ${152 - R * Math.cos(0.9)} Z`}
-            fill="#06B6D4" opacity="0.10" />
-          <line x1="160" y1="152" x2="160" y2={152 - R} stroke="#06B6D4" strokeWidth="1.5" opacity="0.6" />
+            fill="var(--color-signal-bright)" opacity="0.10" />
+          <line x1="160" y1="152" x2="160" y2={152 - R} stroke="var(--color-signal-bright)" strokeWidth="1.5" opacity="0.55" />
         </g>
 
         {/* the shield */}
         <g transform="translate(160,152)">
           <path d="M0 -46 -33 -33 v26.5C-33 13 -19 27.5 0 31.5 19 27.5 33 13 33 -6.5V-33L0 -46Z"
-            fill="var(--color-panel)" stroke="#06B6D4" strokeWidth="2" strokeLinejoin="round" />
-          <path d="M-18 -6h36" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-          <circle cx="0" cy="-6" r="7.5" fill="none" stroke="#06B6D4" strokeWidth="2" />
-          <circle cx="0" cy="-6" r="2.5" fill="#06B6D4" />
+            fill="var(--color-panel)" stroke="var(--color-signal)" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M-18 -6h36" stroke="var(--color-signal)" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+          <circle cx="0" cy="-6" r="7.5" fill="none" stroke="var(--color-signal)" strokeWidth="2" />
+          <circle cx="0" cy="-6" r="2.5" fill="var(--color-signal)" />
         </g>
 
         {chains.map((c) => {
@@ -48,7 +54,7 @@ export function HeroVisual() {
           const y = 152 + R * Math.sin(rad);
           return (
             <g key={c.label}>
-              <circle cx={x} cy={y} r="17" fill="var(--color-panel-2)" stroke="var(--color-line-2)" strokeWidth="1" />
+              <circle cx={x} cy={y} r="17" fill="var(--color-panel)" stroke="var(--color-line-2)" strokeWidth="1" />
               <text x={x} y={y + 3.5} textAnchor="middle" className="mono"
                 fill="var(--color-ink-2)" fontSize="9" fontWeight="600">{c.label}</text>
             </g>

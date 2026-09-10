@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
       </p>
 
       {statsError && (
-        <div className="mt-6 rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation">
+        <div className="mt-6 rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation-ink">
           Could not read the contract: {String((statsError as Error)?.message ?? statsError)}
         </div>
       )}
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
                       {m.name}
                     </Link>
                     <ChainTag chain={m.chain} />
-                    <span className="mono ml-auto shrink-0 text-[12px] text-violation">
+                    <span className="mono ml-auto shrink-0 text-[12px] text-violation-ink">
                       {m.violations}
                       <span className="text-ink-3">/{m.decided} decided</span>
                     </span>
@@ -349,7 +349,7 @@ export default function AnalyticsPage() {
                 <span className="text-ink-3">
                   {w.upheld} upheld of {w.decided} decided
                 </span>
-                <span className="mono ml-auto text-compliant">{formatGen(w.earned, 4)} GEN</span>
+                <span className="mono ml-auto text-compliant-ink">{formatGen(w.earned, 4)} GEN</span>
               </li>
             ))}
           </ul>

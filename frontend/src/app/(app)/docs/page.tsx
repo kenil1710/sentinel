@@ -83,9 +83,9 @@ export default function DocsPage() {
         the consensus axis:
       </P>
       <div className="mono mt-4 rounded-lg border border-line bg-panel p-4 text-[12px] leading-relaxed">
-        <div><span className="text-neutral">404</span> — the explorer answered; this hash is not on this chain → <span className="text-neutral">INCONCLUSIVE</span>, challenger refunded</div>
-        <div className="mt-1.5"><span className="text-violation">5xx / 429 / no connection</span> — the explorer is broken → <span className="text-signal">RETRY</span>, nothing changes, judge again later</div>
-        <div className="mt-1.5"><span className="text-compliant">200</span> — judge it</div>
+        <div><span className="text-neutral-ink">404</span> — the explorer answered; this hash is not on this chain → <span className="text-neutral-ink">INCONCLUSIVE</span>, challenger refunded</div>
+        <div className="mt-1.5"><span className="text-violation-ink">5xx / 429 / no connection</span> — the explorer is broken → <span className="text-signal">RETRY</span>, nothing changes, judge again later</div>
+        <div className="mt-1.5"><span className="text-compliant-ink">200</span> — judge it</div>
       </div>
       <P>
         RETRY is on the same axis as the verdicts precisely because it is not one:
@@ -114,6 +114,16 @@ export default function DocsPage() {
         the bot check is decided per request, so validators can disagree about a
         transaction none of them dispute — a challenge on this chain is likelier to need a
         second attempt, or the 48-hour refund, than one on the other four.
+      </P>
+      <P>
+        <span className="text-ink">Measured again on 2026-09-10: the bot check now refuses
+        everything.</span> Every registered Robinhood wallet answers{" "}
+        <span className="mono text-ink">403</span> on the address-transaction endpoint, with
+        and without a browser User-Agent, so the patrol cannot read that chain at all and
+        skips its agents rather than clearing them. The chain stays configured in the
+        contract and its agents stay in the register — nothing about them is fictional —
+        but it is deliberately not advertised as watched, because a watch that cannot read
+        its subject is not a watch. The other four are unaffected.
       </P>
 
       <H2>What stops the obvious abuses</H2>
@@ -255,7 +265,7 @@ export default function DocsPage() {
       </P>
 
       <div className="mt-12 flex flex-wrap gap-3 border-t border-line pt-6">
-        <Link href="/register" className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-ground">
+        <Link href="/register" className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white">
           Register an agent
         </Link>
         <Link href="/patrol" className="rounded-lg border border-line bg-panel px-4 py-2.5 text-sm text-ink">

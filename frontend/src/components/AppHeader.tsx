@@ -22,7 +22,7 @@ export function AppHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ground/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-line bg-ground/92 backdrop-blur-md">
       <div className="relative h-px overflow-hidden scanline" />
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5">
         <Link href="/" className="flex items-center gap-2.5 text-signal shrink-0">
@@ -50,13 +50,13 @@ export function AppHeader() {
           </span>
 
           <Link href="/register"
-            className="hidden rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-ground transition-opacity hover:opacity-90 sm:block">
+            className="hidden rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:block">
             Register an agent
           </Link>
 
           {onWrongNetwork ? (
             <button onClick={switchNetwork}
-              className="rounded-md border border-neutral/40 bg-neutral/10 px-3 py-1.5 text-sm text-neutral">
+              className="rounded-md border border-neutral/40 bg-neutral/10 px-3 py-1.5 text-sm text-neutral-ink">
               Switch to {NETWORK_LABEL}
             </button>
           ) : account ? (
@@ -95,7 +95,7 @@ export function AppHeader() {
       )}
 
       {error && (
-        <div className="border-t border-violation/25 bg-violation/10 px-5 py-2 text-center text-xs text-violation">
+        <div className="border-t border-violation/25 bg-violation/10 px-5 py-2 text-center text-xs text-violation-ink">
           {error}
         </div>
       )}

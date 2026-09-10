@@ -74,7 +74,7 @@ export default function AgentsPage() {
         {CHAINS.map((c) => (
           <button key={c} onClick={() => setChain(c)}
             className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-              chain === c ? "bg-signal text-ground font-medium" : "border border-line bg-panel text-ink-2 hover:text-ink"}`}>
+              chain === c ? "bg-signal text-white font-medium" : "border border-line bg-panel text-ink-2 hover:text-ink"}`}>
             {c === "all" ? "All chains" : CHAIN_LABEL[c]}
           </button>
         ))}
@@ -94,7 +94,7 @@ export default function AgentsPage() {
       <div className="mt-6">
         {isLoading && <Spinner label="Reading the register…" />}
         {error && (
-          <div className="rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation">
+          <div className="rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation-ink">
             Could not read the register: {String(error.message ?? error)}
           </div>
         )}

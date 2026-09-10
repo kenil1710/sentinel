@@ -54,7 +54,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
           </span>
         )}
         {ch.injection_flagged && (
-          <span className="rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral ring-1 ring-neutral/25">
+          <span className="rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral-ink ring-1 ring-neutral/25">
             prompt-injection markers seen in the evidence
           </span>
         )}
@@ -104,11 +104,11 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
             <div className="mt-4 flex flex-wrap gap-2.5">
               {account ? (
                 <button onClick={judge} disabled={busy}
-                  className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-ground disabled:opacity-50">
+                  className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
                   {busy ? "Validators are judging…" : "Put it to the validators"}
                 </button>
               ) : (
-                <button onClick={connect} className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-ground">
+                <button onClick={connect} className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white">
                   Connect wallet to judge
                 </button>
               )}
@@ -131,7 +131,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
             <p className="text-[15px] leading-relaxed text-ink break-words">{ch.reasoning}</p>
             <div className="mono mt-4 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-line pt-3.5 text-[11px] text-ink-3">
               <span>evidence digest {ch.evidence_digest || "—"}</span>
-              {verify && <span className={verify.coherent ? "text-compliant" : "text-violation"}>
+              {verify && <span className={verify.coherent ? "text-compliant-ink" : "text-violation-ink"}>
                 {verify.coherent ? "reasoning coherent with the verdict" : "reasoning contradicts the verdict"}
               </span>}
             </div>
@@ -139,12 +139,12 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
         )}
 
         {op?.kind === "failed" && (
-          <div className="mt-3 rounded-lg border border-neutral/30 bg-neutral/10 p-3 text-[13px] text-neutral">
+          <div className="mt-3 rounded-lg border border-neutral/30 bg-neutral/10 p-3 text-[13px] text-neutral-ink">
             {op.error}
           </div>
         )}
         {op?.kind === "ok" && (
-          <div className="mt-3 rounded-lg border border-compliant/30 bg-compliant/10 p-3 text-[13px] text-compliant">
+          <div className="mt-3 rounded-lg border border-compliant/30 bg-compliant/10 p-3 text-[13px] text-compliant-ink">
             Settled.
           </div>
         )}
@@ -170,10 +170,10 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
           {verify && (
             <div className="mt-5 border-t border-line pt-4">
               <div className="flex flex-wrap items-center gap-3">
-                <span className={`mono text-[12px] ${verify.all_ok ? "text-compliant" : "text-violation"}`}>
+                <span className={`mono text-[12px] ${verify.all_ok ? "text-compliant-ink" : "text-violation-ink"}`}>
                   {verify.all_ok ? "✓ recomputed from stored evidence — every figure matches" : "✗ recomputation disagrees"}
                 </span>
-                <span className={`mono text-[12px] ${verify.conservation.balanced ? "text-compliant" : "text-violation"}`}>
+                <span className={`mono text-[12px] ${verify.conservation.balanced ? "text-compliant-ink" : "text-violation-ink"}`}>
                   {verify.conservation.balanced ? "✓ value conserved" : "✗ value not conserved"}
                 </span>
               </div>
@@ -181,10 +181,10 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
                 <div className="mono mt-3 space-y-1 text-[11px]">
                   {verify.checks.map((c) => (
                     <div key={c.field} className="flex gap-3">
-                      <span className={c.ok ? "text-compliant" : "text-violation"}>{c.ok ? "✓" : "✗"}</span>
+                      <span className={c.ok ? "text-compliant-ink" : "text-violation-ink"}>{c.ok ? "✓" : "✗"}</span>
                       <span className="text-ink-3">{c.field}</span>
                       <span className="text-ink-2">{formatGen(c.actual, 6)}</span>
-                      {!c.ok && <span className="text-violation">expected {formatGen(c.expected, 6)}</span>}
+                      {!c.ok && <span className="text-violation-ink">expected {formatGen(c.expected, 6)}</span>}
                     </div>
                   ))}
                 </div>
@@ -198,7 +198,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
 }
 
 function Money({ label, value, tone }: { label: string; value: string; tone?: "violation" | "compliant" }) {
-  const colour = tone === "violation" ? "text-violation" : tone === "compliant" ? "text-compliant" : "text-ink";
+  const colour = tone === "violation" ? "text-violation-ink" : tone === "compliant" ? "text-compliant-ink" : "text-ink";
   return (
     <div className="rounded-lg border border-line bg-panel-2 px-3.5 py-3">
       <div className="text-[10px] uppercase tracking-wide text-ink-3">{label}</div>

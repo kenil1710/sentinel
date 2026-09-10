@@ -48,10 +48,10 @@ export default function LeaderboardPage() {
                   {w.upheld}<span className="text-ink-3">/{w.decided}</span>
                 </span>
                 <span className={`mono text-right text-[13px] ${
-                  w.decided === 0 ? "text-ink-3" : w.accuracy_bps >= 5000 ? "text-compliant" : "text-violation"}`}>
+                  w.decided === 0 ? "text-ink-3" : w.accuracy_bps >= 5000 ? "text-compliant-ink" : "text-violation-ink"}`}>
                   {w.decided === 0 ? "—" : `${percentFromBps(w.accuracy_bps)}%`}
                 </span>
-                <span className="mono text-right text-[13px] text-compliant">
+                <span className="mono text-right text-[13px] text-compliant-ink">
                   {formatGen(w.earned, 4)}
                 </span>
               </div>

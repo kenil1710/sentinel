@@ -75,7 +75,7 @@ export function FigureFallback({
 }) {
   const colour = {
     ink: "text-ink", signal: "text-signal",
-    violation: "text-violation", compliant: "text-compliant",
+    violation: "text-violation-ink", compliant: "text-compliant-ink",
   };
   // Four figures read as a square; anything else fills three across.
   const cols = figures.length === 4 ? "sm:grid-cols-2" : "sm:grid-cols-3";
@@ -97,7 +97,7 @@ export function FigureFallback({
 
 function TipShell({ heading, rows }: { heading: string; rows: { label: string; value: string; colour?: string }[] }) {
   return (
-    <div className="rounded-lg border border-line-2 bg-panel px-3 py-2.5 shadow-lg shadow-black/40">
+    <div className="rounded-lg border border-line-2 bg-panel px-3 py-2.5 shadow-[var(--shadow-card-lifted)]">
       <div className="mono text-[11px] text-ink-3">{heading}</div>
       {rows.map((r) => (
         <div key={r.label} className="mt-1.5 flex items-center gap-2 text-[12px]">

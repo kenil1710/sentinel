@@ -132,7 +132,7 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
               )}
               {history?.challenges.map((c) => (
                 <Link key={c.challenge_id} href={`/challenge/${c.challenge_id}`}
-                  className="block rounded-lg border border-line bg-panel/70 p-4 transition-colors hover:border-signal/40">
+                  className="block rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] p-4 transition-colors hover:border-signal/40">
                   <div className="flex flex-wrap items-center gap-2">
                     <VerdictBadge verdict={c.status === "PENDING" ? "PENDING" : c.verdict} size="sm" />
                     <span className="mono text-[11px] text-ink-3">{shortAddress(c.tx_hash, 8)}</span>
@@ -140,7 +140,7 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
                   </div>
                   <p className="mt-2.5 line-clamp-2 text-[13px] text-ink-2">{c.reason}</p>
                   {c.verdict === "VIOLATION" && (
-                    <div className="mono mt-2 text-[11px] text-violation">
+                    <div className="mono mt-2 text-[11px] text-violation-ink">
                       −{formatGen(c.settlement.penalty, 4)} GEN slashed
                     </div>
                   )}
@@ -180,13 +180,13 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
                   {busy === "withdraw" ? "Withdrawing…" : "Withdraw bond and retire"}
                 </button>
                 {op?.kind === "rejected" && (
-                  <div className="rounded-md border border-neutral/25 bg-neutral/10 p-2.5 text-[12px] text-neutral">{op.reason}</div>
+                  <div className="rounded-md border border-neutral/25 bg-neutral/10 p-2.5 text-[12px] text-neutral-ink">{op.reason}</div>
                 )}
                 {op?.kind === "failed" && (
-                  <div className="rounded-md border border-violation/25 bg-violation/10 p-2.5 text-[12px] text-violation">{op.error}</div>
+                  <div className="rounded-md border border-violation/25 bg-violation/10 p-2.5 text-[12px] text-violation-ink">{op.error}</div>
                 )}
                 {op?.kind === "ok" && (
-                  <div className="rounded-md border border-compliant/25 bg-compliant/10 p-2.5 text-[12px] text-compliant">Done.</div>
+                  <div className="rounded-md border border-compliant/25 bg-compliant/10 p-2.5 text-[12px] text-compliant-ink">Done.</div>
                 )}
               </div>
             )}
@@ -203,7 +203,7 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
 }
 
 function Row({ k, v, tone }: { k: string; v: string; tone?: "violation" | "compliant" }) {
-  const colour = tone === "violation" ? "text-violation" : tone === "compliant" ? "text-compliant" : "text-ink-2";
+  const colour = tone === "violation" ? "text-violation-ink" : tone === "compliant" ? "text-compliant-ink" : "text-ink-2";
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-ink-3">{k}</span>

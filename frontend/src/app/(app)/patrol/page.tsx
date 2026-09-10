@@ -71,14 +71,16 @@ export default function PatrolPage() {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button onClick={runPatrol} disabled={running}
-          className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-50">
+          className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">
           {running ? `Patrolling… ${elapsed}s` : "Run patrol"}
         </button>
         <span className="max-w-md text-[12px] text-ink-3">
-          A Vercel cron fires this route <span className="text-ink-2">every 10 minutes</span> and
-          delivery is confirmed: an unattended slot was observed filing three challenges and
-          settling one, moving <span className="text-ink-2">patrols_run</span> on chain with
-          nobody watching. From this button it is a{" "}
+          This route runs unattended and delivery is confirmed — a slot was observed filing
+          three challenges and settling one, moving{" "}
+          <span className="text-ink-2">patrols_run</span> on chain with nobody watching.
+          The Vercel cron is set to <span className="text-ink-2">daily</span>, which is the
+          most a Hobby plan allows; the ten-minute cadence comes from an external
+          scheduler. From this button it is a{" "}
           <span className="text-ink-2">dry run</span>: a public URL must not be able to spend the
           bot&apos;s stake. Takes about two minutes.
         </span>
@@ -99,7 +101,7 @@ export default function PatrolPage() {
       )}
 
       {err && (
-        <div className="mt-5 rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation">
+        <div className="mt-5 rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation-ink">
           {err}
         </div>
       )}
@@ -109,7 +111,7 @@ export default function PatrolPage() {
           <div className="flex flex-wrap items-center gap-3">
             <Label>Last run</Label>
             {report.dry_run && (
-              <span className="rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral ring-1 ring-neutral/25">
+              <span className="rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral-ink ring-1 ring-neutral/25">
                 dry run — nothing filed
               </span>
             )}
@@ -119,7 +121,7 @@ export default function PatrolPage() {
           <div className="mono mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-ink-2">
             <span>{report.patrolled} agents examined</span>
             <span>{report.transactions_scanned} transactions read</span>
-            <span className={report.challenges_filed > 0 ? "text-violation" : ""}>
+            <span className={report.challenges_filed > 0 ? "text-violation-ink" : ""}>
               {report.challenges_filed} challenges filed
             </span>
           </div>
@@ -140,13 +142,13 @@ export default function PatrolPage() {
                     </span>
                   )}
                   {row.error ? (
-                    <span className="ml-auto rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral ring-1 ring-neutral/25">
+                    <span className="ml-auto rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral-ink ring-1 ring-neutral/25">
                       {row.error}
                     </span>
                   ) : row.flagged.length === 0 ? (
-                    <span className="ml-auto text-[11px] text-compliant">nothing flagged</span>
+                    <span className="ml-auto text-[11px] text-compliant-ink">nothing flagged</span>
                   ) : (
-                    <span className="ml-auto text-[11px] text-violation">
+                    <span className="ml-auto text-[11px] text-violation-ink">
                       {row.flagged.length} flagged
                     </span>
                   )}
@@ -154,7 +156,7 @@ export default function PatrolPage() {
 
                 {row.flagged.map((f) => (
                   <div key={f.tx_hash} className="mt-2.5 rounded-md border border-violation/20 bg-violation/5 p-3">
-                    <div className="mono text-[11px] text-violation">{shortAddress(f.tx_hash, 8)}</div>
+                    <div className="mono text-[11px] text-violation-ink">{shortAddress(f.tx_hash, 8)}</div>
                     <div className="mt-1 text-[12px] leading-relaxed text-ink-2">{f.reason}</div>
                     <div className="mt-1.5 text-[10px] text-ink-3">
                       {f.filed ? "challenge filed on chain" : f.error ?? "would be challenged on a live run"}
@@ -181,7 +183,7 @@ export default function PatrolPage() {
             {queue?.queue.length === 0 && <Empty title="Nothing to patrol yet" />}
             {queue?.queue.map((a) => (
               <Link key={a.agent_id} href={`/agent/${a.agent_id}`}
-                className="flex items-center gap-3 rounded-lg border border-line bg-panel/60 px-3.5 py-2.5 hover:border-signal/40">
+                className="flex items-center gap-3 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
                 <span className="mono text-[12px] text-ink-2">{shortAddress(a.wallet, 5)}</span>
                 <ChainTag chain={a.chain} />
                 <span className="ml-auto text-[11px] text-ink-3">
@@ -201,7 +203,7 @@ export default function PatrolPage() {
             )}
             {pending?.challenges.map((c) => (
               <Link key={c.challenge_id} href={`/challenge/${c.challenge_id}`}
-                className="flex items-center gap-3 rounded-lg border border-line bg-panel/60 px-3.5 py-2.5 hover:border-signal/40">
+                className="flex items-center gap-3 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
                 <VerdictBadge verdict="PENDING" size="sm" />
                 <span className="mono text-[11px] text-ink-3">{shortAddress(c.tx_hash, 5)}</span>
                 <span className="ml-auto text-[11px] text-ink-3">{relativeTime(c.filed_at)}</span>
@@ -220,7 +222,7 @@ export default function PatrolPage() {
                 <span>{new Date(h.finished_at).toLocaleTimeString()}</span>
                 <span>{h.patrolled} agents</span>
                 <span>{h.transactions_scanned} tx</span>
-                <span className={h.rows.some((r) => r.flagged.length) ? "text-violation" : "text-compliant"}>
+                <span className={h.rows.some((r) => r.flagged.length) ? "text-violation-ink" : "text-compliant-ink"}>
                   {h.rows.reduce((n, r) => n + r.flagged.length, 0)} flagged
                 </span>
               </div>

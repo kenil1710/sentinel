@@ -34,8 +34,8 @@ export function AgentTransactions({ agent, onPick }: { agent: Agent; onPick: (tx
         {error && (
           <div className={`rounded-lg border p-4 text-[13px] ${
             (error as { transient?: boolean }).transient
-              ? "border-neutral/30 bg-neutral/10 text-neutral"
-              : "border-violation/30 bg-violation/10 text-violation"}`}>
+              ? "border-neutral/30 bg-neutral/10 text-neutral-ink"
+              : "border-violation/30 bg-violation/10 text-violation-ink"}`}>
             {(error as { transient?: boolean }).transient ? (
               <>
                 <div className="font-medium">The explorer is not answering right now.</div>
@@ -58,7 +58,7 @@ export function AgentTransactions({ agent, onPick }: { agent: Agent; onPick: (tx
             const suspicious = tx.toIsScam || (tx.toIsContract && !tx.toIsVerified);
             return (
               <div key={tx.hash}
-                className="group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-line bg-panel/60 px-3.5 py-2.5">
+                className="group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5">
                 <a href={blockscoutUrl(agent.chain, "tx", tx.hash)} target="_blank" rel="noreferrer"
                   className="mono text-[12px] text-ink-2 hover:text-signal">
                   {shortAddress(tx.hash, 6)}
@@ -73,13 +73,13 @@ export function AgentTransactions({ agent, onPick }: { agent: Agent; onPick: (tx
                   <span className="mono text-[11px] text-ink-3">{formatGen(tx.value, 4)}</span>
                 )}
                 {suspicious && (
-                  <span className="rounded bg-violation/10 px-1.5 py-0.5 text-[10px] text-violation ring-1 ring-violation/25">
+                  <span className="rounded bg-violation/10 px-1.5 py-0.5 text-[10px] text-violation-ink ring-1 ring-violation/25">
                     {tx.toIsScam ? "flagged scam" : "unverified"}
                   </span>
                 )}
                 <span className="ml-auto text-[11px] text-ink-3">{relativeTime(tx.epoch)}</span>
                 <button onClick={() => onPick(tx.hash)}
-                  className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-3 opacity-0 transition-opacity hover:border-violation/40 hover:text-violation group-hover:opacity-100">
+                  className="rounded-md border border-line px-2 py-1 text-[11px] text-ink-3 opacity-0 transition-opacity hover:border-violation/40 hover:text-violation-ink group-hover:opacity-100">
                   Challenge
                 </button>
               </div>

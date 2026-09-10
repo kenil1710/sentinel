@@ -471,11 +471,14 @@ patrol also judges what it files: it resolves any PENDING challenge before it
 looks for new ones, and puts each newly filed challenge to the validators in the
 same run.
 
-`patrols_run` climbs on its own. **The Vercel cron is now confirmed to
-deliver** — an earlier version of this file said it never had, and that is no
+`patrols_run` climbs on its own. **Unattended delivery is confirmed** — an
+earlier version of this file said it had never been observed, and that is no
 longer true. Measured directly: with nothing triggering it, `patrols_run` went
 8 → 9, `challenges_filed` 10 → 13 and `challenges_settled` 10 → 11 between
-13:33:52Z and 13:34:54Z on 2026-09-10. A representative run scans 40
+13:33:52Z and 13:34:54Z on 2026-09-10. The cadence comes from an **external
+scheduler**, not from Vercel: this account is on the Hobby plan, which refuses
+to deploy any cron finer than daily, so `vercel.json` carries `0 12 * * *` as a
+backstop and nothing more. A representative run scans 40
 transactions across 5 agents, files a challenge, drives it to a verdict and
 stamps every agent it read, in about 190s. See [`frontend/CRON.md`](frontend/CRON.md).
 

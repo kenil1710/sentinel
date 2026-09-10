@@ -3,9 +3,9 @@
 import Link from "next/link";
 import useSWR from "swr";
 import { HeroVisual } from "@/components/HeroVisual";
-import { Panel, Stat, Label } from "@/components/ui";
-import { getStats, getConfig } from "@/lib/contract";
-import { formatGen, percentFromBps } from "@/lib/format";
+import { Panel, Label } from "@/components/ui";
+import { getStats } from "@/lib/contract";
+import { formatGen } from "@/lib/format";
 
 const STEPS = [
   {
@@ -26,18 +26,40 @@ const STEPS = [
   },
 ];
 
+const WHY = [
+  {
+    title: "Autonomous",
+    body: "Nobody files the challenges. A scheduled bot walks the register, reads real transactions off public explorers, and stakes its own money on every accusation it makes. It is wrong sometimes, and it pays for that too.",
+  },
+  {
+    title: "Trustless",
+    body: "There is no admin key that decides a case, no multisig that can reverse one, and no privileged reviewer. Five validators fetch the evidence independently and agree on a verdict, or the challenge stays open.",
+  },
+  {
+    title: "Accountable",
+    body: "Every verdict carries the reasoning that produced it and a digest of the evidence it was read from. The settlement arithmetic can be recomputed from what was stored, by anyone, without trusting our summary of it.",
+  },
+];
+
 export default function Home() {
-  const { data: stats } = useSWR("stats", getStats, { refreshInterval: 20_000 });
-  const { data: cfg } = useSWR("config", getConfig);
+  /*
+   * The ONLY live figure on this page, and it is here because the alternative
+   * is worse: a hardcoded "7 violations" would be a marketing claim that
+   * quietly goes stale, on a page whose whole argument is that the numbers are
+   * checkable. Two counters, rendered as a sentence rather than a stat grid —
+   * the grid belongs on /patrol and /analytics, where someone has come to read
+   * instruments.
+   */
+  const { data: stats } = useSWR("landing-proof", getStats, { refreshInterval: 60_000 });
 
   return (
     <>
       <section className="mx-auto max-w-6xl px-5 pt-14 pb-16 sm:pt-20">
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="rise">
-            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-[11px] text-ink-2">
-              <span className="size-1.5 rounded-full bg-signal live-dot" />
-              Live on GenLayer · five chains watched
+            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-[11px] text-ink-2 shadow-[var(--shadow-card)]">
+              <span className="size-1.5 rounded-full bg-signal-bright live-dot" />
+              Live on GenLayer
             </div>
 
             <h1 className="mt-6 text-[2.6rem] font-semibold leading-[1.06] tracking-tight sm:text-6xl">
@@ -46,33 +68,26 @@ export default function Home() {
               <span className="text-signal">AI agents?</span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-ink-2">
-              Autonomous agents are trading real money against rules nobody enforces.
-              Sentinel is an autonomous agent that polices other autonomous agents:
-              operators publish a mandate and post a bond, Sentinel patrols public
-              chains for breaches, and{" "}
-              <span className="text-ink">GenLayer validators judge every case</span> —
-              reading the mandate as prose against the transaction record.
+            <p className="mt-6 max-w-xl text-[16px] leading-relaxed text-ink-2">
+              Autonomous agents are moving real money against rules nobody enforces.
+              Sentinel makes those rules cost something: an operator publishes what
+              their agent may do and posts a bond behind it, and a bot patrols public
+              chains looking for transactions that contradict it. When it finds one,{" "}
+              <span className="font-medium text-ink">GenLayer validators judge the case</span>{" "}
+              — reading the mandate as prose against the transaction record — and the
+              bond pays for the breach.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/register"
-                className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-ground transition-opacity hover:opacity-90">
+                className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90">
                 Register an agent
               </Link>
-              <Link href="/patrol"
-                className="rounded-lg border border-line bg-panel px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:border-line-2">
-                Start patrolling
+              <Link href="/agents"
+                className="rounded-lg border border-line bg-panel px-5 py-2.5 text-sm font-medium text-ink shadow-[var(--shadow-card)] transition-colors hover:border-line-2">
+                See the evidence
               </Link>
             </div>
-
-            {cfg && (
-              <div className="mono mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs text-ink-3">
-                <span>bond ≥ {cfg.min_bond_text} GEN</span>
-                <span>challenge stake {cfg.challenge_stake_text} GEN</span>
-                <span>penalty {percentFromBps(cfg.penalty_bps)}% of bond</span>
-              </div>
-            )}
           </div>
 
           <div className="rise" style={{ animationDelay: "120ms" }}>
@@ -81,17 +96,29 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 pb-16">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Agents under watch" value={stats?.agents_active ?? "—"}
-            sub={stats ? `${stats.agents_registered} registered in total` : undefined} tone="signal" />
-          <Stat label="Bond at risk" value={stats ? `${formatGen(stats.bond_under_watch, 2)}` : "—"}
-            sub="GEN answering for conduct" />
-          <Stat label="Challenges judged" value={stats?.challenges_settled ?? "—"}
-            sub={stats ? `${stats.challenges_filed} filed` : undefined} />
-          <Stat label="Breaches proven" value={stats?.violations ?? "—"}
-            sub={stats ? `${formatGen(stats.bounties_paid, 3)} GEN in bounties` : undefined}
-            tone={stats && stats.violations > 0 ? "violation" : "ink"} />
+      {/* Social proof — one banner, one sentence, not a wall of instruments. */}
+      <section className="mx-auto max-w-6xl px-5 pb-20">
+        <div className="overflow-hidden rounded-2xl border border-line bg-panel shadow-[var(--shadow-card-lifted)]">
+          <div className="flex flex-col gap-5 p-7 sm:flex-row sm:items-center sm:p-9">
+            <div className="min-w-0">
+              <Label>Already happening</Label>
+              <p className="mt-2.5 text-[19px] leading-snug tracking-tight sm:text-[22px]">
+                <span className="mono font-semibold text-violation-ink">
+                  {stats ? stats.violations : "—"}
+                </span>{" "}
+                <span className="font-medium">breaches proven on chain</span>, and{" "}
+                <span className="mono font-semibold text-ink">
+                  {stats ? formatGen(stats.total_slashed, 3) : "—"} GEN
+                </span>{" "}
+                <span className="font-medium">slashed from the agents that committed them</span>
+                <span className="text-ink-2"> — every case filed by the bot, and judged by validators nobody on this team controls.</span>
+              </p>
+            </div>
+            <Link href="/leaderboard"
+              className="shrink-0 rounded-lg border border-line bg-ground px-4 py-2.5 text-center text-sm font-medium text-ink transition-colors hover:border-signal/40 sm:ml-auto">
+              See who caught them →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -102,8 +129,8 @@ export default function Home() {
         </h2>
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
-            <Panel key={s.n} className="p-5 rise" >
-              <div className="mono text-xs text-signal">{s.n}</div>
+            <Panel key={s.n} className="p-5 rise">
+              <div className="mono text-xs font-semibold text-signal">{s.n}</div>
               <div className="mt-2.5 text-[15px] font-medium">{s.title}</div>
               <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{s.body}</p>
               {i < STEPS.length - 1 && (
@@ -114,7 +141,22 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 pb-24">
+      <section className="mx-auto max-w-6xl px-5 pb-20">
+        <Label>Why Sentinel</Label>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+          Three properties, and none of them require trusting us
+        </h2>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {WHY.map((w) => (
+            <Panel key={w.title} className="p-6">
+              <div className="text-[17px] font-semibold tracking-tight">{w.title}</div>
+              <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-2">{w.body}</p>
+            </Panel>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-5 pb-20">
         <Panel className="overflow-hidden">
           <div className="grid gap-8 p-7 md:grid-cols-2 md:p-9">
             <div>
@@ -129,29 +171,52 @@ export default function Home() {
                 unsettleable, for reasons that have nothing to do with the mandate.
               </p>
               <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
-                So Sentinel compares <span className="text-ink">one string</span>: the
+                So Sentinel compares <span className="font-medium text-ink">one string</span>: the
                 verdict. Validators fetch, project the record to the fields a mandate
                 can turn on, judge, and vote on the judgement alone. The evidence
                 digest is recorded for auditing and is never voted on.
               </p>
-              <Link href="/docs" className="mt-5 inline-block text-sm text-signal hover:underline">
+              <Link href="/docs" className="mt-5 inline-block text-sm font-medium text-signal hover:underline">
                 Read the measurements →
               </Link>
             </div>
-            <div className="mono rounded-lg border border-line bg-ground/60 p-5 text-[12px] leading-relaxed">
+            <div className="mono overflow-x-auto rounded-lg border border-line bg-panel-2 p-5 text-[12px] leading-relaxed">
               <div className="text-ink-3"># the same transaction, fetched twice</div>
-              <div className="mt-2 text-violation">- confirmations: 1 → 3</div>
-              <div className="text-violation">- exchange_rate: 2410.49 → 2412.93</div>
-              <div className="text-violation">- token.total_supply: …716 → …608</div>
+              <div className="mt-2 text-violation-ink">- confirmations: 1 → 3</div>
+              <div className="text-violation-ink">- exchange_rate: 2410.49 → 2412.93</div>
+              <div className="text-violation-ink">- token.total_supply: …716 → …608</div>
               <div className="mt-3 text-ink-3"># after projection</div>
-              <div className="mt-2 text-compliant">+ digest ac21b94efc744e7a</div>
-              <div className="text-compliant">+ digest ac21b94efc744e7a</div>
+              <div className="mt-2 text-compliant-ink">+ digest ac21b94efc744e7a</div>
+              <div className="text-compliant-ink">+ digest ac21b94efc744e7a</div>
               <div className="mt-3 text-ink-3">
                 # 1,596 bytes from 18,087 — and identical
               </div>
             </div>
           </div>
         </Panel>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-5 pb-28">
+        <div className="rounded-2xl border border-line bg-panel px-7 py-12 text-center shadow-[var(--shadow-card-lifted)] sm:px-10">
+          <h2 className="text-[26px] font-semibold tracking-tight sm:text-3xl">
+            Put a bond behind what your agent promises
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-[14.5px] leading-relaxed text-ink-2">
+            Publishing a mandate takes one transaction. After that the register is
+            public, the patrol is automatic, and anyone who thinks your agent broke
+            its word can say so on chain and stake money on being right.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link href="/register"
+              className="rounded-lg bg-signal px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90">
+              Register an agent
+            </Link>
+            <Link href="/agents"
+              className="rounded-lg border border-line bg-ground px-6 py-3 text-sm font-medium text-ink transition-colors hover:border-signal/40">
+              See the evidence
+            </Link>
+          </div>
+        </div>
       </section>
     </>
   );

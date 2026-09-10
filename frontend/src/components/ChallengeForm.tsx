@@ -91,7 +91,7 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
 
       <div className="mt-2.5 flex items-baseline justify-between">
         <span className="text-[11px] text-ink-3">Why it looks wrong</span>
-        <span className={`mono text-[11px] ${reason.length > maxReason ? "text-violation" : "text-ink-3"}`}>
+        <span className={`mono text-[11px] ${reason.length > maxReason ? "text-violation-ink" : "text-ink-3"}`}>
           {reason.length}/{maxReason}
         </span>
       </div>
@@ -108,7 +108,7 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
       )}
 
       {problems.length > 0 && (
-        <ul className="mt-3.5 space-y-1 rounded-lg border border-neutral/25 bg-neutral/5 p-3 text-[12px] text-neutral">
+        <ul className="mt-3.5 space-y-1 rounded-lg border border-neutral/25 bg-neutral/5 p-3 text-[12px] text-neutral-ink">
           {problems.map((p) => <li key={p}>• {p}</li>)}
         </ul>
       )}
@@ -122,12 +122,12 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
 
       <div className="mt-4">
         {!account ? (
-          <button onClick={connect} className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-ground">
+          <button onClick={connect} className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white">
             Connect wallet to challenge
           </button>
         ) : onWrongNetwork ? (
           <button onClick={switchNetwork}
-            className="w-full rounded-lg border border-neutral/40 bg-neutral/10 px-4 py-2.5 text-sm font-medium text-neutral">
+            className="w-full rounded-lg border border-neutral/40 bg-neutral/10 px-4 py-2.5 text-sm font-medium text-neutral-ink">
             Switch network
           </button>
         ) : (
@@ -148,18 +148,18 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
       )}
 
       {result?.kind === "ok" && (
-        <div className="mt-3 rounded-lg border border-compliant/30 bg-compliant/10 p-3 text-[13px] text-compliant">
+        <div className="mt-3 rounded-lg border border-compliant/30 bg-compliant/10 p-3 text-[13px] text-compliant-ink">
           Filed. Opening the challenge…
         </div>
       )}
       {result?.kind === "rejected" && (
-        <div className="mt-3 rounded-lg border border-neutral/30 bg-neutral/10 p-3 text-[13px] text-neutral">
+        <div className="mt-3 rounded-lg border border-neutral/30 bg-neutral/10 p-3 text-[13px] text-neutral-ink">
           <div className="font-medium">Turned down — your stake came back.</div>
           <div className="mt-1">{result.reason}</div>
         </div>
       )}
       {result?.kind === "failed" && (
-        <div className="mt-3 rounded-lg border border-violation/30 bg-violation/10 p-3 text-[13px] text-violation">
+        <div className="mt-3 rounded-lg border border-violation/30 bg-violation/10 p-3 text-[13px] text-violation-ink">
           {result.error}
         </div>
       )}
@@ -170,7 +170,7 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
 function Outcome({ label, value, tone, note }: {
   label: string; value: string; tone: "compliant" | "violation" | "neutral"; note: string;
 }) {
-  const colour = { compliant: "text-compliant", violation: "text-violation", neutral: "text-neutral" }[tone];
+  const colour = { compliant: "text-compliant-ink", violation: "text-violation-ink", neutral: "text-neutral-ink" }[tone];
   return (
     <div className="rounded-lg border border-line bg-panel-2 px-2 py-2.5">
       <div className="text-[10px] uppercase tracking-wide text-ink-3">{label}</div>

@@ -6,7 +6,7 @@ import type { AgentSummary } from "@/types";
 export function AgentCard({ agent }: { agent: AgentSummary }) {
   return (
     <Link href={`/agent/${agent.agent_id}`}
-      className="group block rounded-xl border border-line bg-panel/70 p-5 transition-colors hover:border-signal/40">
+      className="group block rounded-xl border border-line bg-panel shadow-[var(--shadow-card)] p-5 transition-colors hover:border-signal/40">
       <div className="flex items-start gap-4">
         <ScoreRing bps={agent.compliance_bps} decided={agent.decided_count} />
         <div className="min-w-0 flex-1">
@@ -44,10 +44,10 @@ export function AgentCard({ agent }: { agent: AgentSummary }) {
       <div className="mono mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-line pt-3.5 text-[11px] text-ink-3">
         <span className="text-ink-2">{formatGen(agent.bond, 3)} GEN bonded</span>
         {agent.violation_count > 0 && (
-          <span className="text-violation">{agent.violation_count} breach{agent.violation_count === 1 ? "" : "es"}</span>
+          <span className="text-violation-ink">{agent.violation_count} breach{agent.violation_count === 1 ? "" : "es"}</span>
         )}
         {agent.compliant_count > 0 && (
-          <span className="text-compliant">{agent.compliant_count} cleared</span>
+          <span className="text-compliant-ink">{agent.compliant_count} cleared</span>
         )}
         <span className="ml-auto">checked {relativeTime(agent.last_checked)}</span>
       </div>

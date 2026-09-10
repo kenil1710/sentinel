@@ -4,7 +4,7 @@ import type { Verdict } from "@/types";
 
 export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-line bg-panel/70 backdrop-blur-sm ${className}`}>
+    <div className={`rounded-xl border border-line bg-panel shadow-[var(--shadow-card)] ${className}`}>
       {children}
     </div>
   );
@@ -22,17 +22,17 @@ export function Label({ children }: { children: ReactNode }) {
  */
 export function VerdictBadge({ verdict, size = "md" }: { verdict: Verdict | "PENDING"; size?: "sm" | "md" }) {
   const map: Record<string, { bg: string; text: string; ring: string; label: string }> = {
-    VIOLATION: { bg: "bg-violation/12", text: "text-violation", ring: "ring-violation/35", label: "Violation" },
-    COMPLIANT: { bg: "bg-compliant/12", text: "text-compliant", ring: "ring-compliant/35", label: "Compliant" },
-    INCONCLUSIVE: { bg: "bg-neutral/12", text: "text-neutral", ring: "ring-neutral/35", label: "Inconclusive" },
-    PENDING: { bg: "bg-signal/12", text: "text-signal", ring: "ring-signal/35", label: "Awaiting judgement" },
+    VIOLATION: { bg: "bg-violation/10", text: "text-violation-ink", ring: "ring-violation/30", label: "Violation" },
+    COMPLIANT: { bg: "bg-compliant/10", text: "text-compliant-ink", ring: "ring-compliant/30", label: "Compliant" },
+    INCONCLUSIVE: { bg: "bg-neutral/10", text: "text-neutral-ink", ring: "ring-neutral/30", label: "Inconclusive" },
+    PENDING: { bg: "bg-signal/10", text: "text-signal", ring: "ring-signal/30", label: "Awaiting judgement" },
     "": { bg: "bg-panel-2", text: "text-ink-3", ring: "ring-line", label: "—" },
   };
   const s = map[verdict] ?? map[""];
   const pad = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-md ring-1 font-medium ${pad} ${s.bg} ${s.text} ${s.ring}`}>
-      {verdict === "PENDING" && <span className="size-1.5 rounded-full bg-signal live-dot" />}
+      {verdict === "PENDING" && <span className="size-1.5 rounded-full bg-signal-bright live-dot" />}
       {s.label}
     </span>
   );
@@ -40,10 +40,10 @@ export function VerdictBadge({ verdict, size = "md" }: { verdict: Verdict | "PEN
 
 export function ChainTag({ chain, className = "" }: { chain: string; className?: string }) {
   const tone: Record<string, string> = {
-    ethereum: "text-[#8CA0F0] bg-[#8CA0F0]/10 ring-[#8CA0F0]/25",
-    base: "text-[#5C8DFF] bg-[#5C8DFF]/10 ring-[#5C8DFF]/25",
-    arbitrum: "text-[#4FB3E8] bg-[#4FB3E8]/10 ring-[#4FB3E8]/25",
-    polygon: "text-[#B98CF0] bg-[#B98CF0]/10 ring-[#B98CF0]/25",
+    ethereum: "text-[#4338CA] bg-[#4338CA]/8 ring-[#4338CA]/20",
+    base: "text-[#1D4ED8] bg-[#1D4ED8]/8 ring-[#1D4ED8]/20",
+    arbitrum: "text-[#0369A1] bg-[#0369A1]/8 ring-[#0369A1]/20",
+    polygon: "text-[#7E22CE] bg-[#7E22CE]/8 ring-[#7E22CE]/20",
     // Purple rather than Robinhood's brand green, and deliberately so: green
     // means COMPLIANT everywhere else in this app, and a green badge on a watch
     // console reads as "cleared" whatever it is actually labelling.
@@ -55,7 +55,7 @@ export function ChainTag({ chain, className = "" }: { chain: string; className?:
     // deuteranopia). Against the panel it is 3.9:1, and its closest approach to
     // any reserved hue is 38.8 - where the green it replaced was 5.5 from the
     // amber INCONCLUSIVE and 8.8 from the red VIOLATION under deuteranopia.
-    robinhood: "text-[#9945FF] bg-[#9945FF]/10 ring-[#9945FF]/25",
+    robinhood: "text-[#A21CAF] bg-[#A21CAF]/8 ring-[#A21CAF]/20",
   };
   return (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[chain] ?? "text-ink-2 bg-panel-2 ring-line"} ${className}`}>
@@ -82,9 +82,9 @@ export function TypeTag({ type, className = "" }: { type: string; className?: st
 
 export function StatusTag({ status }: { status: string }) {
   const tone: Record<string, string> = {
-    ACTIVE: "text-compliant bg-compliant/10 ring-compliant/25",
+    ACTIVE: "text-compliant-ink bg-compliant/8 ring-compliant/25",
     WITHDRAWN: "text-ink-3 bg-panel-2 ring-line",
-    SLASHED_OUT: "text-violation bg-violation/10 ring-violation/25",
+    SLASHED_OUT: "text-violation-ink bg-violation/8 ring-violation/25",
   };
   const label: Record<string, string> = {
     ACTIVE: "On duty", WITHDRAWN: "Retired", SLASHED_OUT: "Bond exhausted",
@@ -106,6 +106,12 @@ export function ScoreRing({ bps, decided, size = 56 }: { bps: number; decided: n
     : pct >= 80 ? "var(--color-compliant)"
     : pct >= 40 ? "var(--color-neutral)"
     : "var(--color-violation)";
+  // The ring is a fill and reads at these hues; the percentage inside it is
+  // small text on near-white and does not.
+  const inkColour = untested ? "var(--color-ink-3)"
+    : pct >= 80 ? "var(--color-compliant-ink)"
+    : pct >= 40 ? "var(--color-neutral-ink)"
+    : "var(--color-violation-ink)";
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}
       title={untested ? "No challenge has been decided yet" : `${pct}% of ${decided} decided challenges found it compliant`}>
@@ -117,7 +123,7 @@ export function ScoreRing({ bps, decided, size = 56 }: { bps: number; decided: n
         )}
       </svg>
       <div className="absolute inset-0 grid place-items-center">
-        <span className="mono text-xs font-semibold" style={{ color: colour }}>
+        <span className="mono text-xs font-semibold" style={{ color: inkColour }}>
           {untested ? "—" : `${pct}`}
         </span>
       </div>
@@ -127,9 +133,9 @@ export function ScoreRing({ bps, decided, size = 56 }: { bps: number; decided: n
 
 export function Stat({ label, value, sub, tone = "ink" }:
   { label: string; value: ReactNode; sub?: string; tone?: "ink" | "signal" | "violation" | "compliant" }) {
-  const colour = { ink: "text-ink", signal: "text-signal", violation: "text-violation", compliant: "text-compliant" }[tone];
+  const colour = { ink: "text-ink", signal: "text-signal", violation: "text-violation-ink", compliant: "text-compliant-ink" }[tone];
   return (
-    <div className="rounded-lg border border-line bg-panel/60 px-4 py-3.5">
+    <div className="rounded-lg border border-line bg-panel px-4 py-3.5 shadow-[var(--shadow-card)]">
       <Label>{label}</Label>
       <div className={`mono mt-1.5 text-2xl font-semibold tabular-nums ${colour}`}>{value}</div>
       {sub && <div className="mt-0.5 text-xs text-ink-3">{sub}</div>}

@@ -1,38 +1,71 @@
 @import "tailwindcss";
 
 /*
- * Sentinel — a watch console, not a dashboard.
+ * Sentinel — a public record, printed on paper.
  *
- * The visual argument: this is a thing that WATCHES. Deep slate ground, a
- * single cyan signal colour for anything live or being monitored, and verdict
- * colours that are used ONLY for verdicts so they never lose their meaning.
- * Monospace for every hash, address and amount, because those are evidence and
- * evidence should look like evidence.
+ * The visual argument: this is evidence anyone can check, so it reads like a
+ * document rather than a terminal. Warm off-white ground, white cards lifted a
+ * hair off it, and verdict colours used ONLY for verdicts so they never lose
+ * their meaning. Monospace for every hash, address and amount, because those
+ * are evidence and evidence should look like evidence.
+ *
+ * TEXT vs FILL. Several palette colours are legible as a fill or a rule and
+ * illegible as small text on a near-white ground — mid-tone green and amber
+ * especially. So each carries a darker `-ink` sibling used wherever the colour
+ * has to be READ. Measured against the ground (#FAFAF9):
+ *
+ *   violation-ink #B91C1C  6.3:1      compliant-ink #15803D  4.8:1
+ *   neutral-ink   #B45309  4.9:1      signal        #0E7490  5.2:1
+ *
+ * The fill hues (#DC2626 / #16A34A / #D97706) stay exactly as specified and are
+ * what you see in chart series, score rings, badge grounds and borders, where
+ * 3:1 against adjacent colour is the bar and they clear it.
  */
 
 @theme {
-  --color-ground: #070B10;
-  --color-panel: #0C121A;
-  --color-panel-2: #111A24;
-  --color-line: #1B2733;
-  --color-line-2: #263544;
+  --color-ground: #FAFAF9;
+  --color-panel: #FFFFFF;
+  --color-panel-2: #F5F5F4;
+  --color-line: #E7E5E3;
+  --color-line-2: #D6D3D1;
 
-  --color-ink: #E8EFF6;
-  --color-ink-2: #9DB0C2;
-  --color-ink-3: #64788C;
+  --color-ink: #1C1917;
+  --color-ink-2: #57534E;
+  /*
+   * #79716B measured 4.39:1 on the #F5F5F4 tint — under AA, and that tint is
+   * exactly where this tone is used most (code blocks, settlement labels).
+   * Dropped until it clears on the WORST ground it sits on, not the lightest:
+   * 5.4:1 on #F5F5F4, 5.6:1 on the page, 5.9:1 on white.
+   */
+  --color-ink-3: #6B635C;
 
-  --color-signal: #06B6D4;
-  --color-signal-dim: #0E7490;
-  --color-violation: #EF4444;
-  --color-compliant: #10B981;
-  --color-neutral: #F59E0B;
+  /*
+   * One step deeper than the #0891B2 this was drawn with. That hue is 3.7:1 on
+   * this ground as text and 3.7:1 under white as a button — it fails the same
+   * way in both roles, and this palette has to be read, not just seen. #0E7490
+   * is the same cyan a shade down and clears 5:1 in both.
+   */
+  --color-signal: #0E7490;
+  --color-signal-bright: #0891B2;
+  --color-signal-dim: #CFF4FC;
+
+  --color-violation: #DC2626;
+  --color-violation-ink: #B91C1C;
+  --color-compliant: #16A34A;
+  --color-compliant-ink: #15803D;
+  --color-neutral: #D97706;
+  --color-neutral-ink: #B45309;
 
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  /* Cards sit on the ground by shadow, not by a heavier border. */
+  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.06);
+  --shadow-card-lifted: 0 2px 4px rgba(28, 25, 23, 0.05), 0 4px 12px rgba(28, 25, 23, 0.07);
 }
 
 * { border-color: var(--color-line); }
 
-html { background: var(--color-ground); color-scheme: dark; }
+html { background: var(--color-ground); color-scheme: light; }
 
 body {
   /*
@@ -44,8 +77,8 @@ body {
    */
   overflow-wrap: break-word;
   background:
-    radial-gradient(1100px 620px at 78% -8%, rgba(6, 182, 212, 0.10), transparent 62%),
-    radial-gradient(760px 460px at 6% 4%, rgba(14, 116, 144, 0.08), transparent 58%),
+    radial-gradient(1100px 620px at 78% -8%, rgba(8, 145, 178, 0.055), transparent 62%),
+    radial-gradient(760px 460px at 6% 4%, rgba(180, 83, 9, 0.03), transparent 58%),
     var(--color-ground);
   color: var(--color-ink);
   min-height: 100vh;
@@ -63,15 +96,15 @@ body {
   inset-block: 0;
   left: 0;
   width: 25%;
-  background: linear-gradient(90deg, transparent, var(--color-signal), transparent);
-  opacity: 0.5;
+  background: linear-gradient(90deg, transparent, var(--color-signal-bright), transparent);
+  opacity: 0.55;
   animation: sweep 7s linear infinite;
 }
 
 @keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.45); }
-  70%  { box-shadow: 0 0 0 8px rgba(6, 182, 212, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(8, 145, 178, 0.40); }
+  70%  { box-shadow: 0 0 0 8px rgba(8, 145, 178, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(8, 145, 178, 0); }
 }
 .live-dot { animation: pulse-ring 2.4s ease-out infinite; }
 
@@ -88,19 +121,22 @@ body {
     linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(circle at 70% 30%, black, transparent 72%);
-  opacity: 0.4;
+  opacity: 0.9;
 }
 
 .mono { font-family: var(--font-mono); font-variant-ligatures: none; }
 
-::selection { background: rgba(6, 182, 212, 0.3); color: var(--color-ink); }
+/* A card: white, lifted off the ground rather than outlined against it. */
+.card { background: var(--color-panel); box-shadow: var(--shadow-card); }
+
+::selection { background: rgba(8, 145, 178, 0.18); color: var(--color-ink); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--color-ground); }
+::-webkit-scrollbar-track { background: var(--color-panel-2); }
 ::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 6px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-signal-dim); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-3); }
 
-input, textarea, select { color-scheme: dark; }
+input, textarea, select { color-scheme: light; }
 input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
   outline: 2px solid var(--color-signal);
   outline-offset: 2px;

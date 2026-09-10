@@ -103,6 +103,22 @@ The lesson worth keeping: *a scheduler firing into a route that cannot write is
 indistinguishable from a scheduler that never fires.* Check the counter the work
 moves, not the fact that a request arrived.
 
+### The cadence does not come from Vercel
+
+`vercel.json` schedules `/api/patrol` at `0 12 * * *` — **daily**, which is the
+most a Hobby plan permits. A deploy carrying `*/10 * * * *` is refused outright:
+
+```
+Hobby accounts are limited to daily cron jobs. This cron expression
+(*/10 * * * *) would run more than once per day. Upgrade to the Pro plan.
+```
+
+That is a deploy-time rejection, not a runtime one, so it blocks shipping
+anything at all until the schedule is relaxed. The ten-minute cadence therefore
+comes from an **external scheduler** calling the alias with `PATROL_SECRET`, and
+the daily Vercel cron is a backstop behind it. Restore `*/10 * * * *` if the
+account moves to Pro.
+
 ## What the bot's wallet has to hold
 
 `PATROL_PRIVATE_KEY` is a real wallet and the patrol spends from it twice over:

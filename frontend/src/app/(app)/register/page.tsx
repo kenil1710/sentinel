@@ -134,7 +134,7 @@ export default function RegisterPage() {
           <div>
             <div className="flex items-baseline justify-between">
               <label className="text-sm font-medium">Name <span className="text-ink-3 font-normal">(optional)</span></label>
-              <span className={`mono text-[11px] ${name.length > (cfg?.max_name_chars ?? 100) ? "text-violation" : "text-ink-3"}`}>
+              <span className={`mono text-[11px] ${name.length > (cfg?.max_name_chars ?? 100) ? "text-violation-ink" : "text-ink-3"}`}>
                 {name.length}/{cfg?.max_name_chars ?? 100}
               </span>
             </div>
@@ -170,7 +170,7 @@ export default function RegisterPage() {
           <div>
             <div className="flex items-baseline justify-between">
               <label className="text-sm font-medium">Description <span className="text-ink-3 font-normal">(optional)</span></label>
-              <span className={`mono text-[11px] ${description.length > (cfg?.max_description_chars ?? 500) ? "text-violation" : "text-ink-3"}`}>
+              <span className={`mono text-[11px] ${description.length > (cfg?.max_description_chars ?? 500) ? "text-violation-ink" : "text-ink-3"}`}>
                 {description.length}/{cfg?.max_description_chars ?? 500}
               </span>
             </div>
@@ -197,7 +197,7 @@ export default function RegisterPage() {
           <div>
             <div className="flex items-baseline justify-between">
               <label className="text-sm font-medium">Mandate</label>
-              <span className={`mono text-[11px] ${mandate.length > (cfg?.max_mandate_chars ?? 1000) ? "text-violation" : "text-ink-3"}`}>
+              <span className={`mono text-[11px] ${mandate.length > (cfg?.max_mandate_chars ?? 1000) ? "text-violation-ink" : "text-ink-3"}`}>
                 {mandate.length}/{cfg?.max_mandate_chars ?? 1000}
               </span>
             </div>
@@ -238,24 +238,24 @@ export default function RegisterPage() {
           </div>
 
           {problems.length > 0 && (
-            <ul className="space-y-1 rounded-lg border border-neutral/25 bg-neutral/5 p-3.5 text-[13px] text-neutral">
+            <ul className="space-y-1 rounded-lg border border-neutral/25 bg-neutral/5 p-3.5 text-[13px] text-neutral-ink">
               {problems.map((p) => <li key={p}>• {p}</li>)}
             </ul>
           )}
 
           {!account ? (
             <button onClick={connect}
-              className="w-full rounded-lg bg-signal px-5 py-3 text-sm font-medium text-ground">
+              className="w-full rounded-lg bg-signal px-5 py-3 text-sm font-medium text-white">
               {hasWallet ? "Connect wallet to register" : "Install a wallet to register"}
             </button>
           ) : onWrongNetwork ? (
             <button onClick={switchNetwork}
-              className="w-full rounded-lg border border-neutral/40 bg-neutral/10 px-5 py-3 text-sm font-medium text-neutral">
+              className="w-full rounded-lg border border-neutral/40 bg-neutral/10 px-5 py-3 text-sm font-medium text-neutral-ink">
               Switch network to continue
             </button>
           ) : (
             <button onClick={submit} disabled={!ready || busy}
-              className="w-full rounded-lg bg-signal px-5 py-3 text-sm font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-40">
+              className="w-full rounded-lg bg-signal px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
               {busy ? "Registering…" : `Register and bond ${bond} GEN`}
             </button>
           )}
@@ -263,12 +263,12 @@ export default function RegisterPage() {
           {busy && <Spinner label="Waiting for the validators to accept the transaction…" />}
 
           {result?.kind === "ok" && (
-            <div className="rounded-lg border border-compliant/30 bg-compliant/10 p-4 text-sm text-compliant">
+            <div className="rounded-lg border border-compliant/30 bg-compliant/10 p-4 text-sm text-compliant-ink">
               Registered. Taking you to the agent…
             </div>
           )}
           {result?.kind === "rejected" && (
-            <div className="rounded-lg border border-neutral/30 bg-neutral/10 p-4 text-sm text-neutral">
+            <div className="rounded-lg border border-neutral/30 bg-neutral/10 p-4 text-sm text-neutral-ink">
               <div className="font-medium">The contract turned this down — and sent your bond back.</div>
               <div className="mt-1.5 text-[13px]">{result.reason}</div>
               <div className="mono mt-1.5 text-[11px] opacity-80">
@@ -277,7 +277,7 @@ export default function RegisterPage() {
             </div>
           )}
           {result?.kind === "failed" && (
-            <div className="rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation">
+            <div className="rounded-lg border border-violation/30 bg-violation/10 p-4 text-sm text-violation-ink">
               {result.error}
             </div>
           )}
@@ -288,7 +288,7 @@ export default function RegisterPage() {
           <Panel className="mt-2.5 p-5">
             <div className="flex items-center gap-2">
               <ChainTag chain={chain} />
-              <span className="rounded-md bg-compliant/10 px-2 py-0.5 text-[11px] font-medium text-compliant ring-1 ring-compliant/25">
+              <span className="rounded-md bg-compliant/10 px-2 py-0.5 text-[11px] font-medium text-compliant-ink ring-1 ring-compliant/25">
                 On duty
               </span>
             </div>
@@ -328,11 +328,11 @@ export default function RegisterPage() {
               </li>
               <li>
                 A proven breach slashes{" "}
-                <span className="text-violation">
+                <span className="text-violation-ink">
                   {cfg ? percentFromBps(cfg.penalty_bps) : 20}% of your bond
                 </span>
                 . A refuted challenge pays{" "}
-                <span className="text-compliant">
+                <span className="text-compliant-ink">
                   {cfg ? percentFromBps(cfg.vindication_bps) : 70}% of the accuser&apos;s stake
                 </span>{" "}
                 into your bond.

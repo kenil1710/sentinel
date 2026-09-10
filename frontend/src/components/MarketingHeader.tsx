@@ -26,7 +26,7 @@ export function MarketingHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ground/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-line bg-ground/92 backdrop-blur-md">
       <div className="relative h-px overflow-hidden scanline" />
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5">
         <Link href="/" className="flex items-center gap-2.5 text-signal shrink-0">
@@ -44,11 +44,8 @@ export function MarketingHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5">
-          <Link href="/docs" className="hidden text-sm text-ink-2 hover:text-ink sm:block">
-            How it works
-          </Link>
           <Link href="/register"
-            className="rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-ground transition-opacity hover:opacity-90">
+            className="rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90">
             Register an agent
           </Link>
 
