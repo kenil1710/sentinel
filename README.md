@@ -69,15 +69,28 @@ three different evidence digests. The earlier evidence is kept because it is a
 wider sample than one verdict — not because the current contract lacks one.
 
 What the Studio Dev contract shows **right now**, read from `get_stats` and
-`get_challenges` on 2026-09-10: eighteen agents registered and sixteen active,
-10 GEN under watch, four challenges filed and **three settled — every one of
-them `VIOLATION`**, all filed and judged by the patrol bot. Challenge 0 found
-agent 0 receiving WFC against a mandate of "Only trade ETH and USDC";
-challenges 1 and 2 followed against agent 2. The penalty compounds, so agent 2's
-bond went 0.5 → 0.4 → 0.32: **0.28 GEN slashed in total, against 0.14 GEN paid
-out in bounties.** Agents 0 and 2 are `SLASHED_OUT` because their bonds fell
-below the 0.5 GEN minimum, which is why sixteen of eighteen are active.
-Challenge 3 is `PENDING`. `patrols_run` is 2.
+`get_challenges` at 13:15 UTC on 2026-09-10 — **a snapshot of a register that
+is still moving**, because the patrol runs every ten minutes and files against
+it unattended:
+
+```
+agents          18 registered, 13 active, 8.535 GEN under watch
+challenges      13 filed, 11 settled
+verdicts        7 VIOLATION, 1 COMPLIANT, 3 INCONCLUSIVE
+economics       0.644 GEN slashed, 0.322 GEN paid out in bounties
+patrols_run     9
+```
+
+Every one of those challenges was filed **and** judged by the patrol bot, not by
+hand. Challenge 0 found agent 0 receiving WFC against a mandate of "Only trade
+ETH and USDC"; agent 2 then drew three in a row. The penalty compounds, so a
+twice-slashed bond goes 0.5 → 0.4 → 0.32. Five agents are `SLASHED_OUT` because
+their bonds fell below the 0.5 GEN minimum, which is why 13 of 18 are active.
+
+**Read the live numbers rather than these** — `get_stats` on the contract, or
+`bash tools/audit.sh`, which checks them against this file. All three verdicts
+appear above on purpose: a watchdog that only ever returns VIOLATION is a
+watchdog nobody should trust.
 
 The penalty compounds, and the arithmetic below is what the contract computes —
 checkable on chain once a challenge here settles:
@@ -130,8 +143,9 @@ afternoon must never read as a clean bill of health.
 **Eighteen agents are registered on Studio Dev today**, spanning all five
 configured chains — 7 on ethereum, 3 each on arbitrum, polygon and Robinhood
 Chain, and 2 on base — across three agent types (10 TRADING, 7 DEFI, 1 CUSTOM),
-with 10.5 GEN under watch. The roster below is what `test/seed_roster.mjs`
-defines and it has now been seeded against this deployment.
+with 8.535 GEN still under watch after the slashing below. The roster below is
+what `test/seed_roster.mjs` defines and it has now been seeded against this
+deployment.
 
 Fifteen agents, seeded from wallets taken out of the **live transaction lists** of
 Uniswap's UniversalRouter on four chains, Aave v3's Pool, and Robinhood Chain's
@@ -457,12 +471,13 @@ patrol also judges what it files: it resolves any PENDING challenge before it
 looks for new ones, and puts each newly filed challenge to the validators in the
 same run.
 
-`patrols_run` is **2** on the Studio Dev deployment. The first run resolved
-challenge 0 to `VIOLATION`, filed three more and stamped two agents in 241s; the
-second, against the deployed Vercel route, judged challenges 1 and 2 — both
-`VIOLATION` — in 148s. It was driven by hand — Vercel has still not been observed to *deliver* a
-cron slot on its own, so an external scheduler against the alias with
-`PATROL_SECRET` remains the way to run it. See [`frontend/CRON.md`](frontend/CRON.md).
+`patrols_run` climbs on its own. **The Vercel cron is now confirmed to
+deliver** — an earlier version of this file said it never had, and that is no
+longer true. Measured directly: with nothing triggering it, `patrols_run` went
+8 → 9, `challenges_filed` 10 → 13 and `challenges_settled` 10 → 11 between
+13:33:52Z and 13:34:54Z on 2026-09-10. A representative run scans 40
+transactions across 5 agents, files a challenge, drives it to a verdict and
+stamps every agent it read, in about 190s. See [`frontend/CRON.md`](frontend/CRON.md).
 
 Why it had never moved before: **Studio Dev charges a fee deposit on every
 write and this route was built against Bradbury, which does not.** A

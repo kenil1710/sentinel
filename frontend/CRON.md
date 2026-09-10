@@ -81,6 +81,28 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 
 A 302 there means the cron is firing into a login page.
 
+## Is the cron actually delivering?
+
+**Yes, confirmed on 2026-09-10.** With nothing triggering the route from
+outside, the on-chain counters moved on their own between 13:33:52Z and
+13:34:54Z:
+
+```
+patrols_run          8  ->  9
+challenges_filed    10  -> 13
+challenges_settled  10  -> 11
+```
+
+Earlier notes in this repository said Vercel had never been seen to deliver a
+slot. That was true when it was written, and the reason was not the scheduler:
+the route was being woken on time and then refusing every write for want of a
+studio-dev fee deposit, so a firing cron and a dead cron looked identical from
+the outside. Once the writes were funded the slots started landing visibly.
+
+The lesson worth keeping: *a scheduler firing into a route that cannot write is
+indistinguishable from a scheduler that never fires.* Check the counter the work
+moves, not the fact that a request arrived.
+
 ## What the bot's wallet has to hold
 
 `PATROL_PRIVATE_KEY` is a real wallet and the patrol spends from it twice over:

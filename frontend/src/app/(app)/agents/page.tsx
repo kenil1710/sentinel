@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { AgentCard } from "@/components/AgentCard";
 import { Empty, Label, Spinner } from "@/components/ui";
-import { getActiveAgents, getAgentsByChain, getAgentsByType } from "@/lib/contract";
+import { getAgentsByChain, getAgentsByType } from "@/lib/contract";
 import { CHAIN_LABEL } from "@/lib/format";
 
 const CHAINS = ["all", "ethereum", "base", "arbitrum", "polygon", "robinhood"] as const;
@@ -25,13 +25,29 @@ export default function AgentsPage() {
    * whatever that returns. Asking the contract for both would need a view per
    * combination, and the register is small enough that one narrowing happens
    * here for free.
+   *
+   * "All chains" fans out across every configured chain rather than calling
+   * get_active_agents. That view returns only ACTIVE agents, so the default
+   * listing held 13 of 18 while picking any single chain revealed more — "All"
+   * was not a superset of its own filters. Worse, the five it dropped are the
+   * SLASHED_OUT ones: the agents that were actually caught, and the whole point
+   * of the register. The page promises "every registered agent" a few lines
+   * below, so it has to show them.
    */
   const { data, error, isLoading } = useSWR(
     ["agents", chain, type],
-    () => {
+    async () => {
       if (chain !== "all") return getAgentsByChain(chain, 60);
       if (type !== "all") return getAgentsByType(type, 60);
-      return getActiveAgents(60);
+      const perChain = await Promise.all(
+        CHAINS.filter((c) => c !== "all").map((c) => getAgentsByChain(c, 60)),
+      );
+      // Deduplicated by agent_id: one wallet may be registered on several
+      // chains, but an agent_id belongs to exactly one row.
+      const seen = new Map<number, (typeof perChain)[number]["agents"][number]>();
+      for (const r of perChain) for (const a of r.agents) seen.set(a.agent_id, a);
+      const agents = [...seen.values()].sort((a, b) => b.agent_id - a.agent_id);
+      return { chain: "all", count: agents.length, agents };
     },
     { refreshInterval: 25_000 },
   );
