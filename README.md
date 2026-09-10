@@ -353,7 +353,7 @@ live suite          79 checks   test/e2e.mjs             (real validators — NO
 functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
 adversarial suite   99 checks   test/edge_cases.mjs      (the nasty states — NOT re-run on Studio Dev)
 rejection checklist 19 checks   tools/checklist.py       (AST, not grep)
-audit               63 checks   bash tools/audit.sh      (live chain + live site)
+audit               61 checks   bash tools/audit.sh      (live chain + live site, 5 skipped)
 ```
 
 `verify_methods.mjs` exercises all **36** public methods — the count `genvm-lint`

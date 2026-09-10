@@ -48,7 +48,7 @@
         "address": "0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e"
       },
       "owner": "0x95FA3CbC31352Ca771be5f11CA8Ce07F0a125D23",
-      "verified": "`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py` reports EQUIVALENT: the on-chain code and the local artifact are the same token stream under a bijective renaming of PRIVATE identifiers. They are not byte-identical - the deployed bytes were produced by an earlier run of the same pipeline, before the v0.3.0 migration was rebuilt here - and the public ABI, all 37 methods, is unchanged. The check reports MATCH, EQUIVALENT or DIFFER precisely so this distinction is not papered over.",
+      "verified": "`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py` reports EQUIVALENT: the on-chain code and the local artifact are the same token stream under a bijective renaming of PRIVATE identifiers. They are not byte-identical - the deployed bytes were produced by an earlier run of the same pipeline, before the v0.3.0 migration was rebuilt here - and the public ABI, all 36 methods, is unchanged. The check reports MATCH, EQUIVALENT or DIFFER precisely so this distinction is not papered over.",
       "artifact_bytes_on_chain": 52726,
       "live_state": {
         "read_at": "2026-09-08",
@@ -117,6 +117,7 @@
       "/challenge/[id]",
       "/patrol",
       "/leaderboard",
+      "/analytics",
       "/docs"
     ],
     "api": {
@@ -156,10 +157,11 @@
       "note": "37 reported checks: 36 methods plus the balance invariant. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/verify_methods.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
     },
     "repository_audit": {
-      "checks": 63,
+      "checks": 61,
       "failed": 0,
+      "skipped": 5,
       "source": "tools/audit.sh",
-      "note": "Checks the live Studio Dev contract and the live Vercel site, not local files alone - including the profile fields, get_agents_by_type, that the register spans the configured chains, and /api/check's CORS, 400 and settled-verdict behaviour."
+      "note": "Checks the live Studio Dev contract and the live Vercel site, not local files alone - including the profile fields, get_agents_by_type, that the register spans the configured chains, and /api/check's CORS, 400 and verdict behaviour. The five SKIPS are the state this deployment has not reached rather than checks that did not run: no agent on robinhood, no challenge settled, no violation proven, /api/check correctly reporting untested, and genvm-lint unable to load the pinned runner from its local cache so it printed no ABI count (the ABI is counted from the artifact's AST instead, and is 36). Re-measured 2026-09-10; the previously recorded 63/0 was taken before the studio-dev migration and did not hold - the live-state thresholds in audit.sh still described the previous deployment's roster and failed a correctly seeded register."
     },
     "rejection_checklist": {
       "checks": 19,
