@@ -87,10 +87,20 @@ export function StatusTag({ status }: { status: string }) {
     SLASHED_OUT: "text-violation-ink bg-violation/8 ring-violation/25",
   };
   const label: Record<string, string> = {
-    ACTIVE: "On duty", WITHDRAWN: "Retired", SLASHED_OUT: "Bond exhausted",
+    // "Bond exhausted" named the symptom and hid the cause — it reads equally
+    // like "something broke" and like "this one was caught". It was the latter,
+    // every time: the only route to this status is a proven violation.
+    ACTIVE: "On duty", WITHDRAWN: "Retired", SLASHED_OUT: "Caught — deactivated",
+  };
+  const why: Record<string, string> = {
+    ACTIVE: "Bonded above the minimum and open to challenge.",
+    WITHDRAWN: "The operator withdrew the bond. The record stays readable; it cannot be challenged.",
+    SLASHED_OUT: "Validators upheld a challenge against this agent. The slash carried its bond "
+      + "below the minimum, so the contract deactivated it automatically. A top-up reactivates it.",
   };
   return (
-    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[status] ?? "text-ink-3 bg-panel-2 ring-line"}`}>
+    <span title={why[status] ?? status}
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[status] ?? "text-ink-3 bg-panel-2 ring-line"}`}>
       {label[status] ?? status}
     </span>
   );

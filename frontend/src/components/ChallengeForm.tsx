@@ -58,7 +58,31 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
   if (isOperator) problems.push("You registered this agent; an operator cannot challenge their own.");
   if (reason && reason.trim().length < 10) problems.push("Say what looks wrong, in a few words at least.");
   if (reason.length > maxReason) problems.push(`The reason is capped at ${maxReason} characters.`);
-  if (!agent.challengeable) problems.push("This agent is not currently challengeable.");
+  /*
+   * "not currently challengeable" named a flag, not a reason. The contract has
+   * three distinct ways to reach it and they mean entirely different things to
+   * whoever is reading — one is "this agent was caught", one is "the operator
+   * took their money and left", one is "the whole contract is stopped". Say
+   * which, and say what would change it.
+   */
+  if (!agent.challengeable) {
+    const floor = config ? `${formatGen(config.min_bond, 2)} GEN` : "the minimum";
+    if (agent.status === "SLASHED_OUT") {
+      problems.push(
+        `This agent has already been deactivated after ${agent.violation_count} proven ` +
+        `violation${agent.violation_count === 1 ? "" : "s"} — its bond fell below ${floor}, ` +
+        `so it can no longer cover a penalty. No further challenges can be filed until ` +
+        `someone tops the bond back above ${floor}.`);
+    } else if (agent.status === "WITHDRAWN") {
+      problems.push(
+        "This agent is retired: its operator withdrew the bond, so there is nothing left " +
+        "to answer for its conduct. Its record stays readable, but it cannot be challenged.");
+    } else {
+      problems.push(
+        "This agent cannot be challenged right now — its bond is not available to answer " +
+        "for a penalty. Check its status above.");
+    }
+  }
 
   const ready = Boolean(account) && isTxHash(tx) && reason.trim().length >= 10 && problems.length === 0;
 

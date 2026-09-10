@@ -9,7 +9,7 @@ import { AgentTransactions } from "@/components/AgentTransactions";
 import { useWallet } from "@/components/WalletProvider";
 import { getAgent, getAgentHistory, getConfig, topUpBond, withdrawBond } from "@/lib/contract";
 import { absoluteTime, blockscoutUrl, formatGen, relativeTime, shortAddress } from "@/lib/format";
-import type { WriteResult } from "@/types";
+import type { Agent, Challenge, WriteResult } from "@/types";
 
 export default function AgentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -105,6 +105,10 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </div>
 
+      {agent.status === "SLASHED_OUT" && (
+        <SlashedOutNotice agent={agent} history={history} minBond={cfg?.min_bond} />
+      )}
+
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
           <Panel className="p-6">
@@ -199,6 +203,112 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * What "Bond exhausted" actually means, for someone who has not read the docs.
+ *
+ * The badge alone was a dead end: it names a state without naming the cause, the
+ * consequence, or the way out, and the three are the whole story. A visitor
+ * landing here from the register was being told an agent had failed, in two
+ * words, with no way to tell whether that meant "caught cheating" or "something
+ * broke".
+ *
+ * THE LADDER IS READ, NOT COMPUTED. Each rung comes from the `bond_before` and
+ * `penalty` recorded on the challenge that produced it — the same stored
+ * evidence `verify_challenge` re-derives its arithmetic from. Recomputing it
+ * here by applying penalty_bps N times would be a second, unchecked
+ * implementation of the contract's compounding, and it would silently diverge
+ * the moment a bond was topped up between slashes.
+ */
+function SlashedOutNotice({ agent, history, minBond }: {
+  agent: Agent;
+  history?: { challenges: Challenge[] };
+  minBond?: string;
+}) {
+  const violations = (history?.challenges ?? [])
+    .filter((c) => c.verdict === "VIOLATION" && c.settlement && c.settlement.bond_before !== "0")
+    .sort((a, b) => a.settled_at - b.settled_at);
+
+  const rungs: { label: string; wei: string }[] = [];
+  for (const c of violations) {
+    if (rungs.length === 0) rungs.push({ label: "Bond posted", wei: c.settlement.bond_before });
+    rungs.push({
+      label: `Slashed −${formatGen(c.settlement.penalty, 2)}`,
+      wei: String(BigInt(c.settlement.bond_before) - BigInt(c.settlement.penalty)),
+    });
+  }
+
+  const n = violations.length;
+  const floor = minBond ? formatGen(minBond, 2) : "the minimum";
+
+  return (
+    <Panel className="mt-6 border-violation/30 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <StatusTag status={agent.status} />
+        <span className="text-[15px] font-semibold tracking-tight">
+          This agent was caught breaking its mandate
+        </span>
+      </div>
+
+      <p className="mt-3 max-w-3xl text-[14px] leading-relaxed text-ink-2">
+        {n > 0 ? (
+          <>
+            Validators upheld{" "}
+            <span className="font-medium text-ink">
+              {n} challenge{n === 1 ? "" : "s"} against it
+            </span>
+            , and each verdict slashed a share of its bond. That carried the bond below the{" "}
+            <span className="mono text-ink">{floor} GEN</span> minimum, so the contract
+            deactivated the agent automatically — no administrator was involved.
+          </>
+        ) : (
+          <>
+            Its bond fell below the <span className="mono text-ink">{floor} GEN</span> minimum,
+            so the contract deactivated it automatically.
+          </>
+        )}{" "}
+        An agent that can no longer cover a penalty stops being a target worth accusing, so no
+        further challenges can be filed against it.
+      </p>
+
+      {rungs.length > 1 && (
+        <div className="mt-5">
+          <Label>What happened to the bond</Label>
+          <div className="mono mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-2 text-[13px]">
+            {rungs.map((r, i) => (
+              <span key={i} className="flex items-center gap-2">
+                {i > 0 && <span className="text-ink-3">→</span>}
+                <span className={`rounded-md px-2 py-1 ${
+                  i === 0 ? "bg-panel-2 text-ink"
+                    : i === rungs.length - 1 ? "bg-violation/10 text-violation-ink ring-1 ring-violation/25"
+                    : "bg-panel-2 text-ink-2"}`}>
+                  {formatGen(r.wei, 3)} GEN
+                  <span className="ml-1.5 text-[11px] opacity-70">{r.label}</span>
+                </span>
+              </span>
+            ))}
+            <span className="flex items-center gap-2">
+              <span className="text-ink-3">→</span>
+              <span className="rounded-md bg-violation/10 px-2 py-1 text-violation-ink ring-1 ring-violation/25">
+                below {floor} GEN — deactivated
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      <p className="mt-5 max-w-3xl text-[13.5px] leading-relaxed text-ink-2">
+        <span className="font-medium text-ink">This is reversible.</span> The remaining{" "}
+        <span className="mono text-ink">{formatGen(agent.bond, 3)} GEN</span> still belongs to the
+        operator, who can withdraw it — or top the bond back over{" "}
+        <span className="mono text-ink">{floor} GEN</span>{" "}
+        to put the agent back on duty, which
+        makes it challengeable again immediately. Anyone may fund a top-up, not just the operator:
+        there is no way to abuse a payment into the thing that answers for the agent&apos;s conduct.
+      </p>
+    </Panel>
   );
 }
 
