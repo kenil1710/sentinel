@@ -17,7 +17,7 @@
  *    agent that does not exist and a bond that has already been sent back.
  */
 import type { CalldataEncodable, TransactionHash } from "genlayer-js/types";
-import { CONTRACT_ADDRESS, getReadClient, getWalletClient } from "./genlayer";
+import { CONTRACT_ADDRESS, NETWORK, getReadClient, getWalletClient } from "./genlayer";
 import type {
   Agent, AgentSummary, AgentType, Challenge, ComplianceScore, Config,
   PatrolPreview, Stats, Treasury, VerifyResult, Watcher, WriteResult,
@@ -148,6 +148,41 @@ function readWriteResult<T>(hash: string, tx: unknown): WriteResult<T> {
   return { kind: "ok", hash, data: (parsed ?? {}) as T };
 }
 
+/**
+ * Whether this network charges a fee deposit on a write.
+ *
+ * Cached for the tab: the policy does not change between two clicks, and asking
+ * again would put an extra RPC round trip in front of every confirmation
+ * dialog. `null` means "not asked yet"; a failure to read is treated as "fees
+ * are required", because sending a zero-fee write to a chain that charges is
+ * refused outright, while overpaying a chain that does not is merely wasteful.
+ */
+let feePolicyEnabled: boolean | null = null;
+
+async function feesRequired(wallet: ReturnType<typeof getWalletClient>): Promise<boolean> {
+  if (feePolicyEnabled !== null) return feePolicyEnabled;
+  try {
+    const policy = await wallet.getCurrentFeePolicy();
+    feePolicyEnabled = Boolean(policy?.enabled);
+  } catch {
+    feePolicyEnabled = true;
+  }
+  return feePolicyEnabled;
+}
+
+/**
+ * A wallet that cannot cover the deposit fails inside the SDK with a message
+ * written for a developer. Say what the person actually has to do instead, and
+ * name the network so "get some GEN" is followed by "from where".
+ */
+function fundingHint(message: string, network: string): string | null {
+  if (!/insufficient|exceeds balance|not enough|balance too low/i.test(message)) return null;
+  return network === "studiodev"
+    ? "This wallet does not hold enough GEN to cover the bond and the network fee. " +
+      "Studio Dev is a development network — fund the address from the Studio faucet and try again."
+    : "This wallet does not hold enough GEN to cover the bond and the network fee.";
+}
+
 async function send<T>(
   account: `0x${string}`,
   functionName: string,
@@ -158,9 +193,29 @@ async function send<T>(
   const read = getReadClient();
   let hash: string;
   try {
-    hash = await wallet.writeContract({ address: CONTRACT_ADDRESS, functionName, args, value });
+    /*
+     * Studio Dev charges a fee deposit on every write; Bradbury, which this
+     * app was first built against, does not. A `writeContract` with no `fees`
+     * sends a zero-fee transaction, and the consensus contract refuses it — so
+     * every register and every challenge from the browser failed here, with an
+     * error that pointed at the contract rather than at the missing deposit.
+     *
+     * Estimated per call, against the real calldata: the deposit depends on the
+     * method and its arguments, so a mandate of 900 characters does not cost
+     * what one of 30 does.
+     */
+    const fees = (await feesRequired(wallet))
+      ? await wallet.estimateTransactionFeesForWrite({
+          address: CONTRACT_ADDRESS, functionName, args, value,
+        })
+      : undefined;
+    hash = await wallet.writeContract({
+      address: CONTRACT_ADDRESS, functionName, args, value,
+      ...(fees ? { fees } : {}),
+    });
   } catch (e) {
-    return { kind: "failed", hash: null, error: String((e as Error)?.message ?? e) };
+    const message = String((e as Error)?.message ?? e);
+    return { kind: "failed", hash: null, error: fundingHint(message, NETWORK) ?? message };
   }
 
   const started = Date.now();

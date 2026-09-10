@@ -51,6 +51,14 @@ export const maxDuration = 300;
 
 const CHAINS = { studiodev: studioDevnet } as const;
 
+/**
+ * The stake the contract ships with, in wei, used ONLY to warn about an
+ * underfunded patrol wallet before `get_config` has been read. The authoritative
+ * figure is `get_config().challenge_stake` and that is what is actually sent —
+ * this is a floor for a diagnostic, never a value spent.
+ */
+const CHALLENGE_STAKE_FLOOR = 50_000_000_000_000_000n;
+
 /** Per-run ceilings. A cron slot is not infinite and neither is the gas budget. */
 const MAX_AGENTS = 12;
 const MAX_TX_PER_AGENT = 20;
@@ -114,16 +122,82 @@ const BUDGET_MS = FILE_UNTIL_MS;
  */
 const RATE_LIMITED = /at capacity|rate limit|exceeds defined limit|too many requests/i;
 
+/**
+ * Whether this network charges for a write, read once per run.
+ *
+ * This route was written against Bradbury, which does not. Studio Dev does:
+ * `getCurrentFeePolicy()` reports `enabled: true`, and the chain exposes no
+ * `feeManagerContract`, so the SDK derives the deposit from the local
+ * round-fee calculation. A `writeContract` with no `fees` sends a zero-fee
+ * transaction and the consensus contract refuses it — which is why the patrol
+ * could file nothing here while every off-chain part of the run looked healthy.
+ *
+ * Cached per run rather than per write: it is one more RPC round trip on a
+ * route that budgets against a hard 300s ceiling, and the policy does not move
+ * inside a single patrol.
+ */
+let feePolicyEnabled: boolean | null = null;
+
+async function feesRequired(w: ReturnType<typeof createClient>): Promise<boolean> {
+  if (feePolicyEnabled !== null) return feePolicyEnabled;
+  try {
+    const policy = await withTimeout(w.getCurrentFeePolicy(), 20_000, "fee policy");
+    feePolicyEnabled = Boolean(policy?.enabled);
+  } catch (e) {
+    // Unknown is not "free". Assuming no fees on a chain that charges them is
+    // the failure this whole block exists to stop, so assume they are needed
+    // and let the estimate below say so precisely if it cannot be produced.
+    console.log(`[patrol] fee policy unreadable (${String((e as Error)?.message ?? e).slice(0, 90)}), assuming fees ARE required`);
+    feePolicyEnabled = true;
+  }
+  return feePolicyEnabled;
+}
+
+/**
+ * The fee deposit for one write, estimated against the real calldata.
+ *
+ * Estimated per call rather than once per run because the deposit depends on
+ * the method and its arguments — `mark_patrolled` with twelve agent ids is not
+ * the same shape as `challenge_agent` with a reason string, and a flat guess
+ * would either underfund the large ones or overcharge every small one.
+ */
+async function estimateFees(
+  w: ReturnType<typeof createClient>,
+  args: Parameters<ReturnType<typeof createClient>["writeContract"]>[0],
+  label: string,
+) {
+  return withTimeout(
+    w.estimateTransactionFeesForWrite({
+      address: args.address,
+      functionName: args.functionName,
+      args: args.args,
+      value: args.value ?? 0n,
+    }),
+    30_000,
+    `${label} fee estimate`,
+  );
+}
+
 async function writeWithRetry(
   w: ReturnType<typeof createClient>,
   args: Parameters<ReturnType<typeof createClient>["writeContract"]>[0],
   label: string,
   attempts = 4,
 ): Promise<string> {
+  // Estimated once, outside the retry loop: a capacity refusal does not change
+  // what the transaction costs, and re-estimating on every attempt would add an
+  // RPC round trip to exactly the path that is already being throttled.
+  let fees: Awaited<ReturnType<typeof estimateFees>> | undefined;
+  if (await feesRequired(w)) {
+    fees = await estimateFees(w, args, label);
+    console.log(`[patrol] ${label} fee deposit ${fees.feeValue} wei`);
+  }
+  const withFees = fees ? { ...args, fees } : args;
+
   let lastErr: unknown = null;
   for (let i = 1; i <= attempts; i++) {
     try {
-      return (await withTimeout(w.writeContract(args), 45_000, `${label} submit`)) as string;
+      return (await withTimeout(w.writeContract(withFees), 45_000, `${label} submit`)) as string;
     } catch (e) {
       lastErr = e;
       const msg = String((e as Error)?.message ?? e);
@@ -322,6 +396,35 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       const account = createAccount(key as `0x${string}`);
       botAddress = account.address;
       wallet = createClient({ chain, account });
+
+      /*
+       * The bot spends its own GEN here: a stake on every challenge it files,
+       * plus a fee deposit on every write once the network charges for them.
+       * An empty wallet does not fail loudly — the writes are refused one at a
+       * time and the run reports a patrol that filed nothing, which reads
+       * exactly like a clean register. So check the balance ONCE, up front, and
+       * say plainly what is wrong and what it needs.
+       */
+      try {
+        const balance = await withTimeout(
+          read.getBalance({ address: account.address as `0x${string}` }), 20_000, "bot balance");
+        const stakeText = (Number(CHALLENGE_STAKE_FLOOR) / 1e18).toFixed(2);
+        if (balance === 0n) {
+          notes.push(
+            `The patrol wallet ${account.address} holds 0 GEN. It needs GEN for the ` +
+            `challenge stake (${stakeText} each) and, on a network with fees enabled, a fee ` +
+            `deposit on every write. Fund it before this run can file anything: on Studio ` +
+            `networks call sim_fundAccount, elsewhere send it GEN from a funded wallet.`);
+          console.log(`[patrol] WARNING bot wallet ${account.address} holds 0 GEN`);
+        } else if (balance < CHALLENGE_STAKE_FLOOR) {
+          notes.push(
+            `The patrol wallet ${account.address} holds ${balance} wei, less than one ` +
+            `${stakeText} GEN challenge stake. It can judge and stamp, but it cannot file.`);
+        }
+      } catch {
+        // A balance the RPC will not answer is not a reason to skip the run.
+        notes.push("Could not read the patrol wallet's balance; proceeding anyway.");
+      }
     }
   }
 

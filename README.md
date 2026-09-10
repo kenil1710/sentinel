@@ -52,18 +52,32 @@ five validators independently fetched that transaction and returned:
 > `0x974733a3…`) to the agent's wallet. WFC is not ETH or USDC, violating the
 > explicit token restriction."*
 
-**This was judged on an earlier deployment, not on the Studio Dev contract
-linked above.** It was filed by the patrol bot rather than by hand, and all
-three challenges the bot filed against that agent came back VIOLATION, at 95%,
-90% and 95% confidence, on three different transactions with three different
-evidence digests. It is kept here because it is the evidence that the judgement
-path works end to end against a real transaction — not as a claim about what the
-current contract's state shows.
+That verdict was reached on an earlier deployment. **The Studio Dev contract
+linked above has since returned its own**, on the same wallet and the same
+mandate, judged on 2026-09-10:
+
+> **VIOLATION**
+> *"The mandate strictly limits trading to 'Only trade ETH and USDC'. The
+> transaction record shows the agent received 6911.417809281437663232 of a token
+> identified as WFC (contract `0x974733a3…`), which is neither ETH nor USDC,
+> thereby violating the permitted asset restriction."*
+
+Both were filed by the patrol bot rather than by hand. On the earlier
+deployment all three challenges the bot filed against that agent came back
+VIOLATION, at 95%, 90% and 95% confidence, on three different transactions with
+three different evidence digests. The earlier evidence is kept because it is a
+wider sample than one verdict — not because the current contract lacks one.
 
 What the Studio Dev contract shows **right now**, read from `get_stats` and
-`get_challenges` on 2026-09-08: four agents registered and active, 2 GEN bonded,
-one challenge filed and still `PENDING`, nothing settled, `patrols_run` at 0.
-No verdict has been returned on this deployment yet.
+`get_challenges` on 2026-09-10: eighteen agents registered and sixteen active,
+10 GEN under watch, four challenges filed and **three settled — every one of
+them `VIOLATION`**, all filed and judged by the patrol bot. Challenge 0 found
+agent 0 receiving WFC against a mandate of "Only trade ETH and USDC";
+challenges 1 and 2 followed against agent 2. The penalty compounds, so agent 2's
+bond went 0.5 → 0.4 → 0.32: **0.28 GEN slashed in total, against 0.14 GEN paid
+out in bounties.** Agents 0 and 2 are `SLASHED_OUT` because their bonds fell
+below the 0.5 GEN minimum, which is why sixteen of eighteen are active.
+Challenge 3 is `PENDING`. `patrols_run` is 2.
 
 The penalty compounds, and the arithmetic below is what the contract computes —
 checkable on chain once a challenge here settles:
@@ -113,12 +127,11 @@ afternoon must never read as a clean bill of health.
 
 ## The register is real
 
-**Four agents are registered on Studio Dev today** — `ETH/USDC Rebalancer`
-(ethereum), `Base DeFi Agent` (base), `Arbitrum Swap Bot` (arbitrum) and
-`Polygon Market Maker` (polygon), 0.5 GEN bonded each. The full roster below is
-what `test/seed_roster.mjs` seeds; it has not been seeded in full against this
-deployment, so treat the table as the seeder's contents rather than as the
-current register.
+**Eighteen agents are registered on Studio Dev today**, spanning all five
+configured chains — 7 on ethereum, 3 each on arbitrum, polygon and Robinhood
+Chain, and 2 on base — across three agent types (10 TRADING, 7 DEFI, 1 CUSTOM),
+with 10.5 GEN under watch. The roster below is what `test/seed_roster.mjs`
+defines and it has now been seeded against this deployment.
 
 Fifteen agents, seeded from wallets taken out of the **live transaction lists** of
 Uniswap's UniversalRouter on four chains, Aave v3's Pool, and Robinhood Chain's
@@ -146,9 +159,8 @@ globally, because the same key running on two chains is two different risk
 surfaces: on Arbitrum it may trade, on Ethereum it may only lend, and on Polygon
 it may only hold dollars. `/api/check` returns a different mandate for each.
 
-The full roster covers **all five chains the contract configures** — the four
-agents currently registered on Studio Dev cover four of them, with no Robinhood
-Chain agent registered yet. Base was the last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
+The register covers **all five chains the contract configures**, Robinhood
+Chain included. Base was the last to arrive: `docs/PROBE.md` §6 recorded `base.blockscout.com` answering 500
 to every endpoint for an entire day, so the register originally spanned three.
 The outage was transient, the host serves that wallet's history now, and a chain
 advertised in `get_config` but absent from the register is a claim nobody can
@@ -353,7 +365,7 @@ live suite          79 checks   test/e2e.mjs             (real validators — NO
 functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
 adversarial suite   99 checks   test/edge_cases.mjs      (the nasty states — NOT re-run on Studio Dev)
 rejection checklist 19 checks   tools/checklist.py       (AST, not grep)
-audit               61 checks   bash tools/audit.sh      (live chain + live site, 5 skipped)
+audit               64 checks   bash tools/audit.sh      (live chain + live site, 1 skipped)
 ```
 
 `verify_methods.mjs` exercises all **36** public methods — the count `genvm-lint`
@@ -445,14 +457,30 @@ patrol also judges what it files: it resolves any PENDING challenge before it
 looks for new ones, and puts each newly filed challenge to the validators in the
 same run.
 
-What that does *not* yet show on chain: `patrols_run` is **0** on the Studio Dev
-deployment. No patrol has been driven against this contract yet, so the counter
-is honest rather than optimistic. A previous deployment also hit a node refusing
-the bot's writes — `transaction gas rate limit exceeded: node is at capacity`,
-then a revert at the consensus contract — which is a network condition rather
-than a bug in this route. The route retries on the backoff the node itself asks
-for and reports the failure in `notes` instead of claiming a run it did not
-complete. See [`frontend/CRON.md`](frontend/CRON.md).
+`patrols_run` is **2** on the Studio Dev deployment. The first run resolved
+challenge 0 to `VIOLATION`, filed three more and stamped two agents in 241s; the
+second, against the deployed Vercel route, judged challenges 1 and 2 — both
+`VIOLATION` — in 148s. It was driven by hand — Vercel has still not been observed to *deliver* a
+cron slot on its own, so an external scheduler against the alias with
+`PATROL_SECRET` remains the way to run it. See [`frontend/CRON.md`](frontend/CRON.md).
+
+Why it had never moved before: **Studio Dev charges a fee deposit on every
+write and this route was built against Bradbury, which does not.** A
+`writeContract` with no `fees` is a zero-fee transaction and the consensus
+contract refuses it, so `challenge_agent`, `mark_patrolled` and
+`resolve_challenge` were all rejected while every off-chain part of the run —
+the queue read, the Blockscout fetches, the heuristics — looked healthy. Each
+write now estimates with `estimateTransactionFeesForWrite` against its own
+calldata and passes the result as `fees`; the measured deposits are 0.00061 GEN
+for `mark_patrolled` and 0.00077 GEN for `resolve_challenge`. The bot's balance
+is checked once per run, and an empty wallet is reported in `notes` rather than
+left to surface as three unexplained refusals.
+
+A previous deployment also hit a node refusing the bot's writes —
+`transaction gas rate limit exceeded: node is at capacity`, then a revert at the
+consensus contract — which is a network condition rather than a bug in this
+route. The route retries on the backoff the node itself asks for and reports the
+failure in `notes` instead of claiming a run it did not complete.
 
 Nothing about the bot depends on the cadence: it is stateless, reads its queue
 from the contract on every run, and `is_tx_challenged` makes a second pass over

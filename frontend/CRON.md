@@ -81,6 +81,48 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 
 A 302 there means the cron is firing into a login page.
 
+## What the bot's wallet has to hold
+
+`PATROL_PRIVATE_KEY` is a real wallet and the patrol spends from it twice over:
+
+- **the challenge stake** — `get_config().challenge_stake`, 0.05 GEN each, up to
+  `MAX_CHALLENGES_PER_RUN` (3) per run;
+- **a fee deposit on every write** — on any network whose fee policy is enabled.
+
+Studio Dev's is. `getCurrentFeePolicy()` reports `enabled: true` and the chain
+exposes no `feeManagerContract`, so the SDK derives the deposit from the local
+round-fee calculation. Bradbury, which this route was first written against,
+charges nothing — which is why the earlier version passed no `fees` at all and
+every write here was refused as a zero-fee transaction. Measured on Studio Dev:
+
+```
+register_agent    0.00061 GEN     mark_patrolled       0.00061 GEN
+challenge_agent   0.00077 GEN     resolve_challenge    0.00077 GEN
+```
+
+The deposit is estimated per call with `estimateTransactionFeesForWrite` against
+the real calldata, because it depends on the method and its arguments — a
+`mark_patrolled` carrying twelve agent ids does not cost what one carrying two
+does.
+
+**Funding it.** On a Studio network use the faucet RPC method directly:
+
+```bash
+curl -s https://studio-dev.genlayer.com/api \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"sim_fundAccount","params":["<bot address>",50000000000000000000]}'
+```
+
+Elsewhere there is no faucet: send the wallet GEN from a funded account by hand.
+Either way the address is derived from `PATROL_PRIVATE_KEY`, and the run reports
+it as `Filing as 0x…` in `notes`.
+
+An empty wallet does not announce itself — the writes are refused one at a time
+and the report reads like a patrol that found nothing wrong, which is the worst
+shape a watchdog failure can take. So the route reads the balance ONCE at
+startup and says plainly in `notes` when it is empty or below one stake. Check
+that line before believing a quiet run.
+
 ## Who may spend the stake
 
 `/api/patrol` files for real only for a **trusted** caller. Everyone else gets a
