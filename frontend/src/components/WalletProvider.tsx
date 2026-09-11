@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   CHAIN_ID_HEX,
+  NETWORK_LABEL,
   ensureCorrectNetwork,
   getReadClient,
   getWalletChainId,
@@ -82,15 +83,41 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     void getWalletChainId().then(setChainId);
   }, [account]);
 
+  /**
+   * Connect, then move the wallet onto this network.
+   *
+   * TWO PROMPTS, AND THE SECOND ONE MAY BE DECLINED WITHOUT LOSING THE FIRST.
+   * `ensureCorrectNetwork` asks the wallet to switch — and to ADD the network
+   * first if it has never heard of it (error 4902) — so an approved connection
+   * normally lands on the right chain with no further clicking.
+   *
+   * It used to be awaited BEFORE the account was committed, which meant
+   * declining the switch threw, skipped `setAccount`, and left the person
+   * disconnected entirely under the message "You dismissed the wallet prompt."
+   * They had dismissed a different prompt, and the one thing they had actually
+   * approved was discarded. The account is now committed first and a refused
+   * switch is reported as what it is: connected, wrong network, one button from
+   * being right — and `onWrongNetwork` already puts that button in the header,
+   * on the register form, on the challenge form and on the operator panel.
+   */
   const connect = useCallback(async () => {
     setConnecting(true);
     setError(null);
     try {
       const next = await requestAccount();
-      await ensureCorrectNetwork();
       setAccount(next);
-      setChainId(await getWalletChainId());
       window.localStorage.setItem(STORAGE_KEY, "1");
+      try {
+        await ensureCorrectNetwork();
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        setError(
+          /User rejected|4001/i.test(message)
+            ? `Connected, but your wallet is on another network. Use “Switch to ${NETWORK_LABEL}” to finish.`
+            : message,
+        );
+      }
+      setChainId(await getWalletChainId());
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(/User rejected|4001/i.test(message) ? "You dismissed the wallet prompt." : message);
@@ -111,7 +138,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setChainId(await getWalletChainId());
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      // Say which network, and that nothing is lost by trying again. The raw
+      // "User rejected the request." names neither.
+      setError(
+        /User rejected|4001/i.test(message)
+          ? `Still on another network — Sentinel reads and writes on ${NETWORK_LABEL} only.`
+          : message,
+      );
     }
   }, []);
 

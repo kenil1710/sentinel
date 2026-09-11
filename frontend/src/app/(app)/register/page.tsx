@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Panel, Label, ChainTag, Spinner } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
+import { FaucetNote } from "@/components/Onboarding";
 import { getConfig, registerAgent } from "@/lib/contract";
 import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, parseGen, percentFromBps } from "@/lib/format";
 import type { AgentType, WriteResult } from "@/types";
@@ -103,6 +104,8 @@ export default function RegisterPage() {
         The mandate is stored on chain in plain English — it is what validators read
         when someone says your agent broke it.
       </p>
+
+      <FaucetNote />
 
       <div className="mt-9 grid gap-7 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">

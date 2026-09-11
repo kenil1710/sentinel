@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Panel, Label } from "@/components/ui";
+import { GettingStarted } from "@/components/Onboarding";
 
 export const metadata: Metadata = {
   title: "How Sentinel works",
@@ -26,6 +27,17 @@ export default function DocsPage() {
         five GenLayer validators independently fetch that transaction and agree on one
         verdict. There is no administrator anywhere in the loop.
       </P>
+
+      {/*
+        * FIRST, because everything below it assumes a funded wallet on the
+        * right network, and someone who has neither cannot act on a word of it.
+        */}
+      <H2>Getting started</H2>
+      <P>
+        Sentinel runs on GenLayer Studio Dev, a test network. Nothing here costs real
+        money, and the four steps below take about two minutes.
+      </P>
+      <GettingStarted />
 
       <H2>The four steps</H2>
       <div className="mt-4 space-y-3">
