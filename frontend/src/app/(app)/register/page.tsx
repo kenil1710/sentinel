@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { Panel, Label, ChainTag, Spinner } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
 import { getConfig, registerAgent } from "@/lib/contract";
-import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, percentFromBps } from "@/lib/format";
+import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, parseGen, percentFromBps } from "@/lib/format";
 import type { AgentType, WriteResult } from "@/types";
 
 /*
@@ -52,12 +52,7 @@ export default function RegisterPage() {
   const [result, setResult] = useState<WriteResult | null>(null);
 
   const minBond = cfg ? BigInt(cfg.min_bond) : 5n * 10n ** 17n;
-  const bondWei = useMemo(() => {
-    const t = bond.trim();
-    if (!/^\d+(\.\d{1,18})?$/.test(t)) return null;
-    const [w, f = ""] = t.split(".");
-    return BigInt(w) * 10n ** 18n + BigInt((f + "0".repeat(18)).slice(0, 18));
-  }, [bond]);
+  const bondWei = useMemo(() => parseGen(bond), [bond]);
 
   const problems: string[] = [];
   if (wallet && !isAddress(wallet)) problems.push("That is not a 0x-prefixed 40-character address.");

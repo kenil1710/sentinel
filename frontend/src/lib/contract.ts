@@ -171,6 +171,52 @@ async function feesRequired(wallet: ReturnType<typeof getWalletClient>): Promise
 }
 
 /**
+ * The contract's own refusal, dug out of a failed FEE ESTIMATE.
+ *
+ * A non-payable write that `gl.vm.UserError`s never reaches settlement: the
+ * estimate simulates the call first, the simulation reverts, and the SDK throws
+ * a viem `InvalidInputRpcError` whose message is "Missing or invalid
+ * parameters. Double check you have provided the correct parameters." The
+ * parameters were fine. The CONTRACT said no, and surfacing viem's guess
+ * instead sends an operator off to re-check an address that was never wrong.
+ *
+ * The real sentence is on the simulated receipt, base64 of one length-prefixed
+ * string — the same payload `readWriteResult` reads when a write does settle as
+ * a rollback. Both spellings are accepted here because the estimate carries the
+ * encoded string directly where a settled receipt nests it under `payload`.
+ *
+ * Only reached by `withdraw_bond`, `update_mandate`, `resolve_challenge` and
+ * `settle_stalled`. The payable writes refund rather than raise, so their
+ * simulation succeeds and their rejection arrives through `readWriteResult`.
+ */
+function contractRefusal(error: unknown): string | null {
+  type Node = { cause?: unknown; data?: { receipt?: { result?: unknown } } };
+  let node = error as Node | undefined;
+  for (let depth = 0; node && depth < 6; depth++, node = node.cause as Node | undefined) {
+    const result = node?.data?.receipt?.result;
+    const encoded = typeof result === "string"
+      ? result
+      : typeof (result as { payload?: unknown })?.payload === "string"
+        ? ((result as { payload: string }).payload)
+        : null;
+    if (!encoded) continue;
+    let bytes: Uint8Array;
+    try {
+      bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+    } catch {
+      continue;
+    }
+    // A leading length/tag byte precedes the text; anything below space is not
+    // part of the sentence.
+    let start = 0;
+    while (start < bytes.length && bytes[start] < 0x20) start++;
+    const text = new TextDecoder().decode(bytes.subarray(start)).trim();
+    if (text) return text;
+  }
+  return null;
+}
+
+/**
  * A wallet that cannot cover the deposit fails inside the SDK with a message
  * written for a developer. Say what the person actually has to do instead, and
  * name the network so "get some GEN" is followed by "from where".
@@ -215,7 +261,12 @@ async function send<T>(
     });
   } catch (e) {
     const message = String((e as Error)?.message ?? e);
-    return { kind: "failed", hash: null, error: fundingHint(message, NETWORK) ?? message };
+    // Most specific first: what the contract said, then what the wallet is
+    // short of, then whatever the SDK managed to say.
+    return {
+      kind: "failed", hash: null,
+      error: contractRefusal(e) ?? fundingHint(message, NETWORK) ?? message,
+    };
   }
 
   const started = Date.now();

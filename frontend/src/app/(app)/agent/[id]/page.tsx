@@ -5,11 +5,12 @@ import Link from "next/link";
 import useSWR from "swr";
 import { Panel, Label, ChainTag, StatusTag, TypeTag, ScoreRing, VerdictBadge, Empty, Spinner } from "@/components/ui";
 import { ChallengeForm } from "@/components/ChallengeForm";
+import { OperatorPanel } from "@/components/OperatorPanel";
 import { AgentTransactions } from "@/components/AgentTransactions";
 import { useWallet } from "@/components/WalletProvider";
-import { getAgent, getAgentHistory, getConfig, topUpBond, withdrawBond } from "@/lib/contract";
+import { getAgent, getAgentHistory, getConfig } from "@/lib/contract";
 import { absoluteTime, blockscoutUrl, formatGen, relativeTime, shortAddress } from "@/lib/format";
-import type { Agent, Challenge, WriteResult } from "@/types";
+import type { Agent, Challenge } from "@/types";
 
 export default function AgentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -25,23 +26,13 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
   const { data: cfg } = useSWR("config", getConfig);
 
   const [challengeTx, setChallengeTx] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [op, setOp] = useState<WriteResult | null>(null);
 
+  /**
+   * The operator gate. Case-insensitive because a wallet may hand back an
+   * EIP-55 checksummed address while the contract stores it lowercased, and a
+   * byte-for-byte comparison would hide an operator's own controls from them.
+   */
   const isOperator = Boolean(account && agent && account.toLowerCase() === agent.operator.toLowerCase());
-
-  async function doWithdraw() {
-    if (!account) return;
-    setBusy("withdraw"); setOp(null);
-    try { setOp(await withdrawBond(account, agentId)); await mutate(); }
-    finally { setBusy(null); }
-  }
-  async function doTopUp() {
-    if (!account) return;
-    setBusy("topup"); setOp(null);
-    try { setOp(await topUpBond(account, agentId, 10n ** 18n)); await mutate(); }
-    finally { setBusy(null); }
-  }
 
   if (error) {
     return (
@@ -170,31 +161,17 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
               )}
               <Row k="Last checked" v={relativeTime(agent.last_checked)} />
             </div>
-
-            {isOperator && (
-              <div className="mt-5 space-y-2 border-t border-line pt-4">
-                <div className="text-[11px] text-ink-3">You registered this agent.</div>
-                <button onClick={doTopUp} disabled={busy !== null}
-                  className="w-full rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] text-ink hover:border-line-2 disabled:opacity-50">
-                  {busy === "topup" ? "Adding…" : "Top up bond by 1 GEN"}
-                </button>
-                <button onClick={doWithdraw} disabled={busy !== null || agent.pending_count > 0}
-                  title={agent.pending_count > 0 ? "A challenge is pending — the bond answers for it" : undefined}
-                  className="w-full rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] text-ink-2 hover:text-ink disabled:opacity-40">
-                  {busy === "withdraw" ? "Withdrawing…" : "Withdraw bond and retire"}
-                </button>
-                {op?.kind === "rejected" && (
-                  <div className="rounded-md border border-neutral/25 bg-neutral/10 p-2.5 text-[12px] text-neutral-ink">{op.reason}</div>
-                )}
-                {op?.kind === "failed" && (
-                  <div className="rounded-md border border-violation/25 bg-violation/10 p-2.5 text-[12px] text-violation-ink">{op.error}</div>
-                )}
-                {op?.kind === "ok" && (
-                  <div className="rounded-md border border-compliant/25 bg-compliant/10 p-2.5 text-[12px] text-compliant-ink">Done.</div>
-                )}
-              </div>
-            )}
           </Panel>
+
+          {/*
+            * Operator-only, and only these three. Everything else on this page
+            * is the same for every visitor — what an agent promised and how it
+            * has been judged is public by design.
+            */}
+          {isOperator && (
+            <OperatorPanel agent={agent} config={cfg}
+              onDone={() => { mutate(); mutateHistory(); }} />
+          )}
 
           <div id="challenge-form">
             <ChallengeForm agent={agent} config={cfg} tx={challengeTx} setTx={setChallengeTx}

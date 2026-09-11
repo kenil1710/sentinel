@@ -20,6 +20,21 @@ export function formatGen(wei: string | bigint | undefined, places = 4): string 
   return tail ? `${whole}.${tail}` : whole.toString();
 }
 
+/**
+ * "1.25" → 1250000000000000000n. `null` for anything that is not a plain
+ * decimal amount, which the caller renders as a problem rather than sending.
+ *
+ * Deliberately string arithmetic, for the same reason `formatGen` is: a
+ * top-up typed as 1.1 goes through `Number` as 1.1000000000000000888, and a
+ * bond is not a place to lose the last three wei.
+ */
+export function parseGen(text: string): bigint | null {
+  const t = String(text).trim();
+  if (!/^\d+(\.\d{1,18})?$/.test(t)) return null;
+  const [whole, frac = ""] = t.split(".");
+  return BigInt(whole) * 10n ** 18n + BigInt((frac + "0".repeat(18)).slice(0, 18));
+}
+
 export function shortAddress(value: string | undefined, size = 4): string {
   if (!value) return "";
   const s = String(value);
