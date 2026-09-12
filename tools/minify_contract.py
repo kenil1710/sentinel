@@ -22,6 +22,8 @@ What it removes:
   - blank lines
   - trailing whitespace
   - indentation beyond one space per level
+  - spaces BETWEEN tokens that Python does not need (`a = b` -> `a=b`), checked
+    by comparing the parse tree before and after
 
 What it never touches:
   - the leading `#` header block, byte for byte
@@ -245,7 +247,73 @@ def minify(source: str, spaces_per_level: int = 1) -> str:
     # only comment lines in `stage`, so drop exactly those from the body.
     while body and body[0].lstrip().startswith("#"):
         body = body[1:]
-    return header + "\n" + "\n".join(body) + "\n"
+    text = "\n".join(body)
+
+    # The last pass, and the one that needs proving rather than trusting: strip
+    # the spaces between tokens, then refuse to hand back anything whose parse
+    # tree is not identical to what went in.
+    squeezed = _squeeze_spaces(text)
+    if ast.dump(ast.parse(squeezed)) != ast.dump(ast.parse(text)):
+        raise SystemExit(
+            "REFUSING: squeezing inter-token spaces changed the parse tree"
+        )
+    return header + "\n" + squeezed.strip("\n") + "\n"
+
+
+def _squeeze_spaces(source: str) -> str:
+    """Drop the spaces BETWEEN tokens that Python does not need to read them.
+
+    `s = str(v)` and `s=str(v)` are the same program; the three spaces are three
+    bytes of deploy payload. Roughly 3.5 KB of the artifact is this, which is the
+    difference between fitting under the node's pubdata ceiling and not.
+
+    ## Why this is safe, and how that is PROVED rather than argued
+
+    The rule is mechanical: a space between two adjacent tokens is kept only
+    when removing it would let them merge into a different token — that is,
+    when the left one ENDS with a word character and the right one BEGINS with
+    one (`not in`, `return x`, `is None`). Everything else (`) ->`, `= (`,
+    `, "`) cannot merge and the space goes.
+
+    String tokens are emitted verbatim from `tok.string`, so nothing inside a
+    quote is touched — the judgement prompt every validator reads comes through
+    byte for byte. Lines that a string spans are emitted whole for the same
+    reason.
+
+    And then it is CHECKED: the caller compares the parse tree before and after
+    and refuses the build if they differ. An identical AST means an identical
+    program, which is a proof rather than a promise — the right standard for a
+    transform that rewrites every line of a contract holding real bonds.
+    """
+    result: list[str] = []
+    prev: tokenize.TokenInfo | None = None
+
+    for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+        if tok.type in (tokenize.ENDMARKER, tokenize.INDENT,
+                        tokenize.DEDENT, tokenize.COMMENT):
+            continue
+        if tok.type in (tokenize.NEWLINE, tokenize.NL):
+            result.append("\n")
+            prev = None
+            continue
+
+        if prev is None:
+            # First token on a physical line. Its column IS the indentation that
+            # `minify` already narrowed to one space per level, so reproduce it.
+            result.append(" " * tok.start[1])
+        elif tok.start[0] != prev.end[0]:
+            # A bracket continuation: the previous token ended on an earlier
+            # line (or was a multi-line string). Keep the break and its indent.
+            result.append("\n" + " " * tok.start[1])
+        elif tok.start[1] > prev.end[1]:
+            left, right = prev.string[-1:], tok.string[:1]
+            if (left.isalnum() or left == "_") and (right.isalnum() or right == "_"):
+                result.append(" ")
+
+        result.append(tok.string)
+        prev = tok
+
+    return "".join(result)
 
 
 def main() -> int:

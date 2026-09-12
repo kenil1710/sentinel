@@ -247,7 +247,15 @@ export interface PatrolReport {
    * from the chain every run, never cached, so it cannot drift from the
    * verdicts it represents.
    */
-  learned_compliant: { agent_id: number; pattern: string; rulings: number; first: number; last: number }[];
+  /**
+   * Patterns the bot stood down on this run. `transactions` are the ones whose
+   * records CORROBORATED the clearance — a reason string alone no longer counts
+   * toward it, so this is the evidence, not just the claim.
+   */
+  learned_compliant: {
+    agent_id: number; pattern: string; rulings: number;
+    first: number; last: number; transactions: string[];
+  }[];
   dry_run: boolean;
   /** What this run put to the validators. Empty on a dry run. */
   challenges_resolved?: { challenge_id: number; verdict: string; error?: string }[];

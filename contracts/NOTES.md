@@ -398,6 +398,33 @@ and that the map is injective.
 
 ---
 
+## 10b. The artifact grew past the ceiling, and the space came from the minifier
+
+The security fixes added ~1.1 KB of code and carried the artifact to **53,880
+bytes**. `test/size_gate.py` was re-run against the live network and refused
+53,400, which agrees with the figure already recorded here: the ceiling sits
+between 53,000 accepted and 53,400 refused.
+
+The bytes were not found by cutting the fixes down. They were found by noticing
+that the minifier kept every space BETWEEN tokens — `s = str(v)` where `s=str(v)`
+is the same program — which was 3.5 KB of pure payload. `_squeeze_spaces` now
+removes them and the artifact is **50,355 bytes**, with headroom for the first
+time in a while.
+
+That transform rewrites every line of a contract holding real bonds, so it is
+not trusted, it is proved: `minify()` parses the text before and after and
+refuses the build unless `ast.dump` is identical. An identical parse tree is an
+identical program. It caught a genuine bug in the first version of the pass —
+lost indentation after a NEWLINE — before that version ever reached a file.
+
+String tokens are emitted verbatim, and a separate check confirms all 896
+non-docstring literals survive byte for byte, the judgement prompt included.
+That matters more here than anywhere else: the prompt IS the thing five
+validators read, and a minifier that reflowed it would change verdicts while
+every test still passed.
+
+---
+
 ## 11. Two behaviours a reader should know about before trusting a score
 
 Both were found by the adversarial suite (`test/edge_cases.mjs`), both are

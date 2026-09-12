@@ -100,9 +100,22 @@ export const getLeaderboard = (count = 25) =>
 export const getAgentByWallet = (chain: string, wallet: string) =>
   view<{ found: boolean; agent?: Agent }>("get_agent_by_wallet", [chain, wallet]);
 
-export const isTxChallenged = (chain: string, tx: string) =>
+/**
+ * Has THIS AGENT already been judged over this transaction?
+ *
+ * `agentId` is required because the contract's claim is per agent, not per
+ * transaction. Two agents that were both party to one transfer are two separate
+ * accusations about two separate mandates, and one being challenged never
+ * settles anything about the other.
+ *
+ * A challenge that settled INCONCLUSIVE, or that timed out through
+ * `settle_stalled`, releases its claim — so this answers `false` again and the
+ * transaction is open to a fresh challenge. That is deliberate: neither outcome
+ * decided anything, and both refunded the stake in full.
+ */
+export const isTxChallenged = (chain: string, tx: string, agentId: number) =>
   view<{ valid: boolean; challenged: boolean; challenge_id?: number; verdict?: string }>(
-    "is_tx_challenged", [chain, tx]);
+    "is_tx_challenged", [chain, tx, agentId]);
 
 // ── Writes ─────────────────────────────────────────────────────────────────
 

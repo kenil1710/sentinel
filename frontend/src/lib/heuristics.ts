@@ -236,7 +236,67 @@ export interface SettledChallenge {
   verdict?: string;
   reason?: string;
   injection_flagged?: boolean;
+  /** Which transaction was judged. Required for corroboration — see below. */
+  tx_hash?: string;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * WHY A REASON STRING IS NOT EVIDENCE
+ *
+ * The accusation the contract stores is free text. Nothing binds it to the
+ * transaction it claims to describe, and `challenge_agent` validates only its
+ * length. So anyone could write the bot's own sentence — verbatim, it is
+ * published in this file — point it at a harmless transfer, and collect a
+ * COMPLIANT verdict that the validators were right to give: the transaction
+ * really was unremarkable, and the prompt names COMPLIANT as the answer for
+ * exactly that case.
+ *
+ * Two of those, and `learnedFrom` used to hand the bot a standing order to
+ * ignore that pattern on that agent. MEASURED, as the audit that prompted this:
+ * two forged clearances at 0.015 GEN each — the rest of the stake comes back
+ * into the operator's own bond — and the bot withheld a real unlisted-token
+ * violation it had correctly flagged.
+ *
+ * ## The fix: corroborate the reason against the transaction
+ *
+ * A ruling now counts only if the bot, re-reading the ACTUAL transaction the
+ * challenge named, derives the same key from it. The accusation is no longer
+ * taken at its word; it is checked against the record.
+ *
+ * That kills the forgery outright — a reason claiming WFC moved, on a transfer
+ * where no WFC moved, produces no key from the record and teaches nothing —
+ * while keeping the generalisation the feature exists for: a pattern genuinely
+ * cleared twice on real transactions still stands the bot down, which is the
+ * whole point of not paying to re-litigate settled arguments.
+ *
+ * Keying on the tx hash itself was the other option, and it is rejected on
+ * purpose: it would make every key unique per transaction, so nothing could
+ * ever generalise, `is_tx_challenged` already covers the same-transaction case,
+ * and the bot would go straight back to losing a stake on every new trade of a
+ * kind the validators have already ruled on. That is the exact failure this
+ * machinery was built to stop.
+ *
+ * ## What it costs
+ *
+ * One Blockscout fetch per settled COMPLIANT challenge in an agent's history,
+ * bounded by CORROBORATE_MAX per patrol, and only for agents that have been
+ * cleared of something. A transaction that cannot be re-read corroborates
+ * NOTHING and the bot keeps challenging — the safe direction, since the cost of
+ * that is a stake and the cost of the other is a blind watchdog.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/** How the bot re-reads a historical transaction. Injected so tests stay offline. */
+export type TxLookup = (hash: string) => Promise<TxRow | null>;
+
+/**
+ * Corroboration fetches per agent per patrol.
+ *
+ * A ceiling, not a target: most agents have no settled history at all, and the
+ * ones that do are usually corroborating two or three challenges. It exists so
+ * that an agent with a long history cannot, by itself, spend a patrol's whole
+ * network budget re-reading its own past.
+ */
+export const CORROBORATE_MAX = 12;
 
 /**
  * How many times the validators must reject the same accusation against the
@@ -255,11 +315,17 @@ export const LEARN_AFTER = 2;
 
 /** What one agent's history says about one rule-and-subject key. */
 export interface Ruling {
-  /** COMPLIANT verdicts on this key. The bot stands down at LEARN_AFTER. */
+  /** CORROBORATED COMPLIANT verdicts on this key. The bot stands down at LEARN_AFTER. */
   rulings: number;
   /** Earliest and most recent challenge ids, so a withheld flag can cite them. */
   first: number;
   last: number;
+  /**
+   * The transactions that corroborated it. Kept so the threshold can require
+   * DISTINCT transactions, and so a withheld flag can name what cleared it —
+   * "the bot stood down" is only inspectable if the evidence is nameable.
+   */
+  transactions: string[];
 }
 
 /** A flag that was NOT filed, and the verdicts that withheld it. */
@@ -370,9 +436,15 @@ export function reasonSignatures(reason: string): string[] {
  * text aimed at the judge; a clearance obtained under those conditions is the
  * one verdict a bot should never make permanent.
  */
-export function learnedFrom(challenges: SettledChallenge[]): Map<string, Ruling> {
+export async function learnedFrom(
+  challenges: SettledChallenge[],
+  mandate: string,
+  chain: string,
+  lookup: TxLookup,
+): Promise<Map<string, Ruling>> {
   const counts = new Map<string, Ruling>();
   const vetoed = new Set<string>();
+  let fetches = 0;
 
   for (const c of Array.isArray(challenges) ? challenges : []) {
     if (!c) continue;
@@ -380,21 +452,61 @@ export function learnedFrom(challenges: SettledChallenge[]): Map<string, Ruling>
     if (verdict !== "COMPLIANT" && verdict !== "VIOLATION") continue;
     if (c.injection_flagged) continue;
     const id = Number(c.challenge_id ?? -1);
-    for (const sig of reasonSignatures(String(c.reason ?? ""))) {
-      if (verdict === "VIOLATION") {
-        vetoed.add(sig);
-        continue;
-      }
+    const claimed = reasonSignatures(String(c.reason ?? ""));
+    if (claimed.length === 0) continue;
+
+    /*
+     * A VIOLATION needs no corroboration. It is a proven breach, and the only
+     * thing it can do here is make the bot keep looking — the failure-safe
+     * direction, so an unreadable transaction must never be able to suppress it.
+     *
+     * This is also why the veto is kept even though it rarely fires from a
+     * human's challenge: a human writes prose, which parses to no signature at
+     * all, so their VIOLATION vetoes nothing. The veto covers the bot's own
+     * template only, and the corroboration below is what actually carries the
+     * defence.
+     */
+    if (verdict === "VIOLATION") {
+      for (const sig of claimed) vetoed.add(sig);
+      continue;
+    }
+
+    // A COMPLIANT verdict must be corroborated against the transaction it
+    // judged. No hash, no budget, or an unreadable transaction — it teaches
+    // nothing and the bot goes on challenging.
+    const hash = String(c.tx_hash ?? "");
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) continue;
+    if (fetches >= CORROBORATE_MAX) continue;
+    fetches++;
+    let record: TxRow | null = null;
+    try {
+      record = await lookup(hash);
+    } catch {
+      continue;
+    }
+    if (!record) continue;
+
+    // The key the RECORD produces, not the key the accusation claimed. A
+    // forged reason asserts a pattern the transaction does not exhibit, so the
+    // intersection below is empty and nothing is learned.
+    const corroborated = new Set<string>();
+    for (const f of flagsFor(record, mandate, chain)) {
+      for (const sig of reasonSignatures(f.reason)) corroborated.add(sig);
+    }
+
+    for (const sig of claimed) {
+      if (!corroborated.has(sig)) continue;
       const seen = counts.get(sig);
       // `get_agent_history` returns newest first, so the SMALLER id is the
       // earlier ruling whichever order they arrive in — computed rather than
       // assumed, because an ordering this code does not control should not be
       // load-bearing for what it reports.
-      if (!seen) counts.set(sig, { rulings: 1, first: id, last: id });
+      if (!seen) counts.set(sig, { rulings: 1, first: id, last: id, transactions: [hash] });
       else counts.set(sig, {
         rulings: seen.rulings + 1,
         first: Math.min(seen.first, id),
         last: Math.max(seen.last, id),
+        transactions: seen.transactions.concat([hash]),
       });
     }
   }
@@ -403,6 +515,11 @@ export function learnedFrom(challenges: SettledChallenge[]): Map<string, Ruling>
   for (const [sig, ruling] of counts) {
     if (vetoed.has(sig)) continue;
     if (ruling.rulings < LEARN_AFTER) continue;
+    // The rulings must come from DIFFERENT transactions. Two clearances of one
+    // transaction are one event seen twice, not a pattern — and the contract
+    // now releases a refunded claim, so the same transaction can genuinely be
+    // challenged more than once.
+    if (new Set(ruling.transactions).size < LEARN_AFTER) continue;
     out.set(sig, ruling);
   }
   return out;

@@ -182,7 +182,7 @@ await check("challenge_agent", async () => {
   const out = await watcher.send("challenge_agent",
     [AGENT_A, SWAP_TX, "Swapped WETH into WFC, an unlisted token the mandate forbids"], STAKE);
   assert(out.ok, out.revertReason || out.status);
-  const known = await owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX]);
+  const known = await owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX, AGENT_A]);
   assert(known.challenged, "challenge not readable after filing");
   const dup = await watcher2.send("challenge_agent", [AGENT_A, SWAP_TX, "the same transaction again"], STAKE);
   const body = returnedJson(dup.returned);
@@ -190,7 +190,7 @@ await check("challenge_agent", async () => {
   return `challenge #${known.challenge_id} filed; duplicate refunded`;
 });
 
-const CH_A = (await owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX])).challenge_id;
+const CH_A = (await owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX, AGENT_A])).challenge_id;
 
 await check("resolve_challenge", async () => {
   const out = await resolver.send("resolve_challenge", [CH_A]);
@@ -224,7 +224,7 @@ await check("settle_stalled", async () => {
   const ghost = "0x" + "b".repeat(64);
   const f = await watcher2.send("challenge_agent", [AGENT_B, ghost, "a hash that will never be judged"], STAKE);
   assert(f.ok, "stalled-test challenge did not file");
-  const cid = (await owner.viewJson("is_tx_challenged", ["polygon", ghost])).challenge_id;
+  const cid = (await owner.viewJson("is_tx_challenged", ["polygon", ghost, AGENT_B])).challenge_id;
   const early = await outsider.send("settle_stalled", [cid]);
   assert(!early.ok || early.reverted, "settle_stalled ran before the window elapsed");
   await sleep(66_000);
@@ -314,7 +314,7 @@ const VIEWS = [
   ["get_challenges", () => owner.viewJson("get_challenges", [50]), (d) => d.count >= 1],
   ["get_pending_challenges", () => owner.viewJson("get_pending_challenges", [50]), (d) => Array.isArray(d.challenges)],
   ["get_agents_by_operator", () => owner.viewJson("get_agents_by_operator", [ACC.operator.address, 50]), (d) => d.count >= 1],
-  ["is_tx_challenged", () => owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX]), (d) => d.valid === true && d.challenged === true],
+  ["is_tx_challenged", () => owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX, AGENT_A]), (d) => d.valid === true && d.challenged === true],
   ["get_agent_by_wallet", () => owner.viewJson("get_agent_by_wallet", ["ethereum", SWAP_WALLET]), (d) => d.found === true],
   ["get_watcher", () => owner.viewJson("get_watcher", [ACC.watcher.address]), (d) => typeof d.filed === "number"],
   ["get_treasury", () => owner.viewJson("get_treasury"), (d) => typeof d.owed_total === "string"],

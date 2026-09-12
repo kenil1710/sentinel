@@ -15,8 +15,11 @@
  * that reverted and rolled back. That cost a false pass on the u128 storage
  * gate before this helper existed.
  */
-import { createClient, createAccount } from "genlayer-js";
+import { createClient, createAccount, encodeExternalMessageFeeParams } from "genlayer-js";
 import { studioDevnet } from "genlayer-js/chains";
+
+/** Whether this network charges for a write. Read once per process. */
+let feePolicyEnabled = null;
 import { transactionsStatusNumberToName } from "genlayer-js/types";
 import { readFileSync } from "node:fs";
 
@@ -269,7 +272,7 @@ export function connect({ networkName = argOf("network", "studiodev"), address, 
    * tests still unreported — one dropped transaction should not be able to do
    * that to six tests it never touched.
    */
-  async function send(functionName, args = [], value = 0n) {
+  async function send(functionName, args = [], value = 0n, { payees = null } = {}) {
     const started = Date.now();
     const giveUp = (reason, hash = null) => ({
       ...outcomeOf(null),
@@ -281,10 +284,74 @@ export function connect({ networkName = argOf("network", "studiodev"), address, 
       revertReason: reason,
     });
 
+    /*
+     * The fee deposit, when the network charges one.
+     *
+     * Studio Dev does, and a write sent without `fees` is refused by the
+     * consensus contract with `FeeValueMustBeNonZero` — which arrives as a
+     * revert that says nothing about the deposit being what was missing. Read
+     * the policy once per process and estimate against the real calldata, the
+     * same way the patrol route does.
+     *
+     * Unknown is NOT "free": a policy that cannot be read is assumed to charge.
+     */
+    let fees;
+    try {
+      if (feePolicyEnabled === null) {
+        feePolicyEnabled = await wallet.getCurrentFeePolicy()
+          .then((p) => Boolean(p?.enabled))
+          .catch(() => true);
+      }
+      if (feePolicyEnabled) {
+        /*
+         * `estimateTransactionFeesForWrite` SIMULATES the call, and Studio Dev
+         * answers `sim_estimateTransactionFees` with a bare "execution failed"
+         * for these writes — so every seed refused before it reached the
+         * contract. `estimateTransactionFees` derives the deposit from the fee
+         * POLICY instead, which needs no simulation and is what the deploy path
+         * uses. The deposit is a ceiling, not a charge: what is not consumed
+         * comes back.
+         */
+        /*
+         * AND an allocation per outbound transfer the call might make.
+         *
+         * Sentinel pays out through `_Payee.emit_transfer`, which is an
+         * EXTERNAL message, and a deposit with no allocation for it is refused
+         * with `fee no_matching_allocation # external` — after the call has
+         * already run. Every refund path is one such message (a payable
+         * rejection refunds), and so are withdraw_bond, settle_stalled and
+         * every settlement, so two covers the widest call here.
+         *
+         * The allocation names a REAL recipient. The zero address is refused
+         * with `ExternalAllocationInvalid`, so the default is the sender — which
+         * is who a refund and a withdrawal both pay — and `payees` overrides it
+         * for the calls that pay someone else (resolve_challenge pays the
+         * CHALLENGER, not whoever resolved it).
+         *
+         * The deposit is a CEILING, not a charge: whatever the call does not
+         * consume is returned, so over-allocating costs nothing but a larger
+         * number in the log.
+         */
+        const messageAllocations = (payees ?? [account.address]).map((to) => ({
+          messageType: 0,
+          recipient: to,
+          budget: 10n ** 17n,
+          feeParams: encodeExternalMessageFeeParams({
+            gasLimit: 200_000n, maxGasPrice: 250_000_000n,
+          }),
+        }));
+        fees = await wallet.estimateTransactionFees({ messageAllocations });
+      }
+    } catch (e) {
+      return giveUp(`fee estimate failed — ${String(e?.message ?? e)}`);
+    }
+
     let hash;
     try {
       hash = await retry(
-        () => wallet.writeContract({ address, functionName, args, value }),
+        () => wallet.writeContract({
+          address, functionName, args, value, ...(fees ? { fees } : {}),
+        }),
         { label: functionName },
       );
     } catch (e) {

@@ -33,7 +33,7 @@
  *     does not burn a transaction re-filing something already judged.
  */
 import { NextResponse } from "next/server";
-import { createClient, createAccount } from "genlayer-js";
+import { createClient, createAccount, encodeExternalMessageFeeParams } from "genlayer-js";
 import { studioDevnet } from "genlayer-js/chains";
 import type { TransactionHash } from "genlayer-js/types";
 import { recentTransactions, oneTransaction, TransientBlockscout } from "@/lib/blockscout";
@@ -167,17 +167,53 @@ async function estimateFees(
   w: ReturnType<typeof createClient>,
   args: Parameters<ReturnType<typeof createClient>["writeContract"]>[0],
   label: string,
+  payee: `0x${string}`,
 ) {
-  return withTimeout(
-    w.estimateTransactionFeesForWrite({
-      address: args.address,
-      functionName: args.functionName,
-      args: args.args,
-      value: args.value ?? 0n,
+  /*
+   * An allocation per outbound transfer, and a REAL recipient on each.
+   *
+   * The contract pays out through an EXTERNAL message, and a deposit with no
+   * allocation for one is refused with `fee no_matching_allocation # external`
+   * — after the call has already run. Every payable rejection refunds, and
+   * every settlement pays the challenger, so the bot needs them on both its
+   * writes. A zero-address recipient is refused too (`ExternalAllocationInvalid`),
+   * so the bot's own address is named: it is the challenger on everything it
+   * files, and the refundee on anything the contract turns down.
+   *
+   * The deposit is a ceiling; what the call does not consume comes back.
+   */
+  const messageAllocations = [0, 1].map(() => ({
+    messageType: 0,
+    recipient: payee,
+    budget: 10n ** 17n,
+    feeParams: encodeExternalMessageFeeParams({
+      gasLimit: 200_000n, maxGasPrice: 250_000_000n,
     }),
-    30_000,
-    `${label} fee estimate`,
-  );
+  }));
+  /*
+   * `estimateTransactionFeesForWrite` SIMULATES the call, and Studio Dev
+   * answers `sim_estimateTransactionFees` with a bare "execution failed" for
+   * these writes. `estimateTransactionFees` derives the deposit from the fee
+   * POLICY instead and needs no simulation, so it is tried first and the
+   * simulating estimator is the fallback rather than the other way round.
+   */
+  try {
+    return await withTimeout(
+      w.estimateTransactionFees({ messageAllocations }), 30_000, `${label} fee estimate`);
+  } catch (e) {
+    console.log(`[patrol] ${label} policy fee estimate failed ` +
+      `(${String((e as Error)?.message ?? e).slice(0, 80)}), simulating instead`);
+    return withTimeout(
+      w.estimateTransactionFeesForWrite({
+        address: args.address,
+        functionName: args.functionName,
+        args: args.args,
+        value: args.value ?? 0n,
+      }),
+      30_000,
+      `${label} fee estimate`,
+    );
+  }
 }
 
 async function writeWithRetry(
@@ -191,7 +227,7 @@ async function writeWithRetry(
   // RPC round trip to exactly the path that is already being throttled.
   let fees: Awaited<ReturnType<typeof estimateFees>> | undefined;
   if (await feesRequired(w)) {
-    fees = await estimateFees(w, args, label);
+    fees = await estimateFees(w, args, label, w.account!.address);
     console.log(`[patrol] ${label} fee deposit ${fees.feeValue} wei`);
   }
   const withFees = fees ? { ...args, fees } : args;
@@ -563,8 +599,10 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
     /*
      * WHAT THE VALIDATORS HAVE ALREADY TOLD THIS BOT.
      *
-     * `is_tx_challenged` stops the bot re-filing the same TRANSACTION. It does
-     * nothing about the same ARGUMENT: an agent whose WFC trades were ruled
+     * `is_tx_challenged` stops the bot re-filing the same TRANSACTION AGAINST
+     * THE SAME AGENT — and only while that challenge actually decided
+     * something, since an INCONCLUSIVE or stalled challenge now releases its
+     * claim. It does nothing about the same ARGUMENT: an agent whose WFC trades were ruled
      * within its mandate makes a new WFC trade tomorrow, the rule fires again
      * on a hash nobody has challenged, and the bot stakes GEN on a case five
      * validators have already decided against it. That is a slow, automatic,
@@ -573,6 +611,11 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
      * So the agent's settled history is read once here and turned into a set of
      * rule-and-subject keys the validators have cleared. See lib/heuristics.ts
      * for what a key covers and how one stops applying.
+     *
+     * Each clearance is CORROBORATED against the transaction it judged before
+     * it counts — `oneTransaction` is handed to `learnedFrom` for exactly that.
+     * The accusation on chain is free text that anyone can write, so a reason
+     * string alone is a claim, not evidence; the bot believes the record.
      *
      * Gated on `compliant_count`, which the queue row already carries: an agent
      * that has never been cleared of anything has nothing to teach, and that is
@@ -597,16 +640,23 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
           `run filed against it without deferring to past verdicts.`);
         return null;
       });
-      if (history) learned = learnedFrom(history.challenges ?? []);
+      if (history) {
+        learned = await learnedFrom(
+          history.challenges ?? [], mandate, agent.chain,
+          (hash) => oneTransaction(agent.chain, hash),
+        );
+      }
     }
     row.learned_rules = learned.size;
     for (const [pattern, ruling] of learned) {
       learnedCompliant.push({
         agent_id: agent.agent_id, pattern,
         rulings: ruling.rulings, first: ruling.first, last: ruling.last,
+        transactions: ruling.transactions,
       });
       console.log(`[patrol] agent #${agent.agent_id} learned_compliant ${pattern} ` +
-        `(${ruling.rulings} COMPLIANT verdicts, #${ruling.first}…#${ruling.last})`);
+        `(${ruling.rulings} CORROBORATED COMPLIANT verdicts, #${ruling.first}…#${ruling.last}, ` +
+        `txs ${ruling.transactions.map((h) => h.slice(0, 10)).join(" ")})`);
     }
 
     /*
@@ -663,7 +713,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       }
       if (keep.length === 0) continue;
 
-      const known = await view<{ challenged: boolean }>("is_tx_challenged", [agent.chain, tx.hash])
+      const known = await view<{ challenged: boolean }>(
+        "is_tx_challenged", [agent.chain, tx.hash, agent.agent_id])
         .catch(() => ({ challenged: false }));
       if (known.challenged) {
         row.skipped_already_challenged++;
@@ -728,7 +779,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
          * only authority is the contract's own state — read it back.
          */
         const confirmed = terminal
-          ? await view<{ challenged: boolean }>("is_tx_challenged", [agent.chain, tx.hash])
+          ? await view<{ challenged: boolean }>(
+              "is_tx_challenged", [agent.chain, tx.hash, agent.agent_id])
               .catch(() => ({ challenged: false }))
           : { challenged: false };
 

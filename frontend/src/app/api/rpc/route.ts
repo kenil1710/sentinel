@@ -79,6 +79,72 @@ const EXTRA_ORIGINS = (process.env.RPC_PROXY_ALLOWED_ORIGINS ?? "")
   .map((value) => value.trim())
   .filter(Boolean);
 
+/* ─────────────────────────────────────────────────────────────────────────
+ * THE RELAY'S OWN LIMIT
+ *
+ * CORS is not access control. The allowlist above governs what a BROWSER will
+ * read; it does nothing about curl, which sends no `Origin` and is handed the
+ * body regardless. So this route was an open, unauthenticated pipe to the
+ * deployment's Studio quota — 5,000 requests a day, shared by every visitor,
+ * exhaustible by one script in a couple of minutes, and when it is gone the
+ * whole site reads as broken for everyone.
+ *
+ * A token bucket per client IP fixes the cheap version of that. It is honest
+ * about what it is not:
+ *
+ *   - PER INSTANCE, not global. Serverless spreads load across instances, so
+ *     the real ceiling is this budget times however many are warm. It raises
+ *     the cost of a drain by an order of magnitude rather than closing it.
+ *     A global limit needs shared state (Upstash Redis via the Marketplace is
+ *     the obvious fit) and that is a deployment decision, not a code one.
+ *   - PER IP, so it is defeated by a rotating source. The point is the casual
+ *     drain and the runaway client loop, which are what actually happen.
+ *
+ * The app's own traffic sits far below this: a page load is a handful of reads
+ * and the patrol bot does not come through here at all.
+ * ───────────────────────────────────────────────────────────────────────── */
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_PER_WINDOW = Number(process.env.RPC_PROXY_RATE_LIMIT ?? 120) || 120;
+/** Stop the bucket map itself becoming the memory leak it is meant to prevent. */
+const RATE_MAX_TRACKED = 5_000;
+
+const buckets = new Map<string, { count: number; resetAt: number }>();
+
+/**
+ * Who is calling, as well as this can be known behind a proxy.
+ *
+ * `x-forwarded-for` is client-controlled in general, but on Vercel the platform
+ * rewrites it, so the LEFTMOST entry is the real client. `x-real-ip` is the
+ * fallback. A request with neither is bucketed under one shared key rather than
+ * waved through — an unidentifiable caller should not get a free pass.
+ */
+function clientKey(request: Request): string {
+  const fwd = request.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+/** `null` when allowed; milliseconds to wait when the bucket is empty. */
+function overLimit(request: Request): number | null {
+  const now = Date.now();
+  const key = clientKey(request);
+  const seen = buckets.get(key);
+
+  if (!seen || now >= seen.resetAt) {
+    if (buckets.size >= RATE_MAX_TRACKED) {
+      // Drop whatever has already expired; if nothing has, clear the lot. Both
+      // are cheap and both fail toward serving traffic rather than refusing it.
+      for (const [k, v] of buckets) if (now >= v.resetAt) buckets.delete(k);
+      if (buckets.size >= RATE_MAX_TRACKED) buckets.clear();
+    }
+    buckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return null;
+  }
+  if (seen.count >= RATE_MAX_PER_WINDOW) return seen.resetAt - now;
+  seen.count++;
+  return null;
+}
+
 type JsonRpcId = string | number | null;
 
 /**
@@ -178,6 +244,34 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const id = readId(body);
+
+  // Before the fetch, so a refused caller costs the Studio quota nothing —
+  // which is the entire point of having the limit.
+  const wait = overLimit(request);
+  if (wait !== null) {
+    const seconds = Math.ceil(wait / 1000);
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32029,
+          message:
+            `This relay allows ${RATE_MAX_PER_WINDOW} requests per minute per client. ` +
+            `Retry in ${seconds}s.`,
+        },
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(seconds),
+          "Cache-Control": "no-store",
+          ...corsHeaders(request),
+        },
+      },
+    );
+  }
 
   for (let attempt = 0; ; attempt++) {
     let upstream: Response;

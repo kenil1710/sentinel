@@ -95,8 +95,12 @@ BPS_DENOM = 10000
 DEFAULT_MIN_BOND = 5 * 10**17
 DEFAULT_CHALLENGE_STAKE = 5 * 10**16
 
-# How much of a bond a single proven violation costs. 2000 bps = 20%, so an
-# agent has five strikes before its bond is gone, and each one is felt.
+# How much of a bond a single proven violation costs. 2000 bps = 20%, taken off
+# what REMAINS rather than off the original, so the bond decays geometrically:
+# 1.0 -> 0.8 -> 0.64 -> 0.512 -> 0.4096. At the shipped defaults the FOURTH
+# violation is the one that carries a minimum bond under the floor and ends the
+# agent, not the fifth - the arithmetic is a decay curve, not five equal strikes,
+# and this comment said five until it was worked through.
 DEFAULT_PENALTY_BPS = 2000
 MAX_PENALTY_BPS = 10000
 
@@ -901,7 +905,17 @@ def _judge(chain: str, wallet: str, mandate: str, tx_hash: str, reason: str) -> 
 	evidence = _defang(_render_evidence(proj))[:MAX_EVIDENCE_CHARS]
 	safe_mandate = _defang(mandate)[:MAX_MANDATE_CHARS]
 	safe_reason = _defang(reason)[:MAX_REASON_CHARS]
-	flagged = _injection_seen(evidence) or _injection_seen(safe_reason)
+	# THE MANDATE IS SCANNED TOO, and it was not always.
+	#
+	# The flag is what the patrol bot uses to throw away a COMPLIANT verdict that
+	# may have been talked into existence rather than reasoned into it. Scanning
+	# only the evidence and the accusation left the one input the OPERATOR fully
+	# controls unexamined - so a mandate written to address the judge could earn
+	# a clearance that the bot then treated as a settled fact and learned from.
+	# The operator is not a trusted party here; they are the party with a bond at
+	# stake in the answer.
+	flagged = (_injection_seen(evidence) or _injection_seen(safe_reason)
+		or _injection_seen(safe_mandate))
 
 	out = _model_verdict(_judge_prompt(safe_mandate, chain, wallet, safe_reason, evidence))
 	verdict = _norm_verdict(out.get("verdict", ""))
@@ -1055,6 +1069,29 @@ class Sentinel(gl.contract.Contract):
 	agent_ids: gl.storage.DynArray[u32]
 	next_agent_id: u32
 
+	# Agents that are ACTIVE RIGHT NOW, and nothing else.
+	#
+	# `agent_ids` is append-only and never shrinks, so every view that read
+	# `agent_ids[-SCAN_CAP:]` and filtered on status AFTERWARDS was filtering a
+	# window that retired agents still occupied. That was exploitable and it was
+	# measured: 500 register-then-withdraw cycles from ONE wallet, recycling a
+	# single min_bond that came back in full every time, filled the whole window
+	# with WITHDRAWN agents and made get_patrol_queue, get_active_agents and
+	# get_stats all answer zero while live agents sat there bonded. The patrol
+	# bot went blind for the price of the gas.
+	#
+	# So membership is maintained instead of filtered: an agent is in this array
+	# for exactly as long as its status is ACTIVE, and every view that asks
+	# "what is live" reads THIS array. A cap applied to it can only ever drop
+	# live agents, never be consumed by dead ones.
+	active_ids: gl.storage.DynArray[u32]
+
+	# agent_id -> its index in `active_ids` PLUS ONE, so 0 means "not active".
+	# Without it a removal is a linear scan of active_ids on every withdrawal
+	# and every slash-out; with it both are O(1). Kept in step by _activate and
+	# _deactivate and touched nowhere else.
+	active_at: gl.storage.TreeMap[u32, u32]
+
 	challenges: gl.storage.TreeMap[u32, Challenge]
 	challenge_ids: gl.storage.DynArray[u32]
 	next_challenge_id: u32
@@ -1063,10 +1100,27 @@ class Sentinel(gl.contract.Contract):
 	chain_agents: gl.storage.TreeMap[str, gl.storage.DynArray[u32]]
 	operator_agents: gl.storage.TreeMap[Address, gl.storage.DynArray[u32]]
 
-	# "<chain>:<lowercase tx hash>" -> challenge_id PLUS ONE. Plus one so that 0
-	# means absent and a real challenge id of 0 is not mistaken for it. This is
-	# the one-challenge-per-transaction rule: without it the same transaction
-	# could be re-filed until a round happened to land VIOLATION.
+	# "<chain>:<lowercase tx hash>:<agent id>" -> challenge_id PLUS ONE. Plus one
+	# so that 0 means absent and a real challenge id of 0 is not mistaken for it.
+	#
+	# The rule this enforces is one LIVE-OR-DECIDED judgement per transaction PER
+	# AGENT. Two earlier mistakes are fixed in that sentence:
+	#
+	#   THE AGENT IS IN THE KEY. It was "<chain>:<tx>" alone, which meant that
+	#   challenging agent A over a transaction permanently immunised agent B -
+	#   a counterparty on that same transaction, never named in the accusation -
+	#   against ever being challenged for it. One agent's dispute is not
+	#   another agent's acquittal.
+	#
+	#   A REFUND RELEASES THE CLAIM. The entry used to be written at filing and
+	#   cleared by nothing, so a challenge that settled INCONCLUSIVE or timed out
+	#   through settle_stalled - both of which hand the whole stake back - still
+	#   locked that transaction out of ever being judged again. That made a
+	#   permanent immunisation cost NOTHING: file on your own violating
+	#   transaction, let it fail to converge, take the stake back, and no
+	#   watcher and no patrol could touch it afterwards. Now the claim is
+	#   released on both refund paths, and survives only a VIOLATION or a
+	#   COMPLIANT - the two outcomes that actually decided something.
 	tx_claimed: gl.storage.TreeMap[str, u32]
 
 	# "<chain>:<lowercase wallet>" -> agent_id PLUS ONE. One registration per
@@ -1199,6 +1253,61 @@ class Sentinel(gl.contract.Contract):
 			self.watcher_seen[who] = True
 			self.watcher_list.append(who)
 
+	def _activate(self, agent_id: int) -> None:
+		"""Put an agent into the live set. Idempotent."""
+		key = u32(agent_id)
+		if int(self.active_at.get(key, u32(0))) > 0:
+			return
+		self.active_ids.append(key)
+		self.active_at[key] = u32(len(self.active_ids))
+
+	def _deactivate(self, agent_id: int) -> None:
+		"""Take an agent out of the live set. Idempotent.
+
+		Swap-remove: the last element is moved into the vacated slot and the
+		array is popped, so removal costs two writes instead of shifting
+		everything after it. `DynArray.pop()` removes the LAST element and takes
+		no index - the ordering of `active_ids` is therefore not stable, which is
+		fine because every reader of it sorts or filters for itself.
+
+		The moved element's index entry has to be rewritten, and the guard for
+		the case where the removed agent WAS the last element has to come first:
+		without it, popping and then rewriting the index would resurrect an
+		entry for an agent no longer in the array.
+		"""
+		key = u32(agent_id)
+		at = int(self.active_at.get(key, u32(0)))
+		if at <= 0:
+			return
+		idx = at - 1
+		last = len(self.active_ids) - 1
+		if idx != last:
+			moved = u32(int(self.active_ids[last]))
+			self.active_ids[idx] = moved
+			self.active_at[moved] = u32(idx + 1)
+		self.active_ids.pop()
+		self.active_at[key] = u32(0)
+
+	def _tx_key(self, chain: str, tx_hash: str, agent_id: int) -> str:
+		"""The one place a tx-claim key is spelled. Per chain, per transaction,
+		PER AGENT - see the note on `tx_claimed`."""
+		return str(chain) + ":" + str(tx_hash) + ":" + str(int(agent_id))
+
+	def _release_tx(self, challenge) -> None:
+		"""Give a transaction back to the world.
+
+		Called on the two paths that refund the stake in full - an INCONCLUSIVE
+		verdict and settle_stalled's timeout. Neither decided anything, so
+		neither has earned the right to stop the next watcher looking.
+
+		Set to 0 rather than deleted: 0 is what a TreeMap[str, u32] answers for
+		an absent key anyway, so the plus-one convention reads both the same
+		way, and there is one fewer runtime behaviour to depend on.
+		"""
+		self.tx_claimed[self._tx_key(
+			str(challenge.chain), str(challenge.tx_hash),
+			int(challenge.agent_id))] = u32(0)
+
 	def _require_owner(self) -> None:
 		if gl.message.sender_address != self.owner:
 			raise gl.vm.UserError("Only the contract owner can do that")
@@ -1291,6 +1400,7 @@ class Sentinel(gl.contract.Contract):
 			total_topped_up=u128(0),
 		)
 		self.agent_ids.append(u32(agent_id))
+		self._activate(agent_id)
 		self.wallet_claimed[c + ":" + w] = u32(agent_id + 1)
 
 		# get_or_insert_default, NOT `if bucket is None`. A TreeMap whose value
@@ -1360,8 +1470,10 @@ class Sentinel(gl.contract.Contract):
 			return problem
 		if int(agent.bond) <= 0:
 			return "That agent's bond is exhausted"
-		if int(self.tx_claimed.get(str(agent.chain) + ":" + tx_hash, u32(0))) > 0:
-			return ("That transaction has already been challenged; one judgement per transaction")
+		if int(self.tx_claimed.get(
+				self._tx_key(str(agent.chain), tx_hash, int(agent.agent_id)), u32(0))) > 0:
+			return ("This agent has already been challenged over that transaction; "
+				"one judgement per transaction per agent")
 		if int(agent.pending_count) >= int(self.max_pending_per_agent):
 			return ("That agent already has " + str(int(self.max_pending_per_agent))
 				+ " challenges awaiting judgement")
@@ -1428,7 +1540,7 @@ class Sentinel(gl.contract.Contract):
 			stalled=False,
 		)
 		self.challenge_ids.append(u32(challenge_id))
-		self.tx_claimed[str(agent.chain) + ":" + tx] = u32(challenge_id + 1)
+		self.tx_claimed[self._tx_key(str(agent.chain), tx, int(agent.agent_id))] = u32(challenge_id + 1)
 		self.last_challenge_at[sender] = u64(now)
 
 		self.agent_challenges.get_or_insert_default(
@@ -1462,6 +1574,7 @@ class Sentinel(gl.contract.Contract):
 			# nothing left to lose. The operator keeps the remainder and can
 			# withdraw it; top_up_bond brings the agent back.
 			agent.status = AGENT_SLASHED_OUT
+			self._deactivate(int(agent.agent_id))
 
 		challenge.penalty = u128(pen)
 		challenge.bounty = u128(bounty)
@@ -1513,6 +1626,11 @@ class Sentinel(gl.contract.Contract):
 	def _settle_inconclusive(self, agent, challenge, now: int) -> dict:
 		stake = int(challenge.stake)
 		agent.inconclusive_count = u32(int(agent.inconclusive_count) + 1)
+		# A round that decided nothing must not immunise the transaction. The
+		# stake goes back in full, so leaving the claim in place made a permanent
+		# lock-out free to buy - file on your own breach, let it fail to
+		# converge, and no one can ever raise it again.
+		self._release_tx(challenge)
 		challenge.refunded = u128(stake)
 		self.locked_stakes = u128(int(self.locked_stakes) - stake)
 		self.total_refunded = u128(int(self.total_refunded) + stake)
@@ -1684,6 +1802,7 @@ class Sentinel(gl.contract.Contract):
 		amount = int(agent.bond)
 		agent.bond = u128(0)
 		agent.status = AGENT_WITHDRAWN
+		self._deactivate(int(agent.agent_id))
 		agent.last_checked = u64(self._now())
 		key = str(agent.chain) + ":" + str(agent.wallet)
 		if int(self.wallet_claimed.get(key, u32(0))) == int(agent.agent_id) + 1:
@@ -1727,6 +1846,7 @@ class Sentinel(gl.contract.Contract):
 		restored = False
 		if str(found.status) == AGENT_SLASHED_OUT and int(found.bond) >= int(self.min_bond):
 			found.status = AGENT_ACTIVE
+			self._activate(int(found.agent_id))
 			restored = True
 
 		self.locked_bonds = u128(int(self.locked_bonds) + value)
@@ -1771,6 +1891,10 @@ class Sentinel(gl.contract.Contract):
 		challenge.stalled = True
 		challenge.settled_at = u64(now)
 		challenge.refunded = u128(stake)
+		# The stake goes back in full and the agent's record is untouched, so the
+		# transaction is released too - a challenge nobody could judge is not a
+		# judgement, and must not lock the transaction out for good.
+		self._release_tx(challenge)
 		challenge.reasoning = ("No judgement converged within the resolution window; "
 			"the stake was returned and the agent's record left alone.")
 
@@ -2042,7 +2166,9 @@ class Sentinel(gl.contract.Contract):
 		"""14. All registered agents still on duty, newest first."""
 		now = self._now()
 		limit = _clamp(_as_int(count, 50), 1, MAX_LIST_PAGE)
-		ids = [int(x) for x in self.agent_ids][-SCAN_CAP:]
+		# `active_ids` for the same reason as get_patrol_queue: a window over the
+		# append-only array was fillable with retired agents.
+		ids = [int(x) for x in self.active_ids][-SCAN_CAP:]
 		ids.reverse()
 		out = []
 		for aid in ids:
@@ -2090,7 +2216,12 @@ class Sentinel(gl.contract.Contract):
 		now = self._now()
 		limit = _clamp(_as_int(count, 25), 1, MAX_LIST_PAGE)
 		rows = []
-		for raw in [int(x) for x in self.agent_ids][-SCAN_CAP:]:
+		# `active_ids`, NOT `agent_ids`. Reading the append-only array and
+		# filtering afterwards let retired agents occupy the whole window and
+		# hide every live agent from the patrol - see the note on `active_ids`.
+		# Here the cap can only ever drop LIVE agents, and the sort below decides
+		# which, so the ones dropped are the ones most recently examined.
+		for raw in [int(x) for x in self.active_ids][-SCAN_CAP:]:
 			found = self.agents.get(u32(raw))
 			if found is None or str(found.status) != AGENT_ACTIVE:
 				continue
@@ -2184,7 +2315,10 @@ class Sentinel(gl.contract.Contract):
 		"""19. Total agents, challenges, violations, bounties paid."""
 		active = 0
 		bonded = 0
-		for raw in [int(x) for x in self.agent_ids][-SCAN_CAP:]:
+		# `active_ids`. The old window reported agents_active 0 and
+		# bond_under_watch 0 while live agents sat there bonded - the same
+		# blinding as the patrol queue, wearing the public stats page.
+		for raw in [int(x) for x in self.active_ids][-SCAN_CAP:]:
 			found = self.agents.get(u32(raw))
 			if found is not None and str(found.status) == AGENT_ACTIVE:
 				active += 1
@@ -2323,23 +2457,35 @@ class Sentinel(gl.contract.Contract):
 		return json.dumps({"operator": who, "count": len(out), "agents": out})
 
 	@gl.public.view
-	def is_tx_challenged(self, chain: str, tx_hash: str) -> str:
-		"""Has this transaction already been judged?
+	def is_tx_challenged(self, chain: str, tx_hash: str, agent_id: int) -> str:
+		"""Has THIS AGENT already been judged over this transaction?
 
 		The patrol bot's pre-flight. Filing a duplicate is refused and refunded,
 		which costs the bot a transaction and nothing else - but a bot that
 		checks first does not waste the transaction, and on a chain with a busy
 		agent that is the difference between a patrol that fits in a cron window
 		and one that does not.
+
+		`agent_id` is REQUIRED, and the third argument is not cosmetic: the claim
+		is per agent now, so a two-argument answer would be answering a question
+		the contract no longer asks. A caller that wants "has anyone challenged
+		this transaction at all" is asking about a rule that no longer exists -
+		two agents can both be challenged over one transaction, because they are
+		two different accusations about two different mandates.
+
+		A claim released by a refund reads as `challenged: false`, which is the
+		point: nothing was decided, so the transaction is open again.
 		"""
 		c = _norm_chain(chain)
 		tx = _norm_tx(tx_hash)
-		if not c or not tx:
+		aid = _as_int(agent_id, -1)
+		if not c or not tx or aid < 0:
 			return json.dumps({"valid": False, "challenged": False,
 				"reason": "chain must be one of " + ", ".join(CHAINS)
-					+ " and tx_hash a 0x 64-char hash"})
-		claimed = int(self.tx_claimed.get(c + ":" + tx, u32(0)))
-		out = {"valid": True, "challenged": claimed > 0, "chain": c, "tx_hash": tx}
+					+ ", tx_hash a 0x 64-char hash, and agent_id an agent"})
+		claimed = int(self.tx_claimed.get(self._tx_key(c, tx, aid), u32(0)))
+		out = {"valid": True, "challenged": claimed > 0, "chain": c,
+			"tx_hash": tx, "agent_id": aid}
 		if claimed > 0:
 			out["challenge_id"] = claimed - 1
 			found = self.challenges.get(u32(claimed - 1))
@@ -2460,7 +2606,8 @@ class Sentinel(gl.contract.Contract):
 		pen, bounty, cut = _slash_split(int(agent.bond), int(self.penalty_bps),
 			int(self.bounty_bps))
 		to_op, to_protocol = _vindication_split(stake, int(self.vindication_bps))
-		already = int(self.tx_claimed.get(str(agent.chain) + ":" + tx, u32(0))) if tx else 0
+		already = int(self.tx_claimed.get(
+			self._tx_key(str(agent.chain), tx, int(agent.agent_id)), u32(0))) if tx else 0
 		return json.dumps({
 			"agent_id": int(agent.agent_id),
 			"chain": str(agent.chain),

@@ -32,10 +32,10 @@
   "artifacts": {
     "build/Sentinel.min.py": {
       "source": "contracts/Sentinel.py",
-      "bytes": 52783,
-      "sha256": "bdfade01fd94a6edecceb1650f4d00eb8ab8e2244f4a28dedfbb9ea3c9b7cf8d",
-      "source_sha256": "52b55730a691b35392fc5f3e20c4c36551bfd15f29485e0963cf8fa4fbc66caa",
-      "premangle_bytes": 65016
+      "bytes": 50355,
+      "sha256": "64d82a250f22bed0c243b37d1c523425556a63adc591f52237d9be926d313f46",
+      "source_sha256": "a8a15620bd82d95b2665d1c171f207f99c85838b3d308470c97ca4c13e63c7cc",
+      "premangle_bytes": 62920
     }
   },
   "deployments": {
@@ -43,23 +43,24 @@
       "network": "studiodev",
       "chain_id": 61997,
       "rpc": "https://studio-dev.genlayer.com/api",
-      "explorer": "https://explorer-studio-dev.genlayer.com/address/0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e",
+      "explorer": "https://explorer-studio-dev.genlayer.com/address/0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe",
       "Sentinel": {
-        "address": "0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e"
+        "address": "0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe"
       },
-      "owner": "0x95FA3CbC31352Ca771be5f11CA8Ce07F0a125D23",
-      "verified": "`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py` reports EQUIVALENT: the on-chain code and the local artifact are the same token stream under a bijective renaming of PRIVATE identifiers. They are not byte-identical - the deployed bytes were produced by an earlier run of the same pipeline, before the v0.3.0 migration was rebuilt here - and the public ABI, all 36 methods, is unchanged. The check reports MATCH, EQUIVALENT or DIFFER precisely so this distinction is not papered over.",
-      "artifact_bytes_on_chain": 52726,
+      "owner": "0xE031F8525599a47a197B21b8a82a5Bf42DfFF000",
+      "verified": "`python3 tools/verify_onchain.py 0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe build/Sentinel.min.py` reports MATCH: the on-chain code is BYTE-IDENTICAL to the local artifact, sha256 64d82a250f22bed0c243b37d1c523425556a63adc591f52237d9be926d313f46. The previous deployment reported EQUIVALENT rather than MATCH because its bytes predated a pipeline rebuild; this one was deployed from exactly the artifact in the tree. The check reports MATCH, EQUIVALENT or DIFFER precisely so that distinction is never papered over.",
+      "artifact_bytes_on_chain": 50355,
       "live_state": {
-        "read_at": "2026-09-12T13:53:13Z",
-        "source": "get_stats, get_agents_by_chain and get_challenges on the deployed contract",
-        "agents_registered": 21,
-        "agents_active": 9,
-        "total_bonded_text": "15",
-        "challenges_filed": 150,
-        "challenges_settled": 150,
-        "patrols_run": 297,
-        "watchers": 2,
+        "read_at": "2026-09-12T18:26:28Z",
+        "source": "get_stats on the deployed contract",
+        "agents_registered": 16,
+        "agents_active": 14,
+        "total_bonded_text": "10.5",
+        "bond_under_watch_text": "8.5",
+        "challenges_filed": 0,
+        "challenges_settled": 0,
+        "patrols_run": 0,
+        "watchers": 0,
         "chains_configured": [
           "ethereum",
           "base",
@@ -67,39 +68,13 @@
           "polygon",
           "robinhood"
         ],
-        "note": "A SNAPSHOT read from get_stats at 2026-09-12T13:53:13Z, NOT a status. The patrol runs unattended every ten minutes and files, judges and stamps on its own, so every counter here climbs between reads and this block is stale the moment it is written. Call get_stats on the contract for live numbers, or run tools/audit.sh, which compares this snapshot against the register and FAILS when they diverge - that check is how the previous drift (18 published vs 21 on chain) was caught. Of 21 registered, 9 are on active duty: 9 had their bonds exhausted by proven breaches, and the three on Robinhood Chain were RETIRED DELIBERATELY on 2026-09-10 with withdraw_bond (2.5 GEN returned to their operators), because robinhoodchain.blockscout.com answers the address-transaction endpoint with a Cloudflare 403 from any egress - so the patrol can never scan them and they could only ever read as 'never checked'. Their records stay readable and the chain stays in the contract's table; the site simply no longer offers a chain whose agents cannot be watched. Verdicts span all three outcomes - 33 VIOLATION, 61 COMPLIANT, 56 INCONCLUSIVE - which matters more than a clean sweep: a judge that only ever returns VIOLATION proves nothing.",
-        "bond_under_watch_text": "7.6",
-        "violations": 33,
-        "total_slashed_text": "3.9131298176",
-        "bounties_paid_text": "1.9565649088",
-        "agents_by_chain": {
-          "ethereum": 8,
-          "base": 3,
-          "arbitrum": 4,
-          "polygon": 3,
-          "robinhood": 3
-        },
-        "agents_by_type": {
-          "TRADING": 13,
-          "DEFI": 7,
-          "CUSTOM": 1
-        },
-        "compliant": 61,
-        "inconclusive": 56,
-        "challenges_pending": 0,
-        "stalled": 0,
-        "agents_slashed_out": 9,
-        "agents_withdrawn": 3,
-        "active_by_chain": {
-          "ethereum": 6,
-          "polygon": 2,
-          "base": 1
-        },
-        "agents_by_type_active": {
-          "TRADING": 3,
-          "DEFI": 5,
-          "CUSTOM": 1
-        }
+        "note": "A SNAPSHOT, NOT a status, and this one is deliberately THIN. This is a FRESH deployment: the security fixes of 2026-09-12 changed contract storage — a maintained active-agent set and a per-agent transaction claim — and neither is migratable, so a new address was deployed rather than the old one patched. The register here was seeded by test/seed_roster.mjs and carries no challenge history yet; the patrol has not run against it. The PREVIOUS deployment (0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) holds the accumulated record — 21 agents, 150 challenges, 33 VIOLATION / 61 COMPLIANT / 56 INCONCLUSIVE across 297 patrols — and stays readable at its own address. Two of the 16 here were withdrawn while verifying that a retired agent leaves the live set on real GenVM storage, which is why registered is 16 and active is 14. Call get_stats for live numbers, or run tools/audit.sh, which compares this snapshot against the register and FAILS when they diverge."
+      },
+      "artifact_bytes": 50355,
+      "deployed_at": "2026-09-12T18:26:28Z",
+      "supersedes": {
+        "address": "0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e",
+        "why": "Storage layout changed with the 2026-09-12 security fixes: `active_ids` / `active_at` were added and `tx_claimed` was rekeyed from <chain>:<tx> to <chain>:<tx>:<agent>. Neither can be migrated in place, so the old address is left intact and readable rather than rewritten."
       }
     }
   },
@@ -166,13 +141,13 @@
   },
   "verification": {
     "offline_suite": {
-      "tests": 410,
+      "tests": 423,
       "failed": 0,
       "source": "test/test_logic.py",
       "note": "includes the mangled artifact driven through a full lifecycle, and the profile battery. Re-run green after the v0.3.0 migration."
     },
     "patrol_suite": {
-      "tests": 30,
+      "tests": 60,
       "failed": 0,
       "source": "test/test_patrol.mjs",
       "note": "the bot's accusation rules against real Blockscout fixtures"
