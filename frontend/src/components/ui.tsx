@@ -141,14 +141,26 @@ export function ScoreRing({ bps, decided, size = 56 }: { bps: number; decided: n
   );
 }
 
-export function Stat({ label, value, sub, tone = "ink" }:
-  { label: string; value: ReactNode; sub?: string; tone?: "ink" | "signal" | "violation" | "compliant" }) {
+/**
+ * `size="lg"` is for a number that is the ARGUMENT, not the instrumentation —
+ * the two or three figures a page exists to prove. Used sparingly: if every
+ * stat is large then none of them is, and the reader is left to work out which
+ * ones matter.
+ */
+export function Stat({ label, value, sub, tone = "ink", size = "md" }:
+  { label: string; value: ReactNode; sub?: string;
+    tone?: "ink" | "signal" | "violation" | "compliant"; size?: "md" | "lg" }) {
   const colour = { ink: "text-ink", signal: "text-signal", violation: "text-violation-ink", compliant: "text-compliant-ink" }[tone];
+  const lg = size === "lg";
   return (
-    <div className="rounded-lg border border-line bg-panel px-4 py-3.5 shadow-[var(--shadow-card)]">
+    <div className={`rounded-lg border bg-panel shadow-[var(--shadow-card)] ${
+      lg ? "border-line-2 px-5 py-5" : "border-line px-4 py-3.5"}`}>
       <Label>{label}</Label>
-      <div className={`mono mt-1.5 text-2xl font-semibold tabular-nums ${colour}`}>{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-ink-3">{sub}</div>}
+      <div className={`mono font-semibold tabular-nums ${colour} ${
+        lg ? "mt-2 text-4xl sm:text-5xl leading-none tracking-tight" : "mt-1.5 text-2xl"}`}>
+        {value}
+      </div>
+      {sub && <div className={`text-ink-3 ${lg ? "mt-2 text-[13px]" : "mt-0.5 text-xs"}`}>{sub}</div>}
     </div>
   );
 }

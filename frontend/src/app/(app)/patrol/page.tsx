@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { Panel, Label, ChainTag, VerdictBadge, Empty, Spinner, Stat } from "@/components/ui";
-import { getPatrolQueue, getPendingChallenges, getStats } from "@/lib/contract";
+import { Panel, Label, ChainTag, TypeTag, VerdictBadge, Empty, Spinner, Stat } from "@/components/ui";
+import { getChallenges, getPatrolQueue, getPendingChallenges, getStats } from "@/lib/contract";
 import { relativeTime, shortAddress } from "@/lib/format";
 import { LEARN_AFTER } from "@/lib/heuristics";
 import type { PatrolReport } from "@/types";
@@ -13,6 +13,27 @@ export default function PatrolPage() {
   const { data: queue } = useSWR("queue", () => getPatrolQueue(25), { refreshInterval: 20_000 });
   const { data: pending, mutate: mutatePending } = useSWR("pending", () => getPendingChallenges(25), { refreshInterval: 20_000 });
   const { data: stats } = useSWR("stats", getStats, { refreshInterval: 20_000 });
+
+  /*
+   * An empty "awaiting judgement" column is the NORMAL resting state — the
+   * patrol resolves what it files in the same run — but "No challenge is
+   * waiting" reads like nothing has ever happened here. So when the queue is
+   * empty the last settled verdict is shown instead: the same space then says
+   * the system is idle BECAUSE it finished, which is the opposite impression.
+   *
+   * Fetched only when it is needed. A null SWR key skips the request, so the
+   * common case where challenges ARE pending costs no extra read.
+   */
+  const needLastSettled = pending?.challenges.length === 0;
+  const { data: recent } = useSWR(
+    needLastSettled ? "recent-challenges" : null,
+    () => getChallenges(25),
+    { refreshInterval: 60_000 },
+  );
+  // get_challenges returns newest first, so the first settled row is the most
+  // recent one. PENDING rows are skipped rather than assumed absent.
+  const lastSettled = recent?.challenges.find(
+    (c) => c.status !== "PENDING" && c.settled_at > 0);
 
   const [running, setRunning] = useState(false);
   const [report, setReport] = useState<PatrolReport | null>(null);
@@ -62,12 +83,22 @@ export default function PatrolPage() {
         it costs the bot its stake, and five validators decide.
       </p>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/*
+        The two numbers the page exists to prove come first and come large: a
+        watchdog that has run, and the breaches it caught. The queue depth and
+        the pending count are instrumentation — useful, but they are not the
+        argument, and sizing them the same made the argument easy to miss.
+      */}
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <Stat label="Patrols run" value={stats?.patrols_run ?? "—"} size="lg" tone="signal"
+          sub="unattended runs stamped on chain" />
+        <Stat label="Breaches proven" value={stats?.violations ?? "—"} size="lg"
+          tone={stats && stats.violations > 0 ? "violation" : "ink"}
+          sub="upheld by five validators, bonds slashed" />
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Stat label="In the queue" value={queue?.count ?? "—"} sub="agents eligible now" tone="signal" />
         <Stat label="Awaiting judgement" value={pending?.count ?? "—"} sub="challenges filed, not settled" />
-        <Stat label="Patrols run" value={stats?.patrols_run ?? "—"} sub="on-chain patrol stamps" />
-        <Stat label="Breaches proven" value={stats?.violations ?? "—"}
-          tone={stats && stats.violations > 0 ? "violation" : "ink"} />
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -75,15 +106,8 @@ export default function PatrolPage() {
           className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">
           {running ? `Patrolling… ${elapsed}s` : "Run patrol"}
         </button>
-        <span className="max-w-md text-[12px] text-ink-3">
-          This route runs unattended and delivery is confirmed — a slot was observed filing
-          three challenges and settling one, moving{" "}
-          <span className="text-ink-2">patrols_run</span> on chain with nobody watching.
-          The Vercel cron is set to <span className="text-ink-2">daily</span>, which is the
-          most a Hobby plan allows; the ten-minute cadence comes from an external
-          scheduler. From this button it is a{" "}
-          <span className="text-ink-2">dry run</span>: a public URL must not be able to spend the
-          bot&apos;s stake. Takes about two minutes.
+        <span className="text-[12px] text-ink-3">
+          Patrols every 10 minutes automatically. This button runs a preview.
         </span>
         <Link href="/analytics"
           className="ml-auto rounded-lg border border-line bg-panel px-3.5 py-2 text-[13px] text-ink-2 hover:border-signal/40 hover:text-ink">
@@ -241,10 +265,17 @@ export default function PatrolPage() {
             {queue?.queue.length === 0 && <Empty title="Nothing to patrol yet" />}
             {queue?.queue.map((a) => (
               <Link key={a.agent_id} href={`/agent/${a.agent_id}`}
-                className="flex items-center gap-3 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
-                <span className="mono text-[12px] text-ink-2">{shortAddress(a.wallet, 5)}</span>
-                <ChainTag chain={a.chain} />
-                <span className="ml-auto text-[11px] text-ink-3">
+                className="flex items-center gap-2.5 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
+                {/* A register of bare hex is hard to read. The address stays the
+                    fallback, because an unnamed agent must still be legible. */}
+                {a.name ? (
+                  <span className="truncate text-[13px] font-medium text-ink">{a.name}</span>
+                ) : (
+                  <span className="mono truncate text-[12px] text-ink-2">{shortAddress(a.wallet, 5)}</span>
+                )}
+                <TypeTag type={a.agent_type} className="shrink-0" />
+                <ChainTag chain={a.chain} className="shrink-0" />
+                <span className="ml-auto shrink-0 text-[11px] text-ink-3">
                   {a.last_checked ? relativeTime(a.last_checked) : "never checked"}
                 </span>
               </Link>
@@ -256,8 +287,24 @@ export default function PatrolPage() {
           <Label>Awaiting judgement</Label>
           <div className="mt-3 space-y-1.5">
             {!pending && <Spinner />}
-            {pending?.challenges.length === 0 && (
-              <Empty title="No challenge is waiting" hint="Everything filed has been judged." />
+            {needLastSettled && (
+              lastSettled ? (
+                <Link href={`/challenge/${lastSettled.challenge_id}`}
+                  className="block rounded-xl border border-dashed border-line-2 px-5 py-6 text-center hover:border-signal/40">
+                  <div className="text-sm text-ink-2">Everything filed has been judged.</div>
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <span className="text-[12px] text-ink-3">Last settled:</span>
+                    <span className="text-[12px] text-ink">Challenge #{lastSettled.challenge_id}</span>
+                    <VerdictBadge verdict={lastSettled.verdict} size="sm" />
+                    <span className="text-[12px] text-ink-3">{relativeTime(lastSettled.settled_at)}</span>
+                  </div>
+                </Link>
+              ) : recent ? (
+                // Read the feed and there genuinely is nothing settled yet.
+                <Empty title="No challenge is waiting" hint="Nothing has been filed on this register yet." />
+              ) : (
+                <Empty title="No challenge is waiting" hint="Everything filed has been judged." />
+              )
             )}
             {pending?.challenges.map((c) => (
               <Link key={c.challenge_id} href={`/challenge/${c.challenge_id}`}
