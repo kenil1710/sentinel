@@ -393,7 +393,7 @@ checks the served HTML of both to prove it.
 
 ```
 offline suite      410 tests    test/test_logic.py       (includes the mangled artifact)
-patrol suite        30 tests    test/test_patrol.mjs     (real Blockscout fixtures)
+patrol suite        47 tests    test/test_patrol.mjs     (real Blockscout fixtures)
 live suite          79 checks   test/e2e.mjs             (real validators — NOT re-run on Studio Dev)
 functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
 adversarial suite   99 checks   test/edge_cases.mjs      (the nasty states — NOT re-run on Studio Dev)
@@ -522,3 +522,36 @@ failure in `notes` instead of claiming a run it did not complete.
 Nothing about the bot depends on the cadence: it is stateless, reads its queue
 from the contract on every run, and `is_tx_challenged` makes a second pass over
 the same transactions a no-op.
+
+### It stops paying to lose the same argument
+
+`is_tx_challenged` stops the bot re-filing the same **transaction**. It does
+nothing about the same **argument**, and that gap had a price. Agent #5 on the
+live register carried 112 challenges, every one of them the identical sentence —
+*"The mandate names ETH, WETH but this transaction moved WFC."* — and 60 of them
+came back COMPLIANT. A COMPLIANT verdict forfeits the challenger's stake to the
+operator's bond, so the bot was losing 0.05 GEN a time, on a schedule, for being
+unable to notice that it had already been told the answer.
+
+So before it files, the bot reads that agent's settled history and defers to it.
+A COMPLIANT verdict becomes a key — `unlisted-token|ETH,WETH|WFC` — and the next
+identical accusation is withheld rather than staked, citing the challenge that
+withheld it. A dry run over the live register on 2026-09-12 withheld eight.
+
+The deference is narrow on purpose, because a watchdog that stops accusing too
+widely is a worse failure than a wasted stake:
+
+- per agent, per rule, per **subject** — a ruling about WFC says nothing about
+  PONS, and one cleared address says nothing about another;
+- only COMPLIANT teaches anything. A VIOLATION confirms the rule, and an
+  INCONCLUSIVE round settled nothing — treating one as a clearance would let an
+  unreadable explorer permanently silence the bot;
+- a clearance reached on **injection-flagged** evidence is never learned from;
+- an accusation that is half-settled is re-argued on its unsettled half only.
+
+There is no new state and no new contract method. The key carries the mandate
+constraint that produced it, so an operator who edits the mandate's token list
+or raises its ceiling changes the key, and the bot starts challenging again by
+itself. And the keys are parsed back out of the English the contract already
+stores — the same parser over the sentence about to be filed and the sentence
+already on chain — rather than tagging the text a consensus round has to read.

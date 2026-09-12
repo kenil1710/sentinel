@@ -37,7 +37,8 @@ import { createClient, createAccount } from "genlayer-js";
 import { studioDevnet } from "genlayer-js/chains";
 import type { TransactionHash } from "genlayer-js/types";
 import { recentTransactions, oneTransaction, TransientBlockscout } from "@/lib/blockscout";
-import { flagsFor, reasonText } from "@/lib/heuristics";
+import { flagsFor, reasonText, learnedFrom, withholdLearned } from "@/lib/heuristics";
+import type { SettledChallenge } from "@/lib/heuristics";
 import type { PatrolReport, PatrolRow } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -468,7 +469,10 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
   }
 
   console.log(`[patrol] queue read at ${Date.now() - started}ms`);
-  let queue: { queue: { agent_id: number; wallet: string; chain: string; mandate?: string; last_checked: number }[] };
+  let queue: { queue: { agent_id: number; wallet: string; chain: string; mandate?: string;
+    last_checked: number;
+    /** Cleared verdicts on this agent, used to decide whether its history is worth reading. */
+    compliant_count?: number }[] };
   try {
     queue = await view("get_patrol_queue", [limit]);
   } catch (e) {
@@ -479,7 +483,7 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       finished_at: new Date().toISOString(),
       seconds: Number(((Date.now() - started) / 1000).toFixed(1)),
       network: networkName, contract: address, patrolled: 0,
-      transactions_scanned: 0, challenges_filed: 0, dry_run: dry,
+      transactions_scanned: 0, challenges_filed: 0, challenges_withheld: 0, dry_run: dry,
       challenges_resolved: [], rows: [], notes,
     };
   }
@@ -501,6 +505,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
   const patrolled: number[] = [];
   let scannedTotal = 0;
   let filedTotal = 0;
+  /** Accusations NOT staked because the validators had already rejected them. */
+  let withheldTotal = 0;
 
   for (const agent of queue.queue ?? []) {
     // Stop examining NEW agents in time to still stamp the ones already done.
@@ -517,6 +523,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       scanned: 0,
       skipped_already_challenged: 0,
       flagged: [],
+      withheld: [],
+      learned_rules: 0,
     };
 
     let txs;
@@ -542,6 +550,50 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
     patrolled.push(agent.agent_id);
 
     const mandate = agent.mandate ?? "";
+
+    /*
+     * WHAT THE VALIDATORS HAVE ALREADY TOLD THIS BOT.
+     *
+     * `is_tx_challenged` stops the bot re-filing the same TRANSACTION. It does
+     * nothing about the same ARGUMENT: an agent whose WFC trades were ruled
+     * within its mandate makes a new WFC trade tomorrow, the rule fires again
+     * on a hash nobody has challenged, and the bot stakes GEN on a case five
+     * validators have already decided against it. That is a slow, automatic,
+     * repeating loss — the bot losing money for being unable to learn.
+     *
+     * So the agent's settled history is read once here and turned into a set of
+     * rule-and-subject keys the validators have cleared. See lib/heuristics.ts
+     * for what a key covers and how one stops applying.
+     *
+     * Gated on `compliant_count`, which the queue row already carries: an agent
+     * that has never been cleared of anything has nothing to teach, and that is
+     * almost every agent almost always. Costing every patrol an extra read per
+     * agent to discover that would be the wrong trade on a route with a hard
+     * 300s ceiling.
+     *
+     * A history read that FAILS leaves the set empty, which means the bot files
+     * as it did before. That is the safe direction: an unreadable history can
+     * cost a stake, while assuming it said COMPLIANT would silence the watchdog
+     * on the strength of a network error.
+     */
+    let learned = new Map<string, number>();
+    if (Number(agent.compliant_count ?? 0) > 0) {
+      const history = await withTimeout(
+        view<{ challenges: SettledChallenge[] }>("get_agent_history", [agent.agent_id, 50]),
+        20_000, `get_agent_history(${agent.agent_id})`,
+      ).catch((e) => {
+        console.log(`[patrol] history read FAILED for #${agent.agent_id}: ` +
+          `${String((e as Error)?.message ?? e).slice(0, 120)}`);
+        notes.push(`Agent #${agent.agent_id}'s settled history was unreadable, so this ` +
+          `run filed against it without deferring to past verdicts.`);
+        return null;
+      });
+      if (history) learned = learnedFrom(history.challenges ?? []);
+    }
+    row.learned_rules = learned.size;
+    if (learned.size > 0) {
+      console.log(`[patrol] agent #${agent.agent_id} carries ${learned.size} cleared pattern(s)`);
+    }
 
     /*
      * The list endpoint returns `token_transfers: null` on EVERY row — a
@@ -577,6 +629,24 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       const flags = flagsFor(tx, mandate, agent.chain);
       if (flags.length === 0) continue;
 
+      /*
+       * Drop the parts of this accusation the validators have already rejected
+       * for this agent, and file only what is left. Done BEFORE `is_tx_challenged`
+       * because it is local arithmetic and that is an RPC round trip: a candidate
+       * the bot is not going to file is not worth a read to confirm.
+       *
+       * Note that `keep` is what the reason is built from, so an accusation that
+       * is half-settled is re-argued only on its unsettled half.
+       */
+      const { keep, withheld } = withholdLearned(flags, learned);
+      for (const w of withheld) {
+        row.withheld.push({ tx_hash: tx.hash, reason: w.reason, cleared_by: w.cleared_by });
+        withheldTotal++;
+        console.log(`[patrol] withheld ${w.rule} on #${agent.agent_id} ` +
+          `— validators ruled COMPLIANT in challenge #${w.cleared_by}`);
+      }
+      if (keep.length === 0) continue;
+
       const known = await view<{ challenged: boolean }>("is_tx_challenged", [agent.chain, tx.hash])
         .catch(() => ({ challenged: false }));
       if (known.challenged) {
@@ -584,7 +654,7 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
         continue;
       }
 
-      const reason = reasonText(flags);
+      const reason = reasonText(keep);
       const outOfFilingTime = Date.now() - started > FILE_UNTIL_MS;
       if (outOfFilingTime && !dry) {
         row.flagged.push({ tx_hash: tx.hash, reason, filed: false,
@@ -704,6 +774,14 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
     notes.push("No agent's explorer answered, so nothing was stamped as patrolled.");
   }
 
+  if (withheldTotal > 0) {
+    // Said in GEN, because the saving is the point. This is the stake that
+    // would have been forfeited re-filing cases the validators already closed.
+    const saved = stake > 0n
+      ? ` — about ${(Number(stake * BigInt(withheldTotal)) / 1e18).toFixed(2)} GEN of stake not risked on cases the validators have already closed`
+      : "";
+    notes.push(`Withheld ${withheldTotal} accusation(s) the validators previously ruled COMPLIANT${saved}.`);
+  }
   if (dry) notes.push("Dry run — nothing was filed on chain.");
   if (botAddress) notes.push(`Filing as ${botAddress}.`);
   if (resolved.length) {
@@ -721,13 +799,14 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
     patrolled: rows.length,
     transactions_scanned: scannedTotal,
     challenges_filed: filedTotal,
+    challenges_withheld: withheldTotal,
     dry_run: dry,
     challenges_resolved: resolved,
     rows,
     notes,
   };
   console.log(`[patrol] END dry_run=${dry} patrolled=${rows.length} ` +
-    `scanned=${scannedTotal} filed=${filedTotal} resolved=${resolved.length} ` +
-    `marked=${markedPatrolled} seconds=${report.seconds}`);
+    `scanned=${scannedTotal} filed=${filedTotal} withheld=${withheldTotal} ` +
+    `resolved=${resolved.length} marked=${markedPatrolled} seconds=${report.seconds}`);
   return report;
 }

@@ -217,6 +217,15 @@ export interface PatrolRow {
   scanned: number;
   skipped_already_challenged: number;
   flagged: { tx_hash: string; reason: string; filed: boolean; challenge_id?: number; error?: string }[];
+  /**
+   * Accusations the bot DID NOT stake on, because the validators already ruled
+   * this agent COMPLIANT on the same rule and subject. `cleared_by` is the
+   * challenge whose verdict withheld it, so the silence is auditable — a
+   * watchdog that stops accusing must be able to say why.
+   */
+  withheld: { tx_hash: string; reason: string; cleared_by: number }[];
+  /** How many cleared rule-and-subject patterns this agent's history taught the bot. */
+  learned_rules: number;
   error?: string;
 }
 
@@ -230,6 +239,8 @@ export interface PatrolReport {
   patrolled: number;
   transactions_scanned: number;
   challenges_filed: number;
+  /** Accusations withheld across the run because the validators had already rejected them. */
+  challenges_withheld: number;
   dry_run: boolean;
   /** What this run put to the validators. Empty on a dry run. */
   challenges_resolved?: { challenge_id: number; verdict: string; error?: string }[];

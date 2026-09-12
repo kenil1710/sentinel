@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import {
   allowedSymbols, valueCeilingWei, forbidsUnverified,
   restrictsToNamedTokens, flagsFor, reasonText,
+  reasonSignatures, learnedFrom, withholdLearned,
 } from "../frontend/src/lib/heuristics.ts";
 
 const FIX = JSON.parse(readFileSync(new URL("./fixtures.json", import.meta.url), "utf8")).fixtures;
@@ -258,6 +259,205 @@ test("flagsFor never throws on a malformed row", () => {
   for (const row of bad) {
     try { flagsFor(row, STRICT, "ethereum"); }
     catch (e) { assert.fail(`threw on ${JSON.stringify(row).slice(0, 60)}: ${e.message}`); }
+  }
+});
+
+// ── learning from the validators ───────────────────────────────────────────
+//
+// The bug: the bot re-filed the same accusation against the same agent every
+// patrol, and lost the stake every time, because `is_tx_challenged` only stops
+// a repeat of the same TRANSACTION. These assert that a COMPLIANT verdict is
+// read back out of the prose the contract stores and withholds the next
+// identical accusation — and, just as important, withholds nothing more.
+
+/** A settled challenge as get_agent_history returns it. */
+function settled(id, verdict, reason, extra = {}) {
+  return { challenge_id: id, verdict, reason, injection_flagged: false, ...extra };
+}
+
+/** The exact reason the bot would file for this row — the thing stored on chain. */
+function wouldFile(row, mandate, chain = "ethereum") {
+  return reasonText(flagsFor(row, mandate, chain));
+}
+
+test("a filed accusation round-trips back into the key it asserts", () => {
+  // The whole mechanism rests on this: the SAME parser over the sentence about
+  // to be filed and over the sentence already on chain. If the wording of a
+  // reason ever changes without its pattern, this is what notices.
+  const text = wouldFile(rowOf(SWAP), STRICT);
+  const sigs = reasonSignatures(text);
+  assert.ok(sigs.length > 0, `nothing parsed out of: ${text}`);
+  assert.ok(sigs.some((s) => s.startsWith("unlisted-token|") && s.endsWith("|WFC")),
+    `expected a WFC key, got ${JSON.stringify(sigs)}`);
+});
+
+test("every rule the bot can file is readable back as a key", () => {
+  const scam = { ...rowOf(SWAP), toIsScam: true };
+  const unver = { ...rowOf(SWAP), toIsVerified: false };
+  const over = { ...rowOf(SWAP), value: String(2n * 10n ** 18n) };
+  const cases = [
+    [wouldFile(scam, PERMISSIVE), "scam-counterparty|"],
+    [wouldFile(unver, "Never interact with unverified contracts.", "ethereum"), "unverified-contract|"],
+    [reasonText(flagsFor(over, STRICT, "ethereum").filter((f) => f.rule === "over-value-ceiling")), "over-value-ceiling|"],
+  ];
+  for (const [text, prefix] of cases) {
+    const sigs = reasonSignatures(text);
+    assert.ok(sigs.some((s) => s.startsWith(prefix)),
+      `${prefix} did not round-trip from: ${text}`);
+  }
+});
+
+test("a COMPLIANT verdict withholds the identical accusation next time", () => {
+  // THE BUG, stated as a test. Same agent, same rule, same token, new tx.
+  const row = rowOf(SWAP);
+  const history = [settled(7, "COMPLIANT", wouldFile(row, STRICT))];
+  const learned = learnedFrom(history);
+  const { keep, withheld } = withholdLearned(flagsFor(row, STRICT, "ethereum"), learned);
+  assert.deepEqual(keep, [], "the bot must not re-file what the validators rejected");
+  assert.equal(withheld.length, 1);
+  assert.equal(withheld[0].cleared_by, 7, "the withheld flag must cite the ruling");
+});
+
+test("a VIOLATION verdict teaches the bot NOTHING", () => {
+  // A proven breach is a reason to keep watching, not to stop.
+  const row = rowOf(SWAP);
+  const learned = learnedFrom([settled(7, "VIOLATION", wouldFile(row, STRICT))]);
+  assert.equal(learned.size, 0);
+  assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).keep.length, 1);
+});
+
+test("an INCONCLUSIVE round is not a clearance", () => {
+  // A round that could not converge settled nothing. Treating it as COMPLIANT
+  // would let an unreadable explorer permanently silence the watchdog.
+  const row = rowOf(SWAP);
+  for (const v of ["INCONCLUSIVE", "", "PENDING", "RETRY"]) {
+    const learned = learnedFrom([settled(7, v, wouldFile(row, STRICT))]);
+    assert.equal(learned.size, 0, `"${v}" must teach nothing`);
+  }
+});
+
+test("a clearance reached on injection-flagged evidence is not learned", () => {
+  const row = rowOf(SWAP);
+  const learned = learnedFrom([
+    settled(7, "COMPLIANT", wouldFile(row, STRICT), { injection_flagged: true }),
+  ]);
+  assert.equal(learned.size, 0);
+  assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).keep.length, 1);
+});
+
+test("a clearance for WFC says nothing about another token", () => {
+  // The narrowness is the safety property: deferring wider than the validators
+  // actually ruled blinds the watchdog, which is worse than a wasted stake.
+  const wfc = rowOf(SWAP);
+  const learned = learnedFrom([settled(7, "COMPLIANT", wouldFile(wfc, STRICT))]);
+
+  const pons = { ...rowOf(SWAP), transfers: [{ sym: "PONS", addr: "0x1", value: "1", decimals: "18" }] };
+  const flags = flagsFor(pons, STRICT, "ethereum");
+  assert.equal(flags.length, 1);
+  const { keep, withheld } = withholdLearned(flags, learned);
+  assert.equal(keep.length, 1, "PONS was never put to the validators");
+  assert.equal(withheld.length, 0);
+});
+
+test("a clearance for one address says nothing about another", () => {
+  const a = { ...rowOf(SWAP), to: "0x" + "a".repeat(40), toIsScam: true };
+  const b = { ...rowOf(SWAP), to: "0x" + "b".repeat(40), toIsScam: true };
+  const learned = learnedFrom([settled(7, "COMPLIANT", wouldFile(a, PERMISSIVE))]);
+  assert.equal(withholdLearned(flagsFor(a, PERMISSIVE, "ethereum"), learned).keep.length, 0);
+  assert.equal(withholdLearned(flagsFor(b, PERMISSIVE, "ethereum"), learned).keep.length, 1);
+});
+
+test("a half-settled accusation is re-argued on its unsettled half only", () => {
+  // Filing the whole thing again would re-litigate the closed half and invite
+  // the same COMPLIANT verdict on a technicality.
+  const both = { ...rowOf(SWAP), toIsScam: true };
+  const learned = learnedFrom([
+    settled(7, "COMPLIANT", flagsFor(both, STRICT, "ethereum")
+      .find((f) => f.rule === "scam-counterparty").reason),
+  ]);
+  const { keep, withheld } = withholdLearned(flagsFor(both, STRICT, "ethereum"), learned);
+  assert.equal(withheld.length, 1);
+  assert.equal(withheld[0].rule, "scam-counterparty");
+  assert.ok(keep.length >= 1);
+  assert.ok(!keep.some((f) => f.rule === "scam-counterparty"));
+  assert.ok(reasonText(keep).includes("WFC"), "the filed reason must be the unsettled half");
+});
+
+test("editing the mandate's token list makes the bot start challenging again", () => {
+  // A verdict is remembered against the RULE that was judged. Change the rule
+  // and the old ruling stops applying — with no extra state and no extra read.
+  const row = rowOf(SWAP);
+  const learned = learnedFrom([settled(7, "COMPLIANT", wouldFile(row, STRICT))]);
+  const widened = "Only trade ETH, USDC and DAI on Uniswap. Maximum 0.5 ETH per trade. " +
+    "Never interact with unverified contracts or unlisted tokens.";
+  const { keep } = withholdLearned(flagsFor(row, widened, "ethereum"), learned);
+  assert.equal(keep.length, 1, "a changed allow-list is a different rule");
+});
+
+test("changing the stated ceiling makes the bot start challenging again", () => {
+  const over = { ...rowOf(SWAP), value: String(2n * 10n ** 18n) };
+  const ceilingFlag = (m) => flagsFor(over, m, "ethereum").filter((f) => f.rule === "over-value-ceiling");
+  const learned = learnedFrom([settled(7, "COMPLIANT", reasonText(ceilingFlag(STRICT)))]);
+  assert.equal(withholdLearned(ceilingFlag(STRICT), learned).keep.length, 0);
+
+  const raised = STRICT.replace("Maximum 0.5 ETH", "Maximum 1 ETH");
+  assert.equal(withholdLearned(ceilingFlag(raised), learned).keep.length, 1);
+});
+
+test("a cleared ceiling covers any amount over it, not just the one judged", () => {
+  // If 2 ETH over a 0.5 cap is within the mandate then so is 3, and keying on
+  // the amount would re-file the identical argument for every new number.
+  const f = (wei) => flagsFor({ ...rowOf(SWAP), value: String(wei) }, STRICT, "ethereum")
+    .filter((x) => x.rule === "over-value-ceiling");
+  const learned = learnedFrom([settled(7, "COMPLIANT", reasonText(f(2n * 10n ** 18n)))]);
+  assert.equal(withholdLearned(f(3n * 10n ** 18n), learned).keep.length, 0);
+});
+
+test("a human's free-text reason teaches the bot nothing", () => {
+  // Learning is symmetric parsing of the bot's own sentences. Anything it
+  // cannot read back is never learned from and never withholds anything.
+  const learned = learnedFrom([
+    settled(7, "COMPLIANT", "This looks like it broke the rules to me, honestly."),
+  ]);
+  assert.equal(learned.size, 0);
+});
+
+test("an unreadable accusation is never withheld", () => {
+  const learned = new Map([["unlisted-token|ETH,USDC|WFC", 7]]);
+  const odd = [{ tx_hash: "0x1", rule: "custom", reason: "Something a person typed." }];
+  assert.equal(withholdLearned(odd, learned).keep.length, 1);
+});
+
+test("a reason truncated at 300 characters does not invent a cleared token", () => {
+  // reasonText cuts at 297 and appends "..." — a half-written accusation must
+  // not become a key, so the incomplete sentence is dropped.
+  const long = reasonText([
+    { tx_hash: "0x1", rule: "pad", reason: "A".repeat(280) + "." },
+    { tx_hash: "0x1", rule: "unlisted-token",
+      reason: "The mandate names ETH, USDC but this transaction moved WFC." },
+  ]);
+  assert.ok(long.endsWith("..."), "the fixture must actually be truncated");
+  for (const sig of reasonSignatures(long)) {
+    assert.ok(!sig.startsWith("unlisted-token|"), `invented a key from cut text: ${sig}`);
+  }
+});
+
+test("the same verdict is learned once, and cites the earliest ruling", () => {
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const learned = learnedFrom([settled(4, "COMPLIANT", text), settled(9, "COMPLIANT", text)]);
+  assert.equal(learned.size, 1);
+  assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).withheld[0].cleared_by, 4);
+});
+
+test("learning never throws on a malformed history", () => {
+  const bad = [null, undefined, {}, { verdict: "COMPLIANT" },
+    { verdict: "COMPLIANT", reason: null }, { verdict: null, reason: 42 }];
+  try { assert.equal(learnedFrom(bad).size, 0); }
+  catch (e) { assert.fail(`threw on a malformed history: ${e.message}`); }
+  for (const notAList of [null, undefined, "nope", 7]) {
+    try { assert.equal(learnedFrom(notAList).size, 0); }
+    catch (e) { assert.fail(`threw on ${String(notAList)}: ${e.message}`); }
   }
 });
 

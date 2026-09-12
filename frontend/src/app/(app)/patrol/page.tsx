@@ -124,6 +124,11 @@ export default function PatrolPage() {
             <span className={report.challenges_filed > 0 ? "text-violation-ink" : ""}>
               {report.challenges_filed} challenges filed
             </span>
+            {(report.challenges_withheld ?? 0) > 0 && (
+              <span className="text-compliant-ink">
+                {report.challenges_withheld} withheld — already ruled compliant
+              </span>
+            )}
           </div>
 
           <div className="mt-5 space-y-2.5">
@@ -141,12 +146,19 @@ export default function PatrolPage() {
                       {row.skipped_already_challenged} already judged
                     </span>
                   )}
+                  {(row.learned_rules ?? 0) > 0 && (
+                    <span className="text-[11px] text-ink-3">
+                      {row.learned_rules} pattern{row.learned_rules === 1 ? "" : "s"} cleared by validators
+                    </span>
+                  )}
                   {row.error ? (
                     <span className="ml-auto rounded-md bg-neutral/10 px-2 py-0.5 text-[11px] text-neutral-ink ring-1 ring-neutral/25">
                       {row.error}
                     </span>
                   ) : row.flagged.length === 0 ? (
-                    <span className="ml-auto text-[11px] text-compliant-ink">nothing flagged</span>
+                    <span className="ml-auto text-[11px] text-compliant-ink">
+                      {(row.withheld ?? []).length > 0 ? "nothing left to challenge" : "nothing flagged"}
+                    </span>
                   ) : (
                     <span className="ml-auto text-[11px] text-violation-ink">
                       {row.flagged.length} flagged
@@ -160,6 +172,25 @@ export default function PatrolPage() {
                     <div className="mt-1 text-[12px] leading-relaxed text-ink-2">{f.reason}</div>
                     <div className="mt-1.5 text-[10px] text-ink-3">
                       {f.filed ? "challenge filed on chain" : f.error ?? "would be challenged on a live run"}
+                    </div>
+                  </div>
+                ))}
+
+                {/*
+                  A watchdog that stops accusing has to say why, or its silence
+                  is indistinguishable from a broken rule. Each of these is a
+                  case the bot would once have re-filed and lost.
+                */}
+                {(row.withheld ?? []).map((w) => (
+                  <div key={`w-${w.tx_hash}-${w.cleared_by}`}
+                    className="mt-2.5 rounded-md border border-compliant/20 bg-compliant/5 p-3">
+                    <div className="mono text-[11px] text-compliant-ink">{shortAddress(w.tx_hash, 8)}</div>
+                    <div className="mt-1 text-[12px] leading-relaxed text-ink-2">{w.reason}</div>
+                    <div className="mt-1.5 text-[10px] text-ink-3">
+                      not challenged — validators ruled this compliant in{" "}
+                      <Link href={`/challenge/${w.cleared_by}`} className="text-compliant-ink hover:underline">
+                        challenge #{w.cleared_by}
+                      </Link>
                     </div>
                   </div>
                 ))}
