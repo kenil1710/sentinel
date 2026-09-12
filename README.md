@@ -13,21 +13,30 @@ No administrator decides anything.
 
 **Live:** [sentinel-tau-ashen.vercel.app](https://sentinel-tau-ashen.vercel.app)
 
-| | Address |
-|---|---|
-| **Studio Dev** | [`0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`](https://explorer-studio-dev.genlayer.com/address/0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) |
+| | Address | |
+|---|---|---|
+| **Studio Dev** | [`0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe`](https://explorer-studio-dev.genlayer.com/address/0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe) | current |
+| Superseded | [`0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`](https://explorer-studio-dev.genlayer.com/address/0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) | read-only |
 
 Chain ID `61997`, RPC `https://studio-dev.genlayer.com/api`. Studio Dev is the
 only network this project targets.
 
-`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py`
-reports **EQUIVALENT**: the deployed code and the local artifact are the same
-token stream under a bijective renaming of private identifiers, and the public
-ABI — all 37 methods — is identical. They are not byte-identical. The deployed
-bytes came from an earlier run of the same build pipeline, and the mangler
-assigns private names by frequency rank, so any edit to the source reshuffles
-them. The tool reports `MATCH`, `EQUIVALENT` or `DIFFER` precisely so that
-distinction is not quietly rounded up to "identical".
+The current address was deployed on 2026-09-12 with the fixes from the
+adversarial review. Storage changed — a maintained active-agent set, and a
+transaction claim keyed per agent and released on a refund — and neither
+migrates in place, so a new contract was deployed rather than the old one
+patched. The old address stays readable and keeps its accumulated record: 21
+agents, 150 challenges, 33 VIOLATION / 61 COMPLIANT / 56 INCONCLUSIVE over 297
+patrols. Nothing points at it any more.
+
+`python3 tools/verify_onchain.py 0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe build/Sentinel.min.py`
+reports **MATCH**: the deployed code is byte-identical to the local artifact,
+because this one was deployed from exactly the artifact in the tree. The
+previous deployment reported `EQUIVALENT` instead — same token stream under a
+bijective renaming of private identifiers, since its bytes predated a pipeline
+rebuild and the mangler assigns private names by frequency rank. The tool
+reports `MATCH`, `EQUIVALENT` or `DIFFER` precisely so that distinction is not
+quietly rounded up to "identical".
 
 - **Contract** — [`contracts/Sentinel.py`](contracts/Sentinel.py)
 - **Why it is built this way** — [`contracts/NOTES.md`](contracts/NOTES.md)
@@ -52,9 +61,21 @@ five validators independently fetched that transaction and returned:
 > `0x974733a3…`) to the agent's wallet. WFC is not ETH or USDC, violating the
 > explicit token restriction."*
 
-That verdict was reached on an earlier deployment. **The Studio Dev contract
-linked above has since returned its own**, on the same wallet and the same
-mandate, judged on 2026-09-10:
+That verdict was reached on an earlier deployment, and it has since been
+returned **twice more on the same wallet and the same mandate** — once by the
+superseded contract on 2026-09-10, and again by the contract linked at the top
+on 2026-09-12, hours after it was deployed. The current one reads:
+
+> **VIOLATION** (confidence 85%)
+> *"The mandate explicitly states 'Only trade ETH and USDC on Uniswap' and
+> 'Never interact with unverified contracts or unlisted tokens.' The transaction
+> record shows a transfer of 7160.883256709807603712 WFC (contract
+> `0x974733a3…`) to the agent's wallet. WFC is neither ETH nor USDC, and the
+> mandate does not list it as a permitted token."*
+
+Same wallet, same swap, a fresh set of validators and a different amount of WFC
+in the record, because the wallet kept trading between the two rounds. The
+superseded contract's verdict was:
 
 > **VIOLATION**
 > *"The mandate strictly limits trading to 'Only trade ETH and USDC'. The
@@ -68,18 +89,32 @@ VIOLATION, at 95%, 90% and 95% confidence, on three different transactions with
 three different evidence digests. The earlier evidence is kept because it is a
 wider sample than one verdict — not because the current contract lacks one.
 
-### Snapshot as of 2026-09-12 13:53:13 UTC
+### Snapshot as of 2026-09-12 18:48 UTC
 
-Read from `get_stats` on the Studio Dev contract. **These numbers are a
-snapshot, not a status** — the patrol runs every ten minutes and files,
-judges and stamps unattended, so every counter below moves on its own and this
-block is stale the moment it is written.
+Read from `get_stats`. **These numbers are a snapshot, not a status** — the
+patrol files, judges and stamps unattended, so every counter moves on its own
+and this block is stale the moment it is written.
+
+Two contracts, because the security fixes of 2026-09-12 changed the storage
+layout and could not migrate in place. The current one was deployed the same
+day and has a freshly seeded register; the record belongs to the address it was
+earned on.
 
 ```
-snapshot        2026-09-12 13:53:13 UTC   (get_stats, studiodev)
+CURRENT   0x67A1276E…F48dEe          deployed 2026-09-12
+agents          18 registered, 15 on active duty, 9.8 GEN under watch
+                (3 withdrawn: 2 retired while proving on real GenVM storage
+                 that a retired agent leaves the live set, then re-registered
+                 as #16 and #17; 1 probe left over from the fee diagnosis)
+                active: 7 ethereum, 3 robinhood, 2 arbitrum, 2 polygon, 1 base
+challenges      1 filed, 1 settled, 0 pending, 0 stalled
+verdicts        1 VIOLATION — the WFC swap, judged here, 85% confidence
+economics       0.2 GEN slashed, 0.1 GEN paid out in bounties
+patrols_run     0
+
+SUPERSEDED   0x3fc4E5dA…D563e        read-only, keeps its record
 agents          21 registered, 9 on active duty, 7.6 GEN under watch
                 (9 bonds exhausted by proven breaches, 3 retired off Robinhood Chain)
-                active: 6 ethereum, 2 polygon, 1 base
 challenges      150 filed, 150 settled, 0 pending, 0 stalled
 verdicts        33 VIOLATION, 61 COMPLIANT, 56 INCONCLUSIVE
 economics       3.913 GEN slashed, 1.957 GEN paid out in bounties
@@ -87,6 +122,8 @@ patrols_run     297
 ```
 
 **For live numbers, call `get_stats` — do not trust the block above.**
+`tools/audit.sh` compares it against the chain and fails when they diverge,
+which is how the last drift was caught.
 
 ```bash
 curl -s https://sentinel-tau-ashen.vercel.app/api/check?wallet=0xaa3ab5ed0758717138acf345e2563d7588e1a3f9\&chain=ethereum
@@ -123,8 +160,14 @@ curl '.../api/check?wallet=0x17e3048c…&chain=ethereum'
 # → "violations": 3, "score_percent": 0, "basis": "0 of 3 decided found it compliant"
 ```
 
-Against Studio Dev today the same call returns that wallet registered with no
-decided challenges, because its one challenge here is still `PENDING`.
+Against the current Studio Dev contract the same call now returns the same
+shape, on its own verdict rather than an inherited one:
+
+```bash
+curl 'https://sentinel-tau-ashen.vercel.app/api/check?wallet=0x17e3048c…&chain=ethereum'
+# → "violations": 1, "score_percent": 0, "basis": "0 of 1 decided found it compliant"
+# → bond 0.8 GEN, 0.2 GEN already slashed, still challengeable
+```
 
 One of the three did not converge on its first round and came back
 **UNDETERMINED**. It applied no state and stayed `PENDING` — the designed
@@ -134,8 +177,8 @@ resolved cleanly when it was put to the validators again.
 Then the patrol bot went and found more on its own. A dry run over that
 deployment's ten-agent register scanned 124 transactions and flagged **24**
 candidates across four of them — without anyone pointing it at a single one.
-Those figures are a snapshot of that register, not of the four agents on Studio
-Dev: the wallets are real and keep transacting, so your run will differ.
+Those figures are a snapshot of that register, not of the one linked at the top:
+the wallets are real and keep transacting, so your run will differ.
 
 ```bash
 curl 'https://sentinel-tau-ashen.vercel.app/api/patrol?dry=1'
@@ -153,15 +196,40 @@ afternoon must never read as a clean bill of health.
 
 ## The register is real
 
-**Nine agents are on active duty on Studio Dev** as of the snapshot above,
-across the chains the patrol can actually read — 6 on ethereum, 2 on polygon
-and 1 on base — in three agent types, with 7.6 GEN under watch after the
-slashing below. **Twenty-one** were registered in total: **nine** had their
-bonds exhausted by proven breaches (the last arbitrum agent among them, which
-is why that chain now carries none), and the three on Robinhood Chain were
-**retired on purpose**, their bonds withdrawn, because that chain cannot be
-scanned at all (see below). The seeded roster is what `test/seed_roster.mjs`
-defines; the rest were registered against live wallets found the same way.
+Two registers are described below and they are not the same one, so it is worth
+being exact about which is which.
+
+**The contract linked at the top was deployed on 2026-09-12** with the security
+fixes, on a new address because the storage layout changed. Its register was
+seeded by `test/seed_roster.mjs` and holds **15 agents on active duty across all
+five configured chains and three agent types, with 9.8 GEN under watch**. One
+challenge has been filed and judged there — the WFC swap below, put to the
+validators on the new contract and returned **VIOLATION** at 85% confidence,
+slashing the bond 1.0 → 0.8 and paying a 0.1 GEN bounty. The patrol has not run
+over it yet. Run `tools/audit.sh` for live figures — it reads the chain and
+fails if this paragraph has drifted from it.
+
+Three of those 15 sit on Robinhood Chain, which still answers the
+address-transaction endpoint with a Cloudflare 403 from any egress. The patrol
+reports them as *"explorer unavailable — skipped, not cleared"* rather than
+clearing them, which is the behaviour that matters; on the superseded deployment
+they were retired outright for that reason, and that call has not been re-made
+here.
+
+**Everything that follows in this section happened on the superseded address**,
+which stays readable and keeps the whole record. There, nine agents were on
+active duty across the chains the patrol can actually read — 6 on ethereum, 2 on
+polygon and 1 on base — with 7.6 GEN under watch after the slashing below.
+**Twenty-one** were registered in total: **nine** had their bonds exhausted by
+proven breaches (the last arbitrum agent among them, which is why that chain
+carried none), and the three on Robinhood Chain were **retired on purpose**,
+their bonds withdrawn, because that chain cannot be scanned at all (see below).
+The seeded roster is what `test/seed_roster.mjs` defines; the rest were
+registered against live wallets found the same way.
+
+That history is not carried forward and is not presented as though it were. It
+is evidence that the system worked end to end — 150 challenges judged, verdicts
+spanning all three outcomes — and it belongs to the contract that produced it.
 
 The three most recent registrations are worth naming, because they are the
 system working end to end rather than a fixture: three genuinely active DEX

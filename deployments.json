@@ -51,16 +51,30 @@
       "verified": "`python3 tools/verify_onchain.py 0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe build/Sentinel.min.py` reports MATCH: the on-chain code is BYTE-IDENTICAL to the local artifact, sha256 64d82a250f22bed0c243b37d1c523425556a63adc591f52237d9be926d313f46. The previous deployment reported EQUIVALENT rather than MATCH because its bytes predated a pipeline rebuild; this one was deployed from exactly the artifact in the tree. The check reports MATCH, EQUIVALENT or DIFFER precisely so that distinction is never papered over.",
       "artifact_bytes_on_chain": 50355,
       "live_state": {
-        "read_at": "2026-09-12T18:26:28Z",
-        "source": "get_stats on the deployed contract",
-        "agents_registered": 16,
-        "agents_active": 14,
-        "total_bonded_text": "10.5",
-        "bond_under_watch_text": "8.5",
-        "challenges_filed": 0,
-        "challenges_settled": 0,
+        "read_at": "2026-09-12T18:48:31Z",
+        "source": "get_stats and get_patrol_queue on the deployed contract",
+        "agents_registered": 18,
+        "agents_active": 15,
+        "bond_under_watch_text": "9.8",
+        "total_bonded_text": "12.5",
+        "active_by_chain": {
+          "ethereum": 7,
+          "robinhood": 3,
+          "arbitrum": 2,
+          "polygon": 2,
+          "base": 1
+        },
+        "challenges_filed": 1,
+        "challenges_settled": 1,
+        "verdicts": {
+          "violation": 1,
+          "compliant": 0,
+          "inconclusive": 0
+        },
+        "total_slashed_text": "0.2",
+        "bounties_paid_text": "0.1",
         "patrols_run": 0,
-        "watchers": 0,
+        "watchers": 1,
         "chains_configured": [
           "ethereum",
           "base",
@@ -68,7 +82,7 @@
           "polygon",
           "robinhood"
         ],
-        "note": "A SNAPSHOT, NOT a status, and this one is deliberately THIN. This is a FRESH deployment: the security fixes of 2026-09-12 changed contract storage — a maintained active-agent set and a per-agent transaction claim — and neither is migratable, so a new address was deployed rather than the old one patched. The register here was seeded by test/seed_roster.mjs and carries no challenge history yet; the patrol has not run against it. The PREVIOUS deployment (0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) holds the accumulated record — 21 agents, 150 challenges, 33 VIOLATION / 61 COMPLIANT / 56 INCONCLUSIVE across 297 patrols — and stays readable at its own address. Two of the 16 here were withdrawn while verifying that a retired agent leaves the live set on real GenVM storage, which is why registered is 16 and active is 14. Call get_stats for live numbers, or run tools/audit.sh, which compares this snapshot against the register and FAILS when they diverge."
+        "note": "A SNAPSHOT, NOT a status. This contract was deployed 2026-09-12 with the security fixes; the storage layout changed and could not migrate, so the previous address (0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) keeps its own accumulated record - 21 agents, 150 challenges, 33 VIOLATION / 61 COMPLIANT / 56 INCONCLUSIVE over 297 patrols - and is no longer pointed at by anything. The register here was seeded by test/seed_roster.mjs. Three of the 18 are WITHDRAWN: two were retired while verifying on real GenVM storage that a retired agent leaves the live set (the fix for the patrol-blinding attack) and were then re-registered as #16 and #17, and one was a probe agent registered while diagnosing why every write was being refused for a missing fee deposit. Challenge #0 is real: five validators read the known WFC swap against #16's mandate and returned VIOLATION at 85% confidence, slashing 1.0 GEN to 0.8 and paying a 0.1 GEN bounty. Three agents sit on Robinhood Chain, which answers the address-transaction endpoint with a Cloudflare 403 from any egress, so the patrol reports them as 'explorer unavailable - skipped, not cleared' rather than clearing them; on the previous deployment those were retired deliberately for that reason and that decision has not been re-applied here. Call get_stats for live numbers, or run tools/audit.sh, which compares this snapshot against the register and FAILS when they diverge."
       },
       "artifact_bytes": 50355,
       "deployed_at": "2026-09-12T18:26:28Z",
@@ -134,10 +148,11 @@
     },
     "cron": "The patrol runs unattended and delivery is CONFIRMED: measured on 2026-09-10 with nothing triggering the route, patrols_run went 8 -> 9, challenges_filed 10 -> 13 and challenges_settled 10 -> 11 between 13:33:52Z and 13:34:54Z. CADENCE IS NOT FROM VERCEL. vercel.json now schedules /api/patrol at '0 12 * * *' (daily), because this account is on the Hobby plan and Vercel REFUSES TO DEPLOY a sub-daily cron - 'Hobby accounts are limited to daily cron jobs' - which blocked a deploy until the schedule was relaxed. The ten-minute cadence therefore comes from an external scheduler hitting the alias with PATROL_SECRET, and the daily Vercel cron is only a backstop. Restore '*/10 * * * *' if the account moves to Pro. Earlier records in this file said Vercel had never been seen to deliver a slot at all; that was true when written and the cause was the missing studio-dev fee deposit, not the scheduler. A representative run scans 40 transactions across 5 agents, files a challenge, drives it to a verdict and stamps every agent it read, in about 190s. See frontend/CRON.md.",
     "gates": "tsc --noEmit, eslint --max-warnings=0 and next build all clean; every route returns 200.",
-    "note": "This is the project's production domain. A custom alias was tried and removed: Vercel served it behind SSO deployment protection (302 to vercel.com/sso-api), which would have looked like a dead link.",
+    "note": "NEXT_PUBLIC_CONTRACT_ADDRESS was repointed to the new address on 2026-09-12 and the site redeployed. Until then the deployed site still read 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e, so the fixes were on chain but not yet in front of anyone — worth recording because a contract deploy and a frontend deploy are two separate acts and only the second one changes what a visitor sees.",
     "structure": "Next.js route groups: (marketing) has NO wallet control and names no network; (app) carries the wallet and the network badge. The split is structural, so the landing page has no import path to a wallet prompt at all.",
-    "contract": "0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e",
-    "fees": "studio-dev runs with the fee policy ENABLED (getCurrentFeePolicy().enabled is true) and exposes no feeManagerContract, so the SDK derives the deposit from the local round-fee calculation. Every write - challenge_agent, mark_patrolled, resolve_challenge in the patrol route, and register/challenge/top-up from the browser - estimates with estimateTransactionFeesForWrite against the real calldata and passes the result as `fees`. A write with no fees is a zero-fee transaction and the consensus contract refuses it, which is what stopped the earlier runs. Measured deposits: 0.00061 GEN for register_agent and mark_patrolled, 0.00077 GEN for resolve_challenge and a challenge with a long reason. The patrol wallet must hold GEN for these plus the 0.05 GEN stake per challenge; the route checks its balance once per run and says so in `notes` when it is empty. Fund it on a Studio network with the sim_fundAccount RPC method."
+    "contract": "0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe",
+    "fees": "studio-dev runs with the fee policy ENABLED (getCurrentFeePolicy().enabled is true) and exposes no feeManagerContract, so the SDK derives the deposit from the local round-fee calculation. Every write - challenge_agent, mark_patrolled, resolve_challenge in the patrol route, and register/challenge/top-up from the browser - estimates with estimateTransactionFeesForWrite against the real calldata and passes the result as `fees`. A write with no fees is a zero-fee transaction and the consensus contract refuses it, which is what stopped the earlier runs. Measured deposits: 0.00061 GEN for register_agent and mark_patrolled, 0.00077 GEN for resolve_challenge and a challenge with a long reason. The patrol wallet must hold GEN for these plus the 0.05 GEN stake per challenge; the route checks its balance once per run and says so in `notes` when it is empty. Fund it on a Studio network with the sim_fundAccount RPC method.",
+    "repointed_at": "2026-09-12T18:42:39Z"
   },
   "verification": {
     "offline_suite": {
@@ -156,13 +171,13 @@
       "checks": 79,
       "failed": 0,
       "source": "test/e2e.mjs",
-      "note": "MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/e2e.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
+      "note": "MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/e2e.mjs --network=studiodev --address=0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe`. The address in that command is the CURRENT contract; these figures were measured on the superseded one and have not been re-run here."
     },
     "functional_sweep": {
       "methods": 36,
       "failed": 0,
       "source": "test/verify_methods.mjs",
-      "note": "37 reported checks: 36 methods plus the balance invariant. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/verify_methods.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
+      "note": "37 reported checks: 36 methods plus the balance invariant. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/verify_methods.mjs --network=studiodev --address=0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe`. The address in that command is the CURRENT contract; these figures were measured on the superseded one and have not been re-run here."
     },
     "repository_audit": {
       "checks": 64,
@@ -181,7 +196,7 @@
       "checks": 99,
       "failed": 0,
       "source": "test/edge_cases.mjs",
-      "note": "The rejection, pause, compounding-slash and state-consistency battery. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/edge_cases.mjs --network=studiodev --address=0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e`."
+      "note": "The rejection, pause, compounding-slash and state-consistency battery. MEASURED ON AN EARLIER NETWORK, NOT RE-RUN ON studiodev. Re-run with `node test/edge_cases.mjs --network=studiodev --address=0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe`. The address in that command is the CURRENT contract; these figures were measured on the superseded one and have not been re-run here."
     }
   },
   "features": {
