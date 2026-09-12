@@ -42,10 +42,16 @@ export default function PatrolPage() {
   const [history, setHistory] = useState<PatrolReport[]>([]);
 
   /*
-   * A patrol reads ~120 transactions from Blockscout one at a time and takes
-   * close to two minutes. Without a clock ticking, a button that sits on
-   * "Patrolling…" for that long reads as hung rather than as working, and the
-   * first thing anyone does with a hung button is reload the page.
+   * A patrol reads ~106 transactions from Blockscout and takes about 15
+   * seconds. Without a clock ticking, a button that sits on "Patrolling…"
+   * even for that long reads as hung rather than as working, and the first
+   * thing anyone does with a hung button is reload the page.
+   *
+   * MEASURED 2026-09-12: 13.0s, 19.3s and 16.7s over three production runs.
+   * It used to be close to two minutes, and the copy below still said so —
+   * the difference is that the bot now withholds accusations the validators
+   * have already rejected, so a run from this button files nothing and waits
+   * out no per-wallet cooldowns.
    */
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
@@ -120,8 +126,8 @@ export default function PatrolPage() {
       {running && (
         <div className="mt-5">
           <Spinner label={
-            elapsed < 15 ? "Reading the queue from the contract…"
-            : elapsed < 100 ? `Fetching each agent's transactions from Blockscout — ${elapsed}s elapsed, usually about 110s`
+            elapsed < 4 ? "Reading the queue from the contract…"
+            : elapsed < 45 ? `Fetching each agent's transactions from Blockscout — ${elapsed}s elapsed, usually about 15 seconds`
             : `Still working — ${elapsed}s elapsed`
           } />
         </div>
