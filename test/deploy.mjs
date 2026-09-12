@@ -60,8 +60,36 @@ if (chain.isStudio) {
   }
 }
 
+/*
+ * The fee deposit, when the network charges one.
+ *
+ * Studio Dev does: `getCurrentFeePolicy()` reports `enabled: true`, and a
+ * deploy sent without `fees` is refused by the consensus contract with
+ * `FeeValueMustBeNonZero(1)` — a revert, four minutes in, with nothing in the
+ * message to say the deposit was the problem. This script predates fees being
+ * switched on there; `frontend/src/app/api/patrol/route.ts` already carries the
+ * same reasoning for its writes.
+ *
+ * Unknown is NOT "free". A policy that cannot be read is assumed to charge, so
+ * the failure mode is an over-funded deploy rather than a reverted one.
+ */
+let fees;
+let feesRequired = true;
+try {
+  feesRequired = Boolean((await wallet.getCurrentFeePolicy())?.enabled);
+} catch (e) {
+  console.log(`  fees       policy unreadable (${String(e?.message ?? e).slice(0, 60)}), assuming required`);
+}
+if (feesRequired) {
+  fees = await wallet.estimateTransactionFees({});
+  console.log(`  fees       ${(Number(fees.feeValue) / 1e18).toFixed(4)} GEN deposit`);
+}
+
 const hash = await retry(
-  () => wallet.deployContract({ code, args: [penaltyBps], leaderOnly: false }),
+  () => wallet.deployContract({
+    code, args: [penaltyBps], leaderOnly: false,
+    ...(fees ? { fees } : {}),
+  }),
   { label: "deploy" },
 );
 console.log(`  tx         ${hash}`);

@@ -31,22 +31,37 @@ const cfg = await operator.viewJson("get_config");
 const STAKE = BigInt(cfg.challenge_stake);
 console.log(`\nSeeding ${address} on ${networkName}`);
 
+/*
+ * The four profile arguments are NOT optional on chain.
+ *
+ * GenVM has no default arguments, so a seven-parameter method called with three
+ * arguments fails with `exit_code 1` — a runtime error that says nothing about
+ * which argument was missing. This file passed three for as long as the profile
+ * fields have existed and seeded nothing on every fresh deployment.
+ */
 const AGENTS = [
   {
     role: operator, wallet: SWAP_WALLET, chain: "ethereum", bond: GEN,
     mandate: "Only trade ETH and USDC on Uniswap. Maximum 0.5 ETH per trade. " +
              "Never interact with unverified contracts or unlisted tokens.",
+    name: "Uniswap Rebalancer", type: "TRADING",
+    description: "Rebalances an ETH/USDC book on Uniswap every four hours.",
+    url: "https://example.org/agents/rebalancer",
   },
   {
     role: operator, wallet: SWAP_WALLET, chain: "arbitrum", bond: GEN / 2n,
     mandate: "The agent may trade any ERC-20 token on any decentralised exchange, " +
              "in any size, at its own discretion. There are no restrictions.",
+    name: "Arbitrum Discretionary", type: "DEFI",
+    description: "An unrestricted mandate, kept here so a permissive agent is on the register too.",
+    url: "https://example.org/agents/discretionary",
   },
 ];
 
 const ids = [];
 for (const a of AGENTS) {
-  const out = await a.role.send("register_agent", [a.wallet, a.chain, a.mandate], a.bond);
+  const out = await a.role.send("register_agent",
+    [a.wallet, a.chain, a.mandate, a.name, a.type, a.description, a.url], a.bond);
   const body = returnedJson(out.returned);
   if (!out.ok) { console.log(`  ✘ register ${a.chain}: ${out.revertReason || out.status}`); continue; }
   if (body && body.ok === false) { console.log(`  ⊘ register ${a.chain}: ${body.reason}`); continue; }
@@ -80,7 +95,7 @@ if (strictId !== null && strictId !== undefined) {
      */
     let known = { challenged: false };
     for (let i = 0; i < 10; i++) {
-      known = await watcher.viewJson("is_tx_challenged", ["ethereum", SWAP_TX]);
+      known = await watcher.viewJson("is_tx_challenged", ["ethereum", SWAP_TX, strictId]);
       if (known.challenged && typeof known.challenge_id === "number") break;
       await sleep(3000);
     }

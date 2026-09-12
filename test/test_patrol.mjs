@@ -17,6 +17,7 @@ import {
   allowedSymbols, valueCeilingWei, forbidsUnverified,
   restrictsToNamedTokens, flagsFor, reasonText,
   reasonSignatures, learnedFrom, withholdLearned, LEARN_AFTER,
+  CORROBORATE_MAX,
 } from "../frontend/src/lib/heuristics.ts";
 
 const FIX = JSON.parse(readFileSync(new URL("./fixtures.json", import.meta.url), "utf8")).fixtures;
@@ -28,6 +29,16 @@ function test(name, fn) {
   try { fn(); passed++; }
   catch (e) { failed++; failures.push(`${name}\n     ${String(e.message).split("\n")[0]}`); }
 }
+
+/**
+ * An async test, deferred to the end of the file.
+ *
+ * `learnedFrom` became async when it started corroborating each clearance
+ * against the transaction it judged — a reason string is a claim, and the bot
+ * now checks the record instead of believing it.
+ */
+const deferred = [];
+function atest(name, fn) { deferred.push([name, fn]); }
 
 /** The same projection the API route builds from a Blockscout document. */
 function rowOf(doc) {
@@ -270,9 +281,36 @@ test("flagsFor never throws on a malformed row", () => {
 // read back out of the prose the contract stores and withholds the next
 // identical accusation — and, just as important, withholds nothing more.
 
+/** A distinct, well-formed transaction hash per challenge id. */
+const hashOf = (id) => "0x" + String(id).padStart(64, "0");
+
 /** A settled challenge as get_agent_history returns it. */
 function settled(id, verdict, reason, extra = {}) {
-  return { challenge_id: id, verdict, reason, injection_flagged: false, ...extra };
+  return {
+    challenge_id: id, verdict, reason, injection_flagged: false,
+    tx_hash: hashOf(id), ...extra,
+  };
+}
+
+/**
+ * Run the learner against a history whose transactions are served from memory.
+ *
+ * `rows` maps a challenge id to the transaction record that challenge judged.
+ * Anything not named there falls back to `fallback` — which for most tests is
+ * the real Uniswap fixture, i.e. a transaction that GENUINELY exhibits the
+ * pattern being cleared. That is what the existing behaviour is about: a
+ * pattern truly cleared twice still stands the bot down.
+ *
+ * The forgery tests below hand over a harmless row instead, which is the whole
+ * point: the same reason text, a record that does not back it, nothing learned.
+ */
+function learn(history, { mandate = STRICT, chain = "ethereum", rows = {}, fallback = null } = {}) {
+  const byHash = new Map();
+  for (const [id, row] of Object.entries(rows)) byHash.set(hashOf(Number(id)), row);
+  return learnedFrom(history, mandate, chain, async (hash) => {
+    if (byHash.has(hash)) return byHash.get(hash);
+    return fallback === null ? rowOf(SWAP) : fallback;
+  });
 }
 
 /** The exact reason the bot would file for this row — the thing stored on chain. */
@@ -307,21 +345,21 @@ test("every rule the bot can file is readable back as a key", () => {
   }
 });
 
-test("ONE COMPLIANT verdict is not enough to stand down", () => {
+atest("ONE COMPLIANT verdict is not enough to stand down", async () => {
   // A single ruling can be a round that read the evidence badly — this register
   // carries 53 INCONCLUSIVE settlements, so the rounds visibly do not always
   // converge. Standing down on one would let one bad round blind the bot.
   const row = rowOf(SWAP);
-  const learned = learnedFrom([settled(7, "COMPLIANT", wouldFile(row, STRICT))]);
+  const learned = await learn([settled(7, "COMPLIANT", wouldFile(row, STRICT))]);
   assert.equal(learned.size, 0);
   assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).keep.length, 1);
 });
 
-test("TWO COMPLIANT verdicts withhold the identical accusation next time", () => {
+atest("TWO COMPLIANT verdicts withhold the identical accusation next time", async () => {
   // THE BUG, stated as a test. Same agent, same rule, same token, new tx.
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
-  const learned = learnedFrom([settled(9, "COMPLIANT", text), settled(7, "COMPLIANT", text)]);
+  const learned = await learn([settled(9, "COMPLIANT", text), settled(7, "COMPLIANT", text)]);
   const { keep, withheld } = withholdLearned(flagsFor(row, STRICT, "ethereum"), learned);
   assert.deepEqual(keep, [], "the bot must not re-file what the validators rejected twice");
   assert.equal(withheld.length, 1);
@@ -329,64 +367,65 @@ test("TWO COMPLIANT verdicts withhold the identical accusation next time", () =>
   assert.equal(withheld[0].rulings, 2);
 });
 
-test("the threshold is exactly LEARN_AFTER, not a hard-coded 2", () => {
+atest("the threshold is exactly LEARN_AFTER, not a hard-coded 2", async () => {
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
-  const upTo = (n) => learnedFrom(Array.from({ length: n }, (_, i) => settled(i, "COMPLIANT", text)));
-  assert.equal(upTo(LEARN_AFTER - 1).size, 0);
-  assert.equal(upTo(LEARN_AFTER).size, 1);
-  assert.equal(upTo(LEARN_AFTER).get([...upTo(LEARN_AFTER).keys()][0]).rulings, LEARN_AFTER);
+  const upTo = (n) => learn(Array.from({ length: n }, (_, i) => settled(i, "COMPLIANT", text)));
+  assert.equal((await upTo(LEARN_AFTER - 1)).size, 0);
+  const at = await upTo(LEARN_AFTER);
+  assert.equal(at.size, 1);
+  assert.equal(at.get([...at.keys()][0]).rulings, LEARN_AFTER);
 });
 
-test("a single VIOLATION vetoes a pattern however many clearances sit beside it", () => {
+atest("a single VIOLATION vetoes a pattern however many clearances sit beside it", async () => {
   // Standing down on an accusation already PROVEN against this agent is the one
   // outcome that cannot be defended: the bot would be declining to look at a
   // breach it has itself demonstrated.
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
   const many = Array.from({ length: 20 }, (_, i) => settled(i, "COMPLIANT", text));
-  assert.equal(learnedFrom(many).size, 1, "the fixture must otherwise be learned");
-  const contested = learnedFrom([...many, settled(99, "VIOLATION", text)]);
+  assert.equal((await learn(many)).size, 1, "the fixture must otherwise be learned");
+  const contested = await learn([...many, settled(99, "VIOLATION", text)]);
   assert.equal(contested.size, 0, "a contested pattern is one the bot keeps arguing");
   assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), contested).keep.length, 1);
 });
 
-test("INCONCLUSIVE rounds do not count toward the threshold", () => {
+atest("INCONCLUSIVE rounds do not count toward the threshold", async () => {
   // The live register has more INCONCLUSIVE settlements than COMPLIANT ones.
   // If they counted, an explorer nobody can read would talk the bot into silence.
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
-  const learned = learnedFrom([
+  const learned = await learn([
     settled(1, "COMPLIANT", text), settled(2, "INCONCLUSIVE", text),
     settled(3, "INCONCLUSIVE", text), settled(4, "INCONCLUSIVE", text),
   ]);
   assert.equal(learned.size, 0);
 });
 
-test("a VIOLATION verdict teaches the bot NOTHING", () => {
+atest("a VIOLATION verdict teaches the bot NOTHING", async () => {
   // A proven breach is a reason to keep watching, not to stop.
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
-  const learned = learnedFrom([settled(7, "VIOLATION", text), settled(8, "VIOLATION", text)]);
+  const learned = await learn([settled(7, "VIOLATION", text), settled(8, "VIOLATION", text)]);
   assert.equal(learned.size, 0);
   assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).keep.length, 1);
 });
 
-test("an INCONCLUSIVE round is not a clearance", () => {
+atest("an INCONCLUSIVE round is not a clearance", async () => {
   // A round that could not converge settled nothing. Treating it as COMPLIANT
   // would let an unreadable explorer permanently silence the watchdog.
   const row = rowOf(SWAP);
   for (const v of ["INCONCLUSIVE", "", "PENDING", "RETRY"]) {
     const text = wouldFile(row, STRICT);
-    const learned = learnedFrom([settled(7, v, text), settled(8, v, text)]);
+    const learned = await learn([settled(7, v, text), settled(8, v, text)]);
     assert.equal(learned.size, 0, `"${v}" must teach nothing`);
   }
 });
 
-test("a clearance reached on injection-flagged evidence is not learned", () => {
+atest("a clearance reached on injection-flagged evidence is not learned", async () => {
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
-  const learned = learnedFrom([
+  const learned = await learn([
     settled(7, "COMPLIANT", text, { injection_flagged: true }),
     settled(8, "COMPLIANT", text, { injection_flagged: true }),
   ]);
@@ -394,12 +433,12 @@ test("a clearance reached on injection-flagged evidence is not learned", () => {
   assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).keep.length, 1);
 });
 
-test("a clearance for WFC says nothing about another token", () => {
+atest("a clearance for WFC says nothing about another token", async () => {
   // The narrowness is the safety property: deferring wider than the validators
   // actually ruled blinds the watchdog, which is worse than a wasted stake.
   const wfc = rowOf(SWAP);
   const wfcText = wouldFile(wfc, STRICT);
-  const learned = learnedFrom([settled(7, "COMPLIANT", wfcText), settled(8, "COMPLIANT", wfcText)]);
+  const learned = await learn([settled(7, "COMPLIANT", wfcText), settled(8, "COMPLIANT", wfcText)]);
 
   const pons = { ...rowOf(SWAP), transfers: [{ sym: "PONS", addr: "0x1", value: "1", decimals: "18" }] };
   const flags = flagsFor(pons, STRICT, "ethereum");
@@ -409,24 +448,25 @@ test("a clearance for WFC says nothing about another token", () => {
   assert.equal(withheld.length, 0);
 });
 
-test("a clearance for one address says nothing about another", () => {
+atest("a clearance for one address says nothing about another", async () => {
   const a = { ...rowOf(SWAP), to: "0x" + "a".repeat(40), toIsScam: true };
   const b = { ...rowOf(SWAP), to: "0x" + "b".repeat(40), toIsScam: true };
   const aText = wouldFile(a, PERMISSIVE);
-  const learned = learnedFrom([settled(7, "COMPLIANT", aText), settled(8, "COMPLIANT", aText)]);
+  const learned = await learn([settled(7, "COMPLIANT", aText), settled(8, "COMPLIANT", aText)],
+    { mandate: PERMISSIVE, rows: { 7: a, 8: a } });
   assert.equal(withholdLearned(flagsFor(a, PERMISSIVE, "ethereum"), learned).keep.length, 0);
   assert.equal(withholdLearned(flagsFor(b, PERMISSIVE, "ethereum"), learned).keep.length, 1);
 });
 
-test("a half-settled accusation is re-argued on its unsettled half only", () => {
+atest("a half-settled accusation is re-argued on its unsettled half only", async () => {
   // Filing the whole thing again would re-litigate the closed half and invite
   // the same COMPLIANT verdict on a technicality.
   const both = { ...rowOf(SWAP), toIsScam: true };
   const scamOnly = flagsFor(both, STRICT, "ethereum")
     .find((f) => f.rule === "scam-counterparty").reason;
-  const learned = learnedFrom([
+  const learned = await learn([
     settled(7, "COMPLIANT", scamOnly), settled(8, "COMPLIANT", scamOnly),
-  ]);
+  ], { rows: { 7: both, 8: both } });
   const { keep, withheld } = withholdLearned(flagsFor(both, STRICT, "ethereum"), learned);
   assert.equal(withheld.length, 1);
   assert.equal(withheld[0].rule, "scam-counterparty");
@@ -435,44 +475,47 @@ test("a half-settled accusation is re-argued on its unsettled half only", () => 
   assert.ok(reasonText(keep).includes("WFC"), "the filed reason must be the unsettled half");
 });
 
-test("editing the mandate's token list makes the bot start challenging again", () => {
+atest("editing the mandate's token list makes the bot start challenging again", async () => {
   // A verdict is remembered against the RULE that was judged. Change the rule
   // and the old ruling stops applying — with no extra state and no extra read.
   const row = rowOf(SWAP);
   const rowText = wouldFile(row, STRICT);
-  const learned = learnedFrom([settled(7, "COMPLIANT", rowText), settled(8, "COMPLIANT", rowText)]);
+  const learned = await learn([settled(7, "COMPLIANT", rowText), settled(8, "COMPLIANT", rowText)]);
   const widened = "Only trade ETH, USDC and DAI on Uniswap. Maximum 0.5 ETH per trade. " +
     "Never interact with unverified contracts or unlisted tokens.";
   const { keep } = withholdLearned(flagsFor(row, widened, "ethereum"), learned);
   assert.equal(keep.length, 1, "a changed allow-list is a different rule");
 });
 
-test("changing the stated ceiling makes the bot start challenging again", () => {
+atest("changing the stated ceiling makes the bot start challenging again", async () => {
   const over = { ...rowOf(SWAP), value: String(2n * 10n ** 18n) };
   const ceilingFlag = (m) => flagsFor(over, m, "ethereum").filter((f) => f.rule === "over-value-ceiling");
   const capText = reasonText(ceilingFlag(STRICT));
-  const learned = learnedFrom([settled(7, "COMPLIANT", capText), settled(8, "COMPLIANT", capText)]);
+  const learned = await learn([settled(7, "COMPLIANT", capText), settled(8, "COMPLIANT", capText)],
+    { rows: { 7: over, 8: over } });
   assert.equal(withholdLearned(ceilingFlag(STRICT), learned).keep.length, 0);
 
   const raised = STRICT.replace("Maximum 0.5 ETH", "Maximum 1 ETH");
   assert.equal(withholdLearned(ceilingFlag(raised), learned).keep.length, 1);
 });
 
-test("a cleared ceiling covers any amount over it, not just the one judged", () => {
+atest("a cleared ceiling covers any amount over it, not just the one judged", async () => {
   // If 2 ETH over a 0.5 cap is within the mandate then so is 3, and keying on
   // the amount would re-file the identical argument for every new number.
   const f = (wei) => flagsFor({ ...rowOf(SWAP), value: String(wei) }, STRICT, "ethereum")
     .filter((x) => x.rule === "over-value-ceiling");
   const twoEth = reasonText(f(2n * 10n ** 18n));
-  const learned = learnedFrom([settled(7, "COMPLIANT", twoEth), settled(8, "COMPLIANT", twoEth)]);
+  const twoEthRow = { ...rowOf(SWAP), value: String(2n * 10n ** 18n) };
+  const learned = await learn([settled(7, "COMPLIANT", twoEth), settled(8, "COMPLIANT", twoEth)],
+    { rows: { 7: twoEthRow, 8: twoEthRow } });
   assert.equal(withholdLearned(f(3n * 10n ** 18n), learned).keep.length, 0);
 });
 
-test("a human's free-text reason teaches the bot nothing", () => {
+atest("a human's free-text reason teaches the bot nothing", async () => {
   // Learning is symmetric parsing of the bot's own sentences. Anything it
   // cannot read back is never learned from and never withholds anything.
   const words = "This looks like it broke the rules to me, honestly.";
-  const learned = learnedFrom([settled(7, "COMPLIANT", words), settled(8, "COMPLIANT", words)]);
+  const learned = await learn([settled(7, "COMPLIANT", words), settled(8, "COMPLIANT", words)]);
   assert.equal(learned.size, 0);
 });
 
@@ -496,26 +539,163 @@ test("a reason truncated at 300 characters does not invent a cleared token", () 
   }
 });
 
-test("repeated verdicts collapse to one key that counts them all", () => {
+atest("repeated verdicts collapse to one key that counts them all", async () => {
   const row = rowOf(SWAP);
   const text = wouldFile(row, STRICT);
-  const learned = learnedFrom([4, 9, 12].map((id) => settled(id, "COMPLIANT", text)));
+  const learned = await learn([4, 9, 12].map((id) => settled(id, "COMPLIANT", text)));
   assert.equal(learned.size, 1);
   const { withheld } = withholdLearned(flagsFor(row, STRICT, "ethereum"), learned);
   assert.equal(withheld[0].cleared_by, 4);
   assert.equal(withheld[0].rulings, 3);
 });
 
-test("learning never throws on a malformed history", () => {
+atest("learning never throws on a malformed history", async () => {
   const bad = [null, undefined, {}, { verdict: "COMPLIANT" },
     { verdict: "COMPLIANT", reason: null }, { verdict: null, reason: 42 }];
-  try { assert.equal(learnedFrom(bad).size, 0); }
+  try { assert.equal((await learn(bad)).size, 0); }
   catch (e) { assert.fail(`threw on a malformed history: ${e.message}`); }
   for (const notAList of [null, undefined, "nope", 7]) {
-    try { assert.equal(learnedFrom(notAList).size, 0); }
+    try { assert.equal((await learn(notAList)).size, 0); }
     catch (e) { assert.fail(`threw on ${String(notAList)}: ${e.message}`); }
   }
 });
+
+// ── corroboration: a reason string is a claim, not evidence ────────────────
+//
+// THE ATTACK, stated as tests. The accusation the contract stores is free text
+// and nothing binds it to the transaction it describes, so anyone could copy
+// the bot's own published sentence onto a harmless transfer and collect a
+// COMPLIANT verdict the validators were right to give. Two of those used to
+// hand the bot a standing order to ignore that pattern on that agent — for
+// about 0.03 GEN, since most of a forfeited stake returns to the operator's
+// own bond.
+//
+// A clearance now counts only if the bot, re-reading the transaction the
+// challenge actually named, derives the same key from the record.
+
+/** A transaction that breaches nothing: a plain transfer, no token movement. */
+const HARMLESS = {
+  ...rowOf(SWAP), value: "0", transfers: [],
+  to: "0x" + "e".repeat(40), toIsContract: false, toIsVerified: true, toIsScam: false,
+};
+
+atest("a forged reason on a harmless transaction teaches the bot NOTHING", async () => {
+  const row = rowOf(SWAP);
+  const forged = wouldFile(row, STRICT);       // the bot's own sentence, verbatim
+  const learned = await learn(
+    [settled(7, "COMPLIANT", forged), settled(8, "COMPLIANT", forged)],
+    { rows: { 7: HARMLESS, 8: HARMLESS } });
+  assert.equal(learned.size, 0, "a fabricated clearance was learned");
+  // And the real violation is still challenged.
+  assert.equal(withholdLearned(flagsFor(row, STRICT, "ethereum"), learned).keep.length, 1);
+});
+
+atest("one forged clearance cannot top up one genuine one", async () => {
+  // The threshold must not be reachable by mixing a real ruling with a fake.
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const learned = await learn(
+    [settled(7, "COMPLIANT", text), settled(8, "COMPLIANT", text)],
+    { rows: { 7: row, 8: HARMLESS } });
+  assert.equal(learned.size, 0, "one genuine ruling is not LEARN_AFTER");
+});
+
+atest("a genuine pattern cleared twice still stands the bot down", async () => {
+  // The fix must not cost the feature its purpose: re-litigating an argument
+  // the validators have settled is a standing order to lose a stake on a
+  // schedule, which is what this machinery exists to stop.
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const learned = await learn(
+    [settled(9, "COMPLIANT", text), settled(7, "COMPLIANT", text)],
+    { rows: { 9: row, 7: row } });
+  assert.equal(learned.size, 1);
+  const { keep, withheld } = withholdLearned(flagsFor(row, STRICT, "ethereum"), learned);
+  assert.deepEqual(keep, []);
+  assert.equal(withheld[0].cleared_by, 7);
+});
+
+atest("a clearance carries the transactions that corroborated it", async () => {
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const learned = await learn(
+    [settled(7, "COMPLIANT", text), settled(8, "COMPLIANT", text)],
+    { rows: { 7: row, 8: row } });
+  const ruling = learned.get([...learned.keys()][0]);
+  assert.deepEqual(ruling.transactions, [hashOf(7), hashOf(8)],
+    "the evidence behind a stand-down must be nameable");
+});
+
+atest("two clearances of ONE transaction are not two rulings", async () => {
+  // A refunded challenge releases its claim now, so the same transaction really
+  // can be challenged twice. One event seen twice is not a pattern.
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const history = [
+    { challenge_id: 7, verdict: "COMPLIANT", reason: text, injection_flagged: false, tx_hash: hashOf(1) },
+    { challenge_id: 8, verdict: "COMPLIANT", reason: text, injection_flagged: false, tx_hash: hashOf(1) },
+  ];
+  const learned = await learn(history, { rows: { 1: row } });
+  assert.equal(learned.size, 0);
+});
+
+atest("a challenge with no transaction hash teaches nothing", async () => {
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  for (const bad of [undefined, null, "", "not-a-hash", "0x" + "a".repeat(63)]) {
+    const history = [7, 8].map((id) => ({
+      challenge_id: id, verdict: "COMPLIANT", reason: text,
+      injection_flagged: false, tx_hash: bad,
+    }));
+    assert.equal((await learn(history, { rows: { 7: row, 8: row } })).size, 0,
+      `tx_hash ${JSON.stringify(bad)} must teach nothing`);
+  }
+});
+
+atest("an unreadable transaction is not a clearance", async () => {
+  // The safe direction: a network failure costs a stake, while treating it as a
+  // clearance would silence the watchdog on the strength of an outage.
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const history = [settled(7, "COMPLIANT", text), settled(8, "COMPLIANT", text)];
+
+  const missing = await learnedFrom(history, STRICT, "ethereum", async () => null);
+  assert.equal(missing.size, 0, "a 404 must not clear anything");
+
+  const throws = await learnedFrom(history, STRICT, "ethereum", async () => {
+    throw new Error("explorer unavailable");
+  });
+  assert.equal(throws.size, 0, "a fetch failure must not clear anything");
+});
+
+atest("corroboration is bounded per agent", async () => {
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  let fetches = 0;
+  const history = Array.from({ length: CORROBORATE_MAX * 3 },
+    (_, i) => settled(i, "COMPLIANT", text));
+  await learnedFrom(history, STRICT, "ethereum", async () => { fetches++; return row; });
+  assert.ok(fetches <= CORROBORATE_MAX,
+    `one agent's history spent ${fetches} fetches, over the ${CORROBORATE_MAX} ceiling`);
+});
+
+atest("a VIOLATION still vetoes without needing to be corroborated", async () => {
+  // A proven breach can only ever make the bot keep looking, so an unreadable
+  // transaction must not be able to suppress it.
+  const row = rowOf(SWAP);
+  const text = wouldFile(row, STRICT);
+  const history = [
+    settled(1, "COMPLIANT", text), settled(2, "COMPLIANT", text),
+    settled(3, "VIOLATION", text),
+  ];
+  const learned = await learn(history, { rows: { 1: row, 2: row, 3: HARMLESS } });
+  assert.equal(learned.size, 0, "a proven violation must veto regardless");
+});
+
+for (const [name, fn] of deferred) {
+  try { await fn(); passed++; }
+  catch (e) { failed++; failures.push(`${name}\n     ${String(e.message).split("\n")[0]}`); }
+}
 
 console.log(`\npatrol heuristics: ${passed} passed, ${failed} failed`);
 if (failures.length) {

@@ -40,7 +40,7 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
     async () => {
       const [p, a] = await Promise.all([
         previewChallenge(agent.agent_id, tx.trim()),
-        isTxChallenged(agent.chain, tx.trim()),
+        isTxChallenged(agent.chain, tx.trim(), agent.agent_id),
       ]);
       return { preview: p as PatrolPreview, already: a };
     },

@@ -292,7 +292,7 @@ section("TEST 5 — the same transaction cannot be challenged twice");
     JSON.stringify(body)?.slice(0, 140));
   check("the duplicate's stake came back", body && wei(body.refunded) === STAKE, body?.refunded);
 
-  const known = await owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX]);
+  const known = await owner.viewJson("is_tx_challenged", ["ethereum", SWAP_TX, AGENT_STRICT]);
   check("is_tx_challenged reports it", known.challenged === true);
 }
 
