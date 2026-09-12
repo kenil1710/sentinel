@@ -1,24 +1,32 @@
 # The patrol schedule
 
-`vercel.json` schedules `/api/patrol` **every 10 minutes**:
+**Two schedulers, and only one of them is Vercel.** This opening said the
+opposite for a while and was corrected a hundred lines further down by "The
+cadence does not come from Vercel", which is the section that is right.
+
+`vercel.json` schedules `/api/patrol` **daily** — the most a Hobby plan permits,
+and a finer expression is refused at deploy time rather than at runtime, so it
+blocks shipping anything at all:
 
 ```json
-{ "crons": [{ "path": "/api/patrol", "schedule": "*/10 * * * *" }] }
+{ "crons": [{ "path": "/api/patrol", "schedule": "0 12 * * *" }] }
 ```
-
-This account is on Vercel's **Pro** plan. It was previously daily (`0 6 * * *`)
-because Hobby permits one cron run per day and rejects any finer expression at
-deploy time:
 
 ```
 Error: Hobby accounts are limited to daily cron jobs.
 This cron expression (*/10 * * * *) would run more than once per day.
 ```
 
+The **ten-minute cadence comes from an external scheduler** (cron-job.org)
+calling the production alias with `PATROL_SECRET` as a bearer token. The daily
+Vercel cron is the backstop behind it. See "The cadence does not come from
+Vercel" below for why the alias and not the deployment URL.
+
 Nothing about the bot depends on the cadence. It is stateless: every run reads
 its queue from the contract, and `is_tx_challenged` makes a second run over the
-same transactions a no-op. Running it more often finds breaches sooner and
-changes nothing else.
+same transactions a no-op — for the same agent, and only while that challenge
+decided something, since an INCONCLUSIVE or stalled one releases its claim.
+Running it more often finds breaches sooner and changes nothing else.
 
 A run is bounded by `MAX_AGENTS` (12), `MAX_TX_PER_AGENT` (20) and
 `MAX_CHALLENGES_PER_RUN` (3), and the route's `maxDuration` is 300s — so
