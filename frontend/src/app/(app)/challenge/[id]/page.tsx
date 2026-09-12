@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { Panel, Label, VerdictBadge, ChainTag, Empty, Spinner } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { useWallet } from "@/components/WalletProvider";
 import { getAgent, getChallenge, resolveChallenge, settleStalled, verifyChallenge } from "@/lib/contract";
 import { absoluteTime, blockscoutUrl, durationText, formatGen, relativeTime, shortAddress } from "@/lib/format";
@@ -170,18 +171,22 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
           {verify && (
             <div className="mt-5 border-t border-line pt-4">
               <div className="flex flex-wrap items-center gap-3">
-                <span className={`mono text-[12px] ${verify.all_ok ? "text-compliant-ink" : "text-violation-ink"}`}>
-                  {verify.all_ok ? "✓ recomputed from stored evidence — every figure matches" : "✗ recomputation disagrees"}
+                <span className={`mono inline-flex items-center gap-1.5 text-[12px] ${verify.all_ok ? "text-compliant-ink" : "text-violation-ink"}`}>
+                  <Icon name={verify.all_ok ? "verify" : "deactivated"} size={13} />
+                  {verify.all_ok ? "recomputed from stored evidence — every figure matches" : "recomputation disagrees"}
                 </span>
-                <span className={`mono text-[12px] ${verify.conservation.balanced ? "text-compliant-ink" : "text-violation-ink"}`}>
-                  {verify.conservation.balanced ? "✓ value conserved" : "✗ value not conserved"}
+                <span className={`mono inline-flex items-center gap-1.5 text-[12px] ${verify.conservation.balanced ? "text-compliant-ink" : "text-violation-ink"}`}>
+                  <Icon name={verify.conservation.balanced ? "verify" : "deactivated"} size={13} />
+                  {verify.conservation.balanced ? "value conserved" : "value not conserved"}
                 </span>
               </div>
               {verify.checks.length > 0 && (
                 <div className="mono mt-3 space-y-1 text-[11px]">
                   {verify.checks.map((c) => (
                     <div key={c.field} className="flex gap-3">
-                      <span className={c.ok ? "text-compliant-ink" : "text-violation-ink"}>{c.ok ? "✓" : "✗"}</span>
+                      <span className={c.ok ? "text-compliant-ink" : "text-violation-ink"}>
+                        <Icon name={c.ok ? "verify" : "deactivated"} size={12} />
+                      </span>
                       <span className="text-ink-3">{c.field}</span>
                       <span className="text-ink-2">{formatGen(c.actual, 6)}</span>
                       {!c.ok && <span className="text-violation-ink">expected {formatGen(c.expected, 6)}</span>}

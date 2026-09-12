@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Panel, Label } from "./ui";
+import { Icon } from "./icons";
 import { useWallet } from "./WalletProvider";
 import { topUpBond, updateMandate, withdrawBond } from "@/lib/contract";
 import { formatGen, parseGen } from "@/lib/format";
@@ -157,7 +158,8 @@ export function OperatorPanel({ agent, config, onDone }: {
           </div>
           <button onClick={() => run("topup", () => topUpBond(account!, agent.agent_id, topUpWei!))}
             disabled={!canTopUp || busy !== null}
-            className="rounded-lg bg-signal px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+            className="inline-flex items-center gap-1.5 rounded-lg bg-signal px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+            <Icon name="topup" size={15} />
             {busy === "topup" ? "Adding…" : "Top up"}
           </button>
         </div>
@@ -225,7 +227,8 @@ export function OperatorPanel({ agent, config, onDone }: {
         <button onClick={() => run("withdraw", () => withdrawBond(account!, agent.agent_id))}
           disabled={Boolean(withdrawProblem) || busy !== null}
           title={withdrawProblem ?? undefined}
-          className="mt-2.5 w-full rounded-lg border border-line bg-panel-2 px-3 py-2 text-[13px] text-ink-2 hover:text-ink disabled:opacity-40">
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line bg-panel-2 px-3 py-2 text-[13px] text-ink-2 hover:text-ink disabled:opacity-40">
+          <Icon name="withdraw" size={15} />
           {busy === "withdraw" ? "Withdrawing…" : `Withdraw ${formatGen(agent.bond, 4)} GEN and retire`}
         </button>
         {withdrawProblem && <Note tone="neutral">{withdrawProblem}</Note>}

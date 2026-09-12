@@ -18,7 +18,7 @@
  *    below it the page shows the aggregate figures instead, because a two-point
  *    line invites the reader to see a trend that was never measured.
  */
-import type { AgentSummary, Challenge, Chain, Verdict } from "@/types";
+import type { Agent, AgentSummary, Challenge, Chain, Verdict } from "@/types";
 
 /** The contract's chain order. Series colours are keyed to it and never to rank. */
 /* Charted chains. Robinhood is omitted for the reason in agents/page.tsx: it
@@ -271,6 +271,8 @@ export interface MandateRow {
   violations: number;
   decided: number;
   lastViolationAt: number;
+  /** ACTIVE, or SLASHED_OUT when the breaches carried the bond under the minimum. */
+  status: string;
   /** The validators' own words on the most recent upheld challenge. */
   lastReasoning: string;
 }
@@ -282,31 +284,83 @@ export interface MandateRow {
  * the page fetches `get_agent_history` for the handful of agents that have a
  * violation and passes the full rule text in here.
  */
-export function topViolatedMandates(
-  agents: AgentSummary[],
-  histories: Record<number, { mandate: string; challenges: Challenge[] }> = {},
-  limit = 6,
-): MandateRow[] {
-  return agents
-    .filter((a) => a.violation_count > 0)
-    .sort((a, b) => b.violation_count - a.violation_count || b.challenge_count - a.challenge_count)
+/**
+ * Who the validators have actually ruled against, discovered from the CHALLENGE
+ * FEED rather than from the agent list.
+ *
+ * This is the whole bug this function used to have. It read the register's
+ * ACTIVE agents and filtered for `violation_count > 0` — but an agent that
+ * breaches its mandate enough times is slashed below the minimum bond and the
+ * contract DEACTIVATES it, so `get_active_agents` stops returning it. The
+ * agents with violations were therefore precisely the ones excluded, and the
+ * card read "No mandate has been broken yet" while 33 breaches sat on chain.
+ *
+ * A verdict is a property of a challenge, so challenges are what it counts.
+ * Active agents are still folded in, so an agent that has been caught but is
+ * still on duty ranks alongside one that was put out of service.
+ */
+export function violatorIdsFrom(
+  challenges: Challenge[],
+  agents: AgentSummary[] = [],
+  limit = 5,
+): number[] {
+  const counts = new Map<number, number>();
+  for (const c of challenges) {
+    // Settled AND upheld. A pending challenge is an accusation, not a breach.
+    if (c?.verdict !== "VIOLATION" || !(c.settled_at > 0)) continue;
+    counts.set(c.agent_id, (counts.get(c.agent_id) ?? 0) + 1);
+  }
+  for (const a of agents) {
+    if (a?.violation_count > 0 && !counts.has(a.agent_id)) {
+      counts.set(a.agent_id, a.violation_count);
+    }
+  }
+  return [...counts.entries()]
+    .sort((x, y) => y[1] - x[1] || x[0] - y[0])
     .slice(0, limit)
-    .map((a) => {
-      const history = histories[a.agent_id];
+    .map(([id]) => id);
+}
+
+/** One violator's record, as the two reads behind it return it. */
+export interface ViolatorRecord {
+  agent: Agent;
+  history: { mandate: string; challenges: Challenge[] };
+}
+
+/**
+ * The mandates that have actually been broken, worst first.
+ *
+ * Counted from the agent's OWN history rather than from the challenge feed,
+ * which is a rolling window of the newest 60 and would undercount an agent
+ * whose breaches have scrolled out of it. `violation_count` on the agent record
+ * is the contract's own tally and is preferred over both.
+ */
+export function topViolatedMandates(
+  violators: ViolatorRecord[] = [],
+  limit = 5,
+): MandateRow[] {
+  return violators
+    .filter((v) => v?.agent)
+    .map(({ agent, history }) => {
       const upheld = (history?.challenges ?? [])
-        .filter((c) => c.verdict === "VIOLATION")
+        .filter((c) => c.verdict === "VIOLATION" && c.settled_at > 0)
         .sort((x, y) => y.settled_at - x.settled_at);
+      const violations = agent.violation_count || upheld.length;
       return {
-        agent_id: a.agent_id,
-        name: a.name?.trim() || `Agent #${a.agent_id}`,
-        chain: a.chain,
-        mandate: history?.mandate?.trim() || a.mandate_preview || "",
-        violations: a.violation_count,
-        decided: a.decided_count,
+        agent_id: agent.agent_id,
+        name: agent.name?.trim() || `Agent #${agent.agent_id}`,
+        chain: agent.chain,
+        mandate: (history?.mandate || agent.mandate || "").trim(),
+        violations,
+        decided: agent.decided_count || upheld.length,
+        status: agent.status,
         lastViolationAt: upheld[0]?.settled_at ?? 0,
         lastReasoning: upheld[0]?.reasoning ?? "",
       };
-    });
+    })
+    .filter((m) => m.violations > 0)
+    .sort((a, b) => b.violations - a.violations || a.agent_id - b.agent_id)
+    .slice(0, limit);
 }
 
 export type ActivityKind = "registered" | "filed" | "settled" | "checked";

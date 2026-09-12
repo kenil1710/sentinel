@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Panel, Label } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import type { IconName } from "@/components/icons";
 import { GettingStarted } from "@/components/Onboarding";
 
 export const metadata: Metadata = {
@@ -41,14 +43,19 @@ export default function DocsPage() {
 
       <H2>The four steps</H2>
       <div className="mt-4 space-y-3">
-        {[
-          ["Register", "An operator publishes their agent's wallet, chain and mandate, and posts a bond of at least 0.5 GEN. The mandate is stored verbatim — it is exactly what validators will read."],
-          ["Patrol", "On every scheduled run the bot reads the on-chain patrol queue (least-recently-checked first), pulls each agent's recent transactions from Blockscout, and applies mechanical checks: a value over a stated ceiling, a token the mandate does not name, an explorer-flagged scam counterparty, an unverified contract where the mandate forbids one."],
-          ["Challenge", "A flagged transaction becomes an on-chain challenge naming that exact hash, with a 0.05 GEN stake attached. The bot stakes its own money like anyone else — it is an accuser that pays to accuse."],
-          ["Judge", "Five validators each fetch the transaction from Blockscout, project it to a stable subset, read it against the mandate, and vote. VIOLATION slashes 20% of the bond and pays half of that to the challenger. COMPLIANT gives 70% of the challenger's stake to the operator they accused. INCONCLUSIVE refunds the challenger and leaves the agent's record untouched."],
-        ].map(([title, body], i) => (
+        {([
+          ["Register", "step_register", "An operator publishes their agent's wallet, chain and mandate, and posts a bond of at least 0.5 GEN. The mandate is stored verbatim — it is exactly what validators will read."],
+          ["Patrol", "step_patrol", "On every scheduled run the bot reads the on-chain patrol queue (least-recently-checked first), pulls each agent's recent transactions from Blockscout, and applies mechanical checks: a value over a stated ceiling, a token the mandate does not name, an explorer-flagged scam counterparty, an unverified contract where the mandate forbids one."],
+          ["Challenge", "step_challenge", "A flagged transaction becomes an on-chain challenge naming that exact hash, with a 0.05 GEN stake attached. The bot stakes its own money like anyone else — it is an accuser that pays to accuse."],
+          ["Judge", "step_judge", "Five validators each fetch the transaction from Blockscout, project it to a stable subset, read it against the mandate, and vote. VIOLATION slashes 20% of the bond and pays half of that to the challenger. COMPLIANT gives 70% of the challenger's stake to the operator they accused. INCONCLUSIVE refunds the challenger and leaves the agent's record untouched."],
+        ] as [string, IconName, string][]).map(([title, icon, body], i) => (
           <Panel key={title} className="p-5">
-            <div className="mono text-xs text-signal">{String(i + 1).padStart(2, "0")}</div>
+            {/* Same glyph as the landing page's step of the same name, so the
+                two pages describe one process rather than two. */}
+            <div className="flex items-center gap-2 text-signal">
+              <Icon name={icon} size={18} />
+              <span className="mono text-xs">{String(i + 1).padStart(2, "0")}</span>
+            </div>
             <div className="mt-2 text-[15px] font-medium">{title}</div>
             <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{body}</p>
           </Panel>
@@ -284,10 +291,12 @@ export default function DocsPage() {
       </P>
 
       <div className="mt-12 flex flex-wrap gap-3 border-t border-line pt-6">
-        <Link href="/register" className="rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white">
+        <Link href="/register" className="inline-flex items-center gap-2 rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white">
+          <Icon name="register" size={16} />
           Register an agent
         </Link>
-        <Link href="/patrol" className="rounded-lg border border-line bg-panel px-4 py-2.5 text-sm text-ink">
+        <Link href="/patrol" className="inline-flex items-center gap-2 rounded-lg border border-line bg-panel px-4 py-2.5 text-sm text-ink">
+          <Icon name="run" size={16} />
           Run a patrol
         </Link>
         <Link href="/agents" className="rounded-lg border border-line bg-panel px-4 py-2.5 text-sm text-ink">

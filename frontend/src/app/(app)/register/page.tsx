@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Panel, Label, ChainTag, Spinner } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { useWallet } from "@/components/WalletProvider";
 import { FaucetNote } from "@/components/Onboarding";
 import { getAgentByWallet, getConfig, registerAgent } from "@/lib/contract";
@@ -346,7 +347,8 @@ export default function RegisterPage() {
             </button>
           ) : (
             <button onClick={submit} disabled={!ready || busy}
-              className="w-full rounded-lg bg-signal px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-signal px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+              <Icon name="register" size={16} />
               {busy ? "Registering…" : `Register and bond ${bond} GEN`}
             </button>
           )}

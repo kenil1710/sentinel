@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Icon } from "./icons";
+import type { IconName } from "./icons";
 import { CHAIN_LABEL } from "@/lib/format";
 import type { Verdict } from "@/types";
 
@@ -58,7 +60,8 @@ export function ChainTag({ chain, className = "" }: { chain: string; className?:
     robinhood: "text-[#A21CAF] bg-[#A21CAF]/8 ring-[#A21CAF]/20",
   };
   return (
-    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[chain] ?? "text-ink-2 bg-panel-2 ring-line"} ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[chain] ?? "text-ink-2 bg-panel-2 ring-line"} ${className}`}>
+      <Icon name="chain" size={11} strokeWidth={2} />
       {CHAIN_LABEL[chain] ?? chain}
     </span>
   );
@@ -98,9 +101,14 @@ export function StatusTag({ status }: { status: string }) {
     SLASHED_OUT: "Validators upheld a challenge against this agent. The slash carried its bond "
       + "below the minimum, so the contract deactivated it automatically. A top-up reactivates it.",
   };
+  const glyph: Record<string, IconName> = {
+    ACTIVE: "on_duty", SLASHED_OUT: "deactivated",
+  };
+  const mark = glyph[status];
   return (
     <span title={why[status] ?? status}
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[status] ?? "text-ink-3 bg-panel-2 ring-line"}`}>
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${tone[status] ?? "text-ink-3 bg-panel-2 ring-line"}`}>
+      {mark && <Icon name={mark} size={12} />}
       {label[status] ?? status}
     </span>
   );
@@ -147,15 +155,25 @@ export function ScoreRing({ bps, decided, size = 56 }: { bps: number; decided: n
  * stat is large then none of them is, and the reader is left to work out which
  * ones matter.
  */
-export function Stat({ label, value, sub, tone = "ink", size = "md" }:
+export function Stat({ label, value, sub, tone = "ink", size = "md", icon }:
   { label: string; value: ReactNode; sub?: string;
-    tone?: "ink" | "signal" | "violation" | "compliant"; size?: "md" | "lg" }) {
+    tone?: "ink" | "signal" | "violation" | "compliant"; size?: "md" | "lg";
+    icon?: IconName }) {
   const colour = { ink: "text-ink", signal: "text-signal", violation: "text-violation-ink", compliant: "text-compliant-ink" }[tone];
   const lg = size === "lg";
   return (
     <div className={`rounded-lg border bg-panel shadow-[var(--shadow-card)] ${
       lg ? "border-line-2 px-5 py-5" : "border-line px-4 py-3.5"}`}>
-      <Label>{label}</Label>
+      {/* The icon rides WITH the label, not with the number: it is a hint about
+          what is being counted, and a figure is never left to an icon alone. */}
+      {icon ? (
+        <div className="flex items-center gap-1.5">
+          <Icon name={icon} size={14} className={`${colour} opacity-80`} />
+          <Label>{label}</Label>
+        </div>
+      ) : (
+        <Label>{label}</Label>
+      )}
       <div className={`mono font-semibold tabular-nums ${colour} ${
         lg ? "mt-2 text-4xl sm:text-5xl leading-none tracking-tight" : "mt-1.5 text-2xl"}`}>
         {value}

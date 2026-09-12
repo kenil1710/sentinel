@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChainTag, ScoreRing, StatusTag, TypeTag } from "./ui";
+import { Icon } from "./icons";
 import { formatGen, relativeTime, shortAddress } from "@/lib/format";
 import type { AgentSummary } from "@/types";
 
@@ -42,14 +43,26 @@ export function AgentCard({ agent }: { agent: AgentSummary }) {
       </div>
 
       <div className="mono mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-line pt-3.5 text-[11px] text-ink-3">
-        <span className="text-ink-2">{formatGen(agent.bond, 3)} GEN bonded</span>
+        <span className="inline-flex items-center gap-1.5 text-ink-2">
+          <Icon name="bond" size={13} className="opacity-70" />
+          {formatGen(agent.bond, 3)} GEN bonded
+        </span>
         {agent.violation_count > 0 && (
-          <span className="text-violation-ink">{agent.violation_count} breach{agent.violation_count === 1 ? "" : "es"}</span>
+          <span className="inline-flex items-center gap-1.5 text-violation-ink">
+            <Icon name="breaches" size={13} />
+            {agent.violation_count} breach{agent.violation_count === 1 ? "" : "es"}
+          </span>
         )}
         {agent.compliant_count > 0 && (
-          <span className="text-compliant-ink">{agent.compliant_count} cleared</span>
+          <span className="inline-flex items-center gap-1.5 text-compliant-ink">
+            <Icon name="on_duty" size={13} />
+            {agent.compliant_count} cleared
+          </span>
         )}
-        <span className="ml-auto">checked {relativeTime(agent.last_checked)}</span>
+        <span className="ml-auto inline-flex items-center gap-1.5">
+          <Icon name="checked" size={13} className="opacity-70" />
+          checked {relativeTime(agent.last_checked)}
+        </span>
       </div>
     </Link>
   );

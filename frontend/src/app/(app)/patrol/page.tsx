@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { Panel, Label, ChainTag, TypeTag, VerdictBadge, Empty, Spinner, Stat } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { getChallenges, getPatrolQueue, getPendingChallenges, getStats } from "@/lib/contract";
 import { relativeTime, shortAddress } from "@/lib/format";
 import { LEARN_AFTER } from "@/lib/heuristics";
@@ -90,20 +91,21 @@ export default function PatrolPage() {
         argument, and sizing them the same made the argument easy to miss.
       */}
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
-        <Stat label="Patrols run" value={stats?.patrols_run ?? "—"} size="lg" tone="signal"
+        <Stat icon="patrols" label="Patrols run" value={stats?.patrols_run ?? "—"} size="lg" tone="signal"
           sub="unattended runs stamped on chain" />
-        <Stat label="Breaches proven" value={stats?.violations ?? "—"} size="lg"
+        <Stat icon="breaches" label="Breaches proven" value={stats?.violations ?? "—"} size="lg"
           tone={stats && stats.violations > 0 ? "violation" : "ink"}
           sub="upheld by five validators, bonds slashed" />
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Stat label="In the queue" value={queue?.count ?? "—"} sub="agents eligible now" tone="signal" />
-        <Stat label="Awaiting judgement" value={pending?.count ?? "—"} sub="challenges filed, not settled" />
+        <Stat icon="agents" label="In the queue" value={queue?.count ?? "—"} sub="agents eligible now" tone="signal" />
+        <Stat icon="waiting" label="Awaiting judgement" value={pending?.count ?? "—"} sub="challenges filed, not settled" />
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button onClick={runPatrol} disabled={running}
-          className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+          className="inline-flex items-center gap-2 rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+          <Icon name={running ? "patrols" : "run"} size={16} className={running ? "animate-spin" : ""} />
           {running ? `Patrolling… ${elapsed}s` : "Run patrol"}
         </button>
         <span className="text-[12px] text-ink-3">
@@ -259,7 +261,12 @@ export default function PatrolPage() {
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <div>
-          <Label>The queue — least recently checked first</Label>
+          <Label>
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="agents" size={13} />
+              The queue — least recently checked first
+            </span>
+          </Label>
           <div className="mt-3 space-y-1.5">
             {!queue && <Spinner />}
             {queue?.queue.length === 0 && <Empty title="Nothing to patrol yet" />}
@@ -275,7 +282,8 @@ export default function PatrolPage() {
                 )}
                 <TypeTag type={a.agent_type} className="shrink-0" />
                 <ChainTag chain={a.chain} className="shrink-0" />
-                <span className="ml-auto shrink-0 text-[11px] text-ink-3">
+                <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[11px] text-ink-3">
+                  <Icon name="checked" size={12} className="opacity-70" />
                   {a.last_checked ? relativeTime(a.last_checked) : "never checked"}
                 </span>
               </Link>
@@ -284,7 +292,12 @@ export default function PatrolPage() {
         </div>
 
         <div>
-          <Label>Awaiting judgement</Label>
+          <Label>
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="waiting" size={13} />
+              Awaiting judgement
+            </span>
+          </Label>
           <div className="mt-3 space-y-1.5">
             {!pending && <Spinner />}
             {needLastSettled && (
@@ -311,7 +324,10 @@ export default function PatrolPage() {
                 className="flex items-center gap-3 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
                 <VerdictBadge verdict="PENDING" size="sm" />
                 <span className="mono text-[11px] text-ink-3">{shortAddress(c.tx_hash, 5)}</span>
-                <span className="ml-auto text-[11px] text-ink-3">{relativeTime(c.filed_at)}</span>
+                <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-ink-3">
+                  <Icon name="waiting" size={12} className="opacity-70" />
+                  {relativeTime(c.filed_at)}
+                </span>
               </Link>
             ))}
           </div>

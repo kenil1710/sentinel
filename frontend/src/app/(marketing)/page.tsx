@@ -4,39 +4,41 @@ import Link from "next/link";
 import useSWR from "swr";
 import { HeroVisual } from "@/components/HeroVisual";
 import { Panel, Label } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import type { IconName } from "@/components/icons";
 import { getStats } from "@/lib/contract";
 import { formatGen } from "@/lib/format";
 
-const STEPS = [
+const STEPS: { n: string; title: string; icon: IconName; body: string }[] = [
   {
-    n: "01", title: "Register",
+    n: "01", title: "Register", icon: "step_register",
     body: "An operator publishes their agent's wallet, its chain and a plain-English mandate on chain, and posts a bond that answers for the agent's conduct.",
   },
   {
-    n: "02", title: "Patrol",
+    n: "02", title: "Patrol", icon: "step_patrol",
     body: "Sentinel walks the register on a schedule, pulls each agent's recent transactions from Blockscout, and looks for ones that visibly contradict a rule it can check. Nobody points it at a transaction.",
   },
   {
-    n: "03", title: "Challenge",
+    n: "03", title: "Challenge", icon: "step_challenge",
     body: "A suspicious transaction becomes an on-chain challenge naming that exact hash. The accuser stakes GEN on being right — the bot included.",
   },
   {
-    n: "04", title: "Judge",
+    n: "04", title: "Judge", icon: "step_judge",
     body: "Five GenLayer validators each fetch the transaction themselves, read it against the mandate, and agree on one verdict. A breach slashes the bond; a false accusation costs the accuser their stake.",
   },
 ];
 
-const WHY = [
+const WHY: { title: string; icon: IconName; body: string }[] = [
   {
-    title: "Autonomous",
+    title: "Autonomous", icon: "autonomous",
     body: "Nobody files the challenges. A scheduled bot walks the register, reads real transactions off public explorers, and stakes its own money on every accusation it makes. It is wrong sometimes, and it pays for that too.",
   },
   {
-    title: "Trustless",
+    title: "Trustless", icon: "trustless",
     body: "There is no admin key that decides a case, no multisig that can reverse one, and no privileged reviewer. Five validators fetch the evidence independently and agree on a verdict, or the challenge stays open.",
   },
   {
-    title: "Accountable",
+    title: "Accountable", icon: "accountable",
     body: "Every verdict carries the reasoning that produced it and a digest of the evidence it was read from. The settlement arithmetic can be recomputed from what was stored, by anyone, without trusting our summary of it.",
   },
 ];
@@ -80,11 +82,13 @@ export default function Home() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/register"
-                className="rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90">
+                className="inline-flex items-center gap-2 rounded-lg bg-signal px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90">
+                <Icon name="patrol" size={16} />
                 Register an agent
               </Link>
               <Link href="/agents"
-                className="rounded-lg border border-line bg-panel px-5 py-2.5 text-sm font-medium text-ink shadow-[var(--shadow-card)] transition-colors hover:border-line-2">
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-panel px-5 py-2.5 text-sm font-medium text-ink shadow-[var(--shadow-card)] transition-colors hover:border-line-2">
+                <Icon name="evidence" size={16} />
                 See the evidence
               </Link>
             </div>
@@ -130,7 +134,10 @@ export default function Home() {
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
             <Panel key={s.n} className="p-5 rise">
-              <div className="mono text-xs font-semibold text-signal">{s.n}</div>
+              <div className="flex items-center gap-2 text-signal">
+                <Icon name={s.icon} size={18} />
+                <span className="mono text-xs font-semibold">{s.n}</span>
+              </div>
               <div className="mt-2.5 text-[15px] font-medium">{s.title}</div>
               <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{s.body}</p>
               {i < STEPS.length - 1 && (
@@ -149,7 +156,10 @@ export default function Home() {
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {WHY.map((w) => (
             <Panel key={w.title} className="p-6">
-              <div className="text-[17px] font-semibold tracking-tight">{w.title}</div>
+              <div className="flex items-center gap-2.5">
+                <Icon name={w.icon} size={20} className="text-signal" />
+                <span className="text-[17px] font-semibold tracking-tight">{w.title}</span>
+              </div>
               <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-2">{w.body}</p>
             </Panel>
           ))}
@@ -208,11 +218,13 @@ export default function Home() {
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link href="/register"
-              className="rounded-lg bg-signal px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90">
+              className="inline-flex items-center gap-2 rounded-lg bg-signal px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90">
+              <Icon name="patrol" size={16} />
               Register an agent
             </Link>
             <Link href="/agents"
-              className="rounded-lg border border-line bg-ground px-6 py-3 text-sm font-medium text-ink transition-colors hover:border-signal/40">
+              className="inline-flex items-center gap-2 rounded-lg border border-line bg-ground px-6 py-3 text-sm font-medium text-ink transition-colors hover:border-signal/40">
+              <Icon name="evidence" size={16} />
               See the evidence
             </Link>
           </div>

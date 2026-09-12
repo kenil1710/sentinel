@@ -19,9 +19,9 @@ export default function LeaderboardPage() {
       </p>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <Stat label="Watchers" value={stats?.watchers ?? "—"} />
-        <Stat label="Bounties paid" value={stats ? formatGen(stats.bounties_paid, 4) : "—"} sub="GEN" tone="compliant" />
-        <Stat label="Total slashed" value={stats ? formatGen(stats.total_slashed, 4) : "—"} sub="GEN" tone="violation" />
+        <Stat icon="watchers" label="Watchers" value={stats?.watchers ?? "—"} />
+        <Stat icon="bounties" label="Bounties paid" value={stats ? formatGen(stats.bounties_paid, 4) : "—"} sub="GEN" tone="compliant" />
+        <Stat icon="breaches" label="Total slashed" value={stats ? formatGen(stats.total_slashed, 4) : "—"} sub="GEN" tone="violation" />
       </div>
 
       <div className="mt-8">

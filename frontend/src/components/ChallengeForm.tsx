@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Panel, Label } from "./ui";
+import { Icon } from "./icons";
 import { useWallet } from "./WalletProvider";
 import { challengeAgent, isTxChallenged, previewChallenge } from "@/lib/contract";
 import { formatGen, isTxHash, percentFromBps } from "@/lib/format";
@@ -156,7 +157,8 @@ export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
           </button>
         ) : (
           <button onClick={submit} disabled={!ready || busy}
-            className="w-full rounded-lg bg-violation px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-violation px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
+            <Icon name="challenges" size={16} />
             {busy ? "Filing…" : `Challenge and stake ${formatGen(stake)} GEN`}
           </button>
         )}

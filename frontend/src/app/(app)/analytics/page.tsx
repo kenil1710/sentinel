@@ -20,10 +20,10 @@ import { ChainTag, Empty, Label, Panel, Spinner, Stat, VerdictBadge } from "@/co
 import { ChartCard, CountBars, DataTable, FigureFallback, ShareDonut, TrendChart } from "@/components/charts";
 import {
   activityTimeline, byChain, countSeries, MIN_CHART_POINTS,
-  SERIES, sumWei, topViolatedMandates, weiSeries,
+  SERIES, sumWei, topViolatedMandates, violatorIdsFrom, weiSeries,
 } from "@/lib/analytics";
 import type { WeiPoint } from "@/lib/analytics";
-import { getActiveAgents, getAgentHistory, getChallenges, getLeaderboard, getStats } from "@/lib/contract";
+import { getActiveAgents, getAgent, getAgentHistory, getChallenges, getLeaderboard, getStats } from "@/lib/contract";
 import { CHAIN_LABEL, formatGen, percentFromBps, relativeTime, shortAddress } from "@/lib/format";
 import type { Challenge } from "@/types";
 
@@ -32,7 +32,14 @@ const SWR_OPTS = { refreshInterval: REFRESH, keepPreviousData: true } as const;
 
 export default function AnalyticsPage() {
   const { data: stats, error: statsError } = useSWR("stats", getStats, SWR_OPTS);
-  const { data: challengeFeed } = useSWR("analytics-challenges", () => getChallenges(60), SWR_OPTS);
+  /*
+   * 100 is the contract's own MAX_LIST_PAGE cap, and it is asked for because
+   * this feed is what discovers violators. At 60 the window stopped just short
+   * of two agents that had been ruled against — the card ranked correctly but
+   * silently omitted them. Every other series on this page gets more points
+   * out of it too.
+   */
+  const { data: challengeFeed } = useSWR("analytics-challenges", () => getChallenges(100), SWR_OPTS);
   const { data: agentFeed } = useSWR("analytics-agents", () => getActiveAgents(60), SWR_OPTS);
   const { data: board } = useSWR("leaderboard", () => getLeaderboard(25), SWR_OPTS);
 
@@ -41,32 +48,35 @@ export default function AnalyticsPage() {
   const loading = !stats && !statsError;
 
   /*
-   * The list views carry only a 60-character mandate preview, and the whole
-   * point of this card is WHICH RULE was broken. `get_agent_history` returns the
-   * full published rule, so it is fetched for the few agents that have a
-   * violation — never for the whole register.
+   * Who has been ruled against, taken from the CHALLENGE FEED.
+   *
+   * Not from the agent list: an agent slashed below the minimum bond is
+   * DEACTIVATED by the contract, so `get_active_agents` stops returning exactly
+   * the agents that have violations. Reading violators from there is why this
+   * card said "No mandate has been broken yet" against 33 breaches on chain.
+   *
+   * The full rule is then read per violator — the list views carry only a
+   * 60-character preview and the point of this card is WHICH RULE was broken —
+   * along with the agent record, which is also the only place the name and the
+   * contract's own violation tally live. Two reads for at most five agents,
+   * never for the whole register.
    */
   const violatorIds = useMemo(
-    () =>
-      agents
-        .filter((a) => a.violation_count > 0)
-        .sort((a, b) => b.violation_count - a.violation_count)
-        .slice(0, 6)
-        .map((a) => a.agent_id),
-    [agents],
+    () => violatorIdsFrom(challenges, agents, 5),
+    [challenges, agents],
   );
 
-  const { data: histories } = useSWR(
-    violatorIds.length ? ["analytics-histories", violatorIds.join(",")] : null,
-    () => Promise.all(violatorIds.map((id) => getAgentHistory(id, 40))),
+  const { data: violators } = useSWR(
+    violatorIds.length ? ["analytics-violators", violatorIds.join(",")] : null,
+    () =>
+      Promise.all(
+        violatorIds.map(async (id) => {
+          const [agent, history] = await Promise.all([getAgent(id), getAgentHistory(id, 100)]);
+          return { agent, history: { mandate: history.mandate, challenges: history.challenges } };
+        }),
+      ),
     { keepPreviousData: true },
   );
-
-  const historyMap = useMemo(() => {
-    const out: Record<number, { mandate: string; challenges: Challenge[] }> = {};
-    for (const h of histories ?? []) out[h.agent_id] = { mandate: h.mandate, challenges: h.challenges };
-    return out;
-  }, [histories]);
 
   // ── Series ───────────────────────────────────────────────────────────────
 
@@ -102,7 +112,7 @@ export default function AnalyticsPage() {
     [showChallengeChains, challenges, agents],
   );
 
-  const mandates = useMemo(() => topViolatedMandates(agents, historyMap), [agents, historyMap]);
+  const mandates = useMemo(() => topViolatedMandates(violators ?? [], 5), [violators]);
   const worstMandate = Math.max(1, ...mandates.map((m) => m.violations));
 
   const timeline = useMemo(() => activityTimeline(agents, challenges), [agents, challenges]);
@@ -130,12 +140,12 @@ export default function AnalyticsPage() {
       {loading && <div className="mt-8"><Spinner label="Reading the register…" /></div>}
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Agents on duty" value={stats?.agents_active ?? "—"}
+        <Stat icon="agents" label="Agents on duty" value={stats?.agents_active ?? "—"}
           sub={stats ? `${stats.agents_registered} ever registered` : undefined} tone="signal" />
-        <Stat label="Bond under watch" value={stats ? formatGen(stats.bond_under_watch, 2) : "—"} sub="GEN staked by operators" />
-        <Stat label="Challenges filed" value={stats?.challenges_filed ?? "—"}
+        <Stat icon="bond" label="Bond under watch" value={stats ? formatGen(stats.bond_under_watch, 2) : "—"} sub="GEN staked by operators" />
+        <Stat icon="challenges" label="Challenges filed" value={stats?.challenges_filed ?? "—"}
           sub={stats ? `${stats.challenges_settled} settled` : undefined} />
-        <Stat label="Breaches proven" value={stats?.violations ?? "—"}
+        <Stat icon="breaches" label="Breaches proven" value={stats?.violations ?? "—"}
           sub={stats && stats.challenges_settled > 0 ? `${percentFromBps(stats.violation_rate_bps)}% of decided` : "none yet"}
           tone={stats && stats.violations > 0 ? "violation" : "ink"} />
       </div>

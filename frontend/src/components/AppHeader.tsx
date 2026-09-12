@@ -4,16 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Shield } from "./Shield";
+import { Icon } from "./icons";
+import type { IconName } from "./icons";
 import { useWallet } from "./WalletProvider";
 import { NETWORK_LABEL, IS_GASLESS } from "@/lib/genlayer";
 import { formatGen, shortAddress } from "@/lib/format";
 
-const NAV = [
-  { href: "/agents", label: "Agents" },
-  { href: "/patrol", label: "Patrol" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/leaderboard", label: "Watchers" },
-  { href: "/docs", label: "How it works" },
+const NAV: { href: string; label: string; icon: IconName }[] = [
+  { href: "/agents", label: "Agents", icon: "agents" },
+  { href: "/patrol", label: "Patrol", icon: "patrol" },
+  { href: "/analytics", label: "Analytics", icon: "analytics" },
+  { href: "/leaderboard", label: "Watchers", icon: "watchers" },
+  { href: "/docs", label: "How it works", icon: "docs" },
 ];
 
 export function AppHeader() {
@@ -35,8 +37,11 @@ export function AppHeader() {
             const active = path === item.href || path.startsWith(item.href + "/");
             return (
               <Link key={item.href} href={item.href}
-                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                   active ? "bg-panel-2 text-ink" : "text-ink-2 hover:text-ink hover:bg-panel"}`}>
+                {/* The icon is decoration on a labelled link — it never carries
+                    the destination on its own. */}
+                <Icon name={item.icon} size={15} className={active ? "text-signal" : "opacity-70"} />
                 {item.label}
               </Link>
             );
@@ -50,7 +55,8 @@ export function AppHeader() {
           </span>
 
           <Link href="/register"
-            className="hidden rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:block">
+            className="hidden items-center gap-1.5 rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:flex">
+            <Icon name="register" size={15} />
             Register an agent
           </Link>
 
@@ -85,9 +91,10 @@ export function AppHeader() {
 
       {open && (
         <nav className="border-t border-line bg-panel px-5 py-2 md:hidden">
-          {[...NAV, { href: "/register", label: "Register an agent" }].map((item) => (
+          {[...NAV, { href: "/register", label: "Register an agent", icon: "register" as IconName }].map((item) => (
             <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-              className="block rounded-md px-2 py-2.5 text-sm text-ink-2 hover:text-ink">
+              className="flex items-center gap-2.5 rounded-md px-2 py-2.5 text-sm text-ink-2 hover:text-ink">
+              <Icon name={item.icon} size={16} className="opacity-70" />
               {item.label}
             </Link>
           ))}
