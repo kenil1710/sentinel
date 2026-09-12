@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Panel, Label, ChainTag, Spinner } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
 import { FaucetNote } from "@/components/Onboarding";
-import { getConfig, registerAgent } from "@/lib/contract";
+import { getAgentByWallet, getConfig, registerAgent } from "@/lib/contract";
 import { CHAIN_LABEL, EXPLORER_HOST, formatGen, isAddress, parseGen, percentFromBps } from "@/lib/format";
 import type { AgentType, WriteResult } from "@/types";
 
@@ -51,6 +52,10 @@ export default function RegisterPage() {
   const [operatorUrl, setOperatorUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<WriteResult | null>(null);
+  /** The registered agent, once known — from the receipt or read back from chain. */
+  const [agentId, setAgentId] = useState<number | null>(null);
+  /** Registered, but the id could not be resolved. Never claim a redirect then. */
+  const [lookupFailed, setLookupFailed] = useState(false);
 
   const minBond = cfg ? BigInt(cfg.min_bond) : 5n * 10n ** 17n;
   const bondWei = useMemo(() => parseGen(bond), [bond]);
@@ -76,20 +81,103 @@ export default function RegisterPage() {
   const ready = Boolean(account) && isAddress(wallet) && mandate.trim().length >= (cfg?.min_mandate_chars ?? 20)
     && bondWei !== null && bondWei >= minBond && problems.length === 0;
 
+  /**
+   * The agent id for a registration that has just succeeded.
+   *
+   * The return payload is the fast path and usually carries it. But
+   * `readWriteResult` reports a settled write with an UNREADABLE payload as
+   * `ok` with empty data — deliberately, because the transaction happened and
+   * the bond moved; only the return value went missing in transport. That case
+   * left this page showing "Taking you to the agent…" over a redirect that
+   * could never fire, which is the bug: a promise the code had no way to keep.
+   *
+   * So when the payload has no id, it is READ BACK from the contract. The
+   * wallet is claimed on chain by the time the write settles, so the id exists
+   * and is simply being fetched rather than guessed. A couple of quick retries
+   * cover a read that races an indexer, and the whole path is budgeted to stay
+   * inside the two seconds before the redirect is promised.
+   */
+  async function resolveAgentId(out: Extract<WriteResult, { kind: "ok" }>): Promise<number | null> {
+    // Accept a string too: the id crosses JSON and a stringified number is
+    // still an id. Rejecting one on its type is how the redirect went missing.
+    const raw = (out.data as { agent_id?: number | string })?.agent_id;
+    const direct = typeof raw === "string" ? Number(raw) : raw;
+    if (typeof direct === "number" && Number.isFinite(direct)) return direct;
+
+    /*
+     * Each attempt is raced against a short deadline rather than allowed to run
+     * to the read client's 30s timeout.
+     *
+     * MEASURED on Studio Dev: the same `get_agent_by_wallet` call returned in
+     * 1.2s, 1.3s, 3.2s, 4.4s and 12.2s over five consecutive runs. Waiting out
+     * the slow tail would put the redirect a dozen seconds after a registration
+     * that has already settled. Abandoning a stalled read and asking again
+     * turns that tail into retries, which is the difference between a usually
+     * fast answer and an occasionally terrible one.
+     */
+    const attemptDeadline = <T,>(work: Promise<T>): Promise<T | null> =>
+      Promise.race([work, new Promise<null>((r) => setTimeout(() => r(null), 1100))]);
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const found = await attemptDeadline(getAgentByWallet(chain, wallet.trim().toLowerCase()));
+        const agent = found?.agent;
+        const id = Number(agent?.agent_id);
+        /*
+         * The operator must match, and this is not a formality.
+         *
+         * An unreadable payload is also what a REJECTION looks like when its
+         * text does not survive either — and the commonest rejection is a
+         * wallet that is already on the register. Redirecting on the bare
+         * lookup would then send this operator to somebody else's agent and
+         * call it theirs. One transaction was refunded; nothing was registered.
+         * So the agent is only accepted as ours if we own it.
+         */
+        const mine = String(agent?.operator ?? "").toLowerCase() === account?.toLowerCase();
+        if (found?.found && Number.isFinite(id) && mine) return id;
+      } catch {
+        // A failed lookup is not a failed registration. Fall through, retry,
+        // and if it never answers the page says so instead of pretending.
+      }
+      // No sleep between attempts: the deadline above already paced this one,
+      // and a registration that has settled is not going to un-settle.
+    }
+    return null;
+  }
+
   async function submit() {
     if (!account || !bondWei) return;
     setBusy(true);
     setResult(null);
+    setAgentId(null);
+    setLookupFailed(false);
     try {
       const out = await registerAgent(account, wallet.trim(), chain, mandate.trim(), {
         name: name.trim(), agentType,
         description: description.trim(), operatorUrl: operatorUrl.trim(),
       }, bondWei);
       setResult(out);
-      if (out.kind === "ok") {
-        const id = (out.data as { agent_id?: number })?.agent_id;
-        if (typeof id === "number") setTimeout(() => router.push(`/agent/${id}`), 1400);
+      if (out.kind !== "ok") return;
+
+      const settledAt = Date.now();
+      const id = await resolveAgentId(out);
+      if (id === null) {
+        setLookupFailed(true);
+        return;
       }
+      setAgentId(id);
+      /*
+       * Budgeted from the moment the write settled, not from here, so a slow
+       * fallback lookup cannot push the redirect past the two seconds the
+       * banner promises. Measured: the fallback read can take ~2s on Studio
+       * Dev on its own, which is why there is no minimum floor — when the
+       * lookup has already spent the budget the operator has been watching
+       * "Finding your agent…" the whole time and wants the page, not another
+       * pause. When the id came back instantly the 1.2s lets the confirmation
+       * actually be read.
+       */
+      const delay = Math.max(0, Math.min(1200, 1900 - (Date.now() - settledAt)));
+      setTimeout(() => router.push(`/agent/${id}`), delay);
     } finally {
       setBusy(false);
     }
@@ -267,7 +355,27 @@ export default function RegisterPage() {
 
           {result?.kind === "ok" && (
             <div className="rounded-lg border border-compliant/30 bg-compliant/10 p-4 text-sm text-compliant-ink">
-              Registered. Taking you to the agent…
+              {agentId !== null ? (
+                <>
+                  Registered as agent #{agentId}. Taking you to the agent…{" "}
+                  <Link href={`/agent/${agentId}`} className="underline underline-offset-2">
+                    Go now
+                  </Link>
+                </>
+              ) : lookupFailed ? (
+                <>
+                  {/* Registered, but the id could not be read back. Say that
+                      plainly rather than promising a redirect that cannot fire. */}
+                  <div className="font-medium">Registered, and the bond is posted.</div>
+                  <div className="mt-1.5 text-[13px]">
+                    The agent id could not be read back just now, so this page cannot
+                    jump straight to it. It is on the register —{" "}
+                    <Link href="/agents" className="underline underline-offset-2">find it here</Link>.
+                  </div>
+                </>
+              ) : (
+                "Registered. Finding your agent…"
+              )}
             </div>
           )}
           {result?.kind === "rejected" && (

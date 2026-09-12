@@ -87,6 +87,19 @@ export const getAgentHistory = (id: number, count = 60) =>
     "get_agent_history", [id, count]);
 export const getLeaderboard = (count = 25) =>
   view<{ count: number; watchers: Watcher[] }>("get_leaderboard", [count]);
+/**
+ * Find an agent by the wallet it watches.
+ *
+ * This is the RECOVERY PATH for a write whose return payload did not survive
+ * the transport. `readWriteResult` deliberately reports such a transaction as
+ * `ok` with empty data — it settled, the money moved, and only the readable
+ * value is missing — which leaves the caller holding a successful registration
+ * and no agent id. The wallet is claimed on chain by then (`wallet_claimed`),
+ * so the id can simply be read back rather than guessed at or given up on.
+ */
+export const getAgentByWallet = (chain: string, wallet: string) =>
+  view<{ found: boolean; agent?: Agent }>("get_agent_by_wallet", [chain, wallet]);
+
 export const isTxChallenged = (chain: string, tx: string) =>
   view<{ valid: boolean; challenged: boolean; challenge_id?: number; verdict?: string }>(
     "is_tx_challenged", [chain, tx]);
