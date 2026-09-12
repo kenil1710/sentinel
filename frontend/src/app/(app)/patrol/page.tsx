@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { Panel, Label, ChainTag, VerdictBadge, Empty, Spinner, Stat } from "@/components/ui";
 import { getPatrolQueue, getPendingChallenges, getStats } from "@/lib/contract";
 import { relativeTime, shortAddress } from "@/lib/format";
+import { LEARN_AFTER } from "@/lib/heuristics";
 import type { PatrolReport } from "@/types";
 
 export default function PatrolPage() {
@@ -187,7 +188,8 @@ export default function PatrolPage() {
                     <div className="mono text-[11px] text-compliant-ink">{shortAddress(w.tx_hash, 8)}</div>
                     <div className="mt-1 text-[12px] leading-relaxed text-ink-2">{w.reason}</div>
                     <div className="mt-1.5 text-[10px] text-ink-3">
-                      not challenged — validators ruled this compliant in{" "}
+                      Skipped — validators previously ruled this pattern COMPLIANT{" "}
+                      {w.rulings}× , first in{" "}
                       <Link href={`/challenge/${w.cleared_by}`} className="text-compliant-ink hover:underline">
                         challenge #{w.cleared_by}
                       </Link>
@@ -197,6 +199,31 @@ export default function PatrolPage() {
               </div>
             ))}
           </div>
+
+          {(report.learned_compliant ?? []).length > 0 && (
+            <div className="mt-5 border-t border-line pt-4">
+              <Label>Learned compliant — patterns the bot has stood down on</Label>
+              <p className="mt-2 text-[11px] leading-relaxed text-ink-3">
+                A pattern joins this list after {LEARN_AFTER} separate rounds rule the same
+                accusation COMPLIANT against the same agent. It is rebuilt from the chain on
+                every run, never cached, and a single VIOLATION on the same pattern removes it.
+              </p>
+              <div className="mt-2.5 space-y-1.5">
+                {report.learned_compliant.map((l) => (
+                  <div key={`${l.agent_id}-${l.pattern}`}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line bg-panel-2/60 px-3 py-2">
+                    <Link href={`/agent/${l.agent_id}`} className="mono text-[11px] text-ink-2 hover:text-signal">
+                      agent #{l.agent_id}
+                    </Link>
+                    <span className="mono text-[11px] text-compliant-ink">{l.pattern}</span>
+                    <span className="ml-auto text-[10px] text-ink-3">
+                      {l.rulings} COMPLIANT verdicts (#{l.first}–#{l.last})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {report.notes.length > 0 && (
             <ul className="mt-4 space-y-1 border-t border-line pt-3.5 text-[11px] text-ink-3">

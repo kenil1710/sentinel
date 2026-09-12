@@ -38,7 +38,8 @@ import { studioDevnet } from "genlayer-js/chains";
 import type { TransactionHash } from "genlayer-js/types";
 import { recentTransactions, oneTransaction, TransientBlockscout } from "@/lib/blockscout";
 import { flagsFor, reasonText, learnedFrom, withholdLearned } from "@/lib/heuristics";
-import type { SettledChallenge } from "@/lib/heuristics";
+import { LEARN_AFTER } from "@/lib/heuristics";
+import type { SettledChallenge, Ruling } from "@/lib/heuristics";
 import type { PatrolReport, PatrolRow } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -483,7 +484,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       finished_at: new Date().toISOString(),
       seconds: Number(((Date.now() - started) / 1000).toFixed(1)),
       network: networkName, contract: address, patrolled: 0,
-      transactions_scanned: 0, challenges_filed: 0, challenges_withheld: 0, dry_run: dry,
+      transactions_scanned: 0, challenges_filed: 0, challenges_withheld: 0,
+      learned_compliant: [], dry_run: dry,
       challenges_resolved: [], rows: [], notes,
     };
   }
@@ -507,6 +509,13 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
   let filedTotal = 0;
   /** Accusations NOT staked because the validators had already rejected them. */
   let withheldTotal = 0;
+  /**
+   * The standing list this run acted on: {agent_id, pattern} the validators
+   * have rejected at least LEARN_AFTER times. Rebuilt from chain every run
+   * rather than cached, so it cannot drift from the verdicts it claims to
+   * represent, and reported so the decision to stay quiet is inspectable.
+   */
+  const learnedCompliant: PatrolReport["learned_compliant"] = [];
 
   for (const agent of queue.queue ?? []) {
     // Stop examining NEW agents in time to still stamp the ones already done.
@@ -576,7 +585,7 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
      * cost a stake, while assuming it said COMPLIANT would silence the watchdog
      * on the strength of a network error.
      */
-    let learned = new Map<string, number>();
+    let learned = new Map<string, Ruling>();
     if (Number(agent.compliant_count ?? 0) > 0) {
       const history = await withTimeout(
         view<{ challenges: SettledChallenge[] }>("get_agent_history", [agent.agent_id, 50]),
@@ -591,8 +600,13 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
       if (history) learned = learnedFrom(history.challenges ?? []);
     }
     row.learned_rules = learned.size;
-    if (learned.size > 0) {
-      console.log(`[patrol] agent #${agent.agent_id} carries ${learned.size} cleared pattern(s)`);
+    for (const [pattern, ruling] of learned) {
+      learnedCompliant.push({
+        agent_id: agent.agent_id, pattern,
+        rulings: ruling.rulings, first: ruling.first, last: ruling.last,
+      });
+      console.log(`[patrol] agent #${agent.agent_id} learned_compliant ${pattern} ` +
+        `(${ruling.rulings} COMPLIANT verdicts, #${ruling.first}…#${ruling.last})`);
     }
 
     /*
@@ -640,10 +654,12 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
        */
       const { keep, withheld } = withholdLearned(flags, learned);
       for (const w of withheld) {
-        row.withheld.push({ tx_hash: tx.hash, reason: w.reason, cleared_by: w.cleared_by });
+        row.withheld.push({ tx_hash: tx.hash, reason: w.reason,
+          cleared_by: w.cleared_by, rulings: w.rulings });
         withheldTotal++;
-        console.log(`[patrol] withheld ${w.rule} on #${agent.agent_id} ` +
-          `— validators ruled COMPLIANT in challenge #${w.cleared_by}`);
+        console.log(`[patrol] Skipped — validators previously ruled this pattern ` +
+          `COMPLIANT (agent #${agent.agent_id}, ${w.rule}, ${w.rulings} verdicts, ` +
+          `first #${w.cleared_by}, tx ${tx.hash.slice(0, 12)}…)`);
       }
       if (keep.length === 0) continue;
 
@@ -780,7 +796,8 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
     const saved = stake > 0n
       ? ` — about ${(Number(stake * BigInt(withheldTotal)) / 1e18).toFixed(2)} GEN of stake not risked on cases the validators have already closed`
       : "";
-    notes.push(`Withheld ${withheldTotal} accusation(s) the validators previously ruled COMPLIANT${saved}.`);
+    notes.push(`Withheld ${withheldTotal} accusation(s) the validators previously ruled ` +
+      `COMPLIANT at least ${LEARN_AFTER} times${saved}.`);
   }
   if (dry) notes.push("Dry run — nothing was filed on chain.");
   if (botAddress) notes.push(`Filing as ${botAddress}.`);
@@ -800,6 +817,7 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
     transactions_scanned: scannedTotal,
     challenges_filed: filedTotal,
     challenges_withheld: withheldTotal,
+    learned_compliant: learnedCompliant,
     dry_run: dry,
     challenges_resolved: resolved,
     rows,

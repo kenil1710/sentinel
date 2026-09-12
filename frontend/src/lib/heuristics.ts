@@ -190,9 +190,9 @@ export function reasonText(flags: Flag[]): string {
  * every patrol, forever, because `is_tx_challenged` only stops a repeat of the
  * same TRANSACTION and the agent keeps making new ones.
  *
- * So the bot reads the agent's own settled history and defers to it. If five
- * validators read this mandate and ruled that moving WFC is within it, the bot
- * accepts that ruling for WFC on that agent and stops paying to re-litigate.
+ * So the bot reads the agent's own settled history and defers to it. Once TWO
+ * separate rounds have read this mandate and ruled that moving WFC is within
+ * it, the bot accepts that and stops paying to re-litigate WFC on that agent.
  *
  * ## What a ruling is taken to cover — and what it is not
  *
@@ -238,11 +238,38 @@ export interface SettledChallenge {
   injection_flagged?: boolean;
 }
 
-/** A flag that was NOT filed, and the challenge whose verdict withheld it. */
+/**
+ * How many times the validators must reject the same accusation against the
+ * same agent before the bot stops making it.
+ *
+ * Two, not one. A single COMPLIANT verdict can be a round that read the
+ * evidence badly — the same register carries 53 INCONCLUSIVE settlements, so
+ * these rounds visibly do not always converge cleanly. Standing down on one
+ * ruling would let a single bad round blind the bot to a whole class of
+ * breach. Two independent rounds agreeing is a pattern; one is an anecdote.
+ *
+ * The cost of the extra round is bounded and known: one more stake, once, per
+ * agent-and-pattern, ever. That is the right price for not going blind.
+ */
+export const LEARN_AFTER = 2;
+
+/** What one agent's history says about one rule-and-subject key. */
+export interface Ruling {
+  /** COMPLIANT verdicts on this key. The bot stands down at LEARN_AFTER. */
+  rulings: number;
+  /** Earliest and most recent challenge ids, so a withheld flag can cite them. */
+  first: number;
+  last: number;
+}
+
+/** A flag that was NOT filed, and the verdicts that withheld it. */
 export interface Withheld {
   rule: string;
   reason: string;
+  /** The challenge first ruled COMPLIANT on this key. */
   cleared_by: number;
+  /** How many times the validators have rejected this accusation. */
+  rulings: number;
 }
 
 /**
@@ -319,31 +346,64 @@ export function reasonSignatures(reason: string): string[] {
 }
 
 /**
- * What this agent's settled history has already taught the bot: key → the
- * challenge id that taught it, so a withheld flag can cite the ruling.
+ * What this agent's settled history has taught the bot: key → the rulings
+ * behind it. Only keys the validators have rejected at least LEARN_AFTER times
+ * are returned, so the caller can treat membership as "stand down".
  *
- * ONLY a COMPLIANT verdict teaches anything. VIOLATION confirms the rule and
- * INCONCLUSIVE settled nothing — a round that could not converge is not a
- * ruling that the transaction was fine, and treating it as one would let an
- * unreadable explorer silence the watchdog.
+ * ONLY a COMPLIANT verdict counts toward the threshold. INCONCLUSIVE settled
+ * nothing — a round that could not converge is not a ruling that the
+ * transaction was fine, and counting it would let an unreadable explorer talk
+ * the watchdog into silence.
+ *
+ * A VIOLATION on the same key VETOES the key outright, however many clearances
+ * sit beside it. Once this exact accusation has been PROVEN against this agent
+ * even once, standing down on it is the one outcome that cannot be defended:
+ * the bot would be declining to look at a breach it has already demonstrated.
+ * A contested pattern is one the bot keeps paying to argue.
  *
  * Whoever filed it counts. The verdict is the validators', not the
  * challenger's, and a human's refuted challenge is exactly as much evidence
  * that this accusation loses as the bot's own.
  *
- * A challenge flagged for prompt injection is NOT learned from, even when it
+ * A challenge flagged for prompt injection contributes NOTHING, even when it
  * came back COMPLIANT. That flag says the evidence or the accusation contained
  * text aimed at the judge; a clearance obtained under those conditions is the
  * one verdict a bot should never make permanent.
  */
-export function learnedFrom(challenges: SettledChallenge[]): Map<string, number> {
-  const out = new Map<string, number>();
+export function learnedFrom(challenges: SettledChallenge[]): Map<string, Ruling> {
+  const counts = new Map<string, Ruling>();
+  const vetoed = new Set<string>();
+
   for (const c of Array.isArray(challenges) ? challenges : []) {
-    if (!c || String(c.verdict ?? "").toUpperCase() !== "COMPLIANT") continue;
+    if (!c) continue;
+    const verdict = String(c.verdict ?? "").toUpperCase();
+    if (verdict !== "COMPLIANT" && verdict !== "VIOLATION") continue;
     if (c.injection_flagged) continue;
+    const id = Number(c.challenge_id ?? -1);
     for (const sig of reasonSignatures(String(c.reason ?? ""))) {
-      if (!out.has(sig)) out.set(sig, Number(c.challenge_id ?? -1));
+      if (verdict === "VIOLATION") {
+        vetoed.add(sig);
+        continue;
+      }
+      const seen = counts.get(sig);
+      // `get_agent_history` returns newest first, so the SMALLER id is the
+      // earlier ruling whichever order they arrive in — computed rather than
+      // assumed, because an ordering this code does not control should not be
+      // load-bearing for what it reports.
+      if (!seen) counts.set(sig, { rulings: 1, first: id, last: id });
+      else counts.set(sig, {
+        rulings: seen.rulings + 1,
+        first: Math.min(seen.first, id),
+        last: Math.max(seen.last, id),
+      });
     }
+  }
+
+  const out = new Map<string, Ruling>();
+  for (const [sig, ruling] of counts) {
+    if (vetoed.has(sig)) continue;
+    if (ruling.rulings < LEARN_AFTER) continue;
+    out.set(sig, ruling);
   }
   return out;
 }
@@ -360,7 +420,7 @@ export function learnedFrom(challenges: SettledChallenge[]): Map<string, number>
  */
 export function withholdLearned(
   flags: Flag[],
-  learned: Map<string, number>,
+  learned: Map<string, Ruling>,
 ): { keep: Flag[]; withheld: Withheld[] } {
   const keep: Flag[] = [];
   const withheld: Withheld[] = [];
@@ -370,7 +430,17 @@ export function withholdLearned(
       keep.push(f);
       continue;
     }
-    withheld.push({ rule: f.rule, reason: f.reason, cleared_by: learned.get(sigs[0]) ?? -1 });
+    // Cite the weakest evidence behind the decision, not the strongest: the key
+    // withheld here is only as settled as its least-rejected part.
+    const weakest = sigs
+      .map((s) => learned.get(s) as Ruling)
+      .reduce((a, b) => (b.rulings < a.rulings ? b : a));
+    withheld.push({
+      rule: f.rule,
+      reason: f.reason,
+      cleared_by: weakest.first,
+      rulings: weakest.rulings,
+    });
   }
   return { keep, withheld };
 }

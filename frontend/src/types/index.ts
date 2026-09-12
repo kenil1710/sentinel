@@ -223,7 +223,7 @@ export interface PatrolRow {
    * challenge whose verdict withheld it, so the silence is auditable — a
    * watchdog that stops accusing must be able to say why.
    */
-  withheld: { tx_hash: string; reason: string; cleared_by: number }[];
+  withheld: { tx_hash: string; reason: string; cleared_by: number; rulings: number }[];
   /** How many cleared rule-and-subject patterns this agent's history taught the bot. */
   learned_rules: number;
   error?: string;
@@ -241,6 +241,13 @@ export interface PatrolReport {
   challenges_filed: number;
   /** Accusations withheld across the run because the validators had already rejected them. */
   challenges_withheld: number;
+  /**
+   * The standing stand-down list this run acted on — {agent_id, pattern} pairs
+   * the validators have ruled COMPLIANT at least LEARN_AFTER times. Rebuilt
+   * from the chain every run, never cached, so it cannot drift from the
+   * verdicts it represents.
+   */
+  learned_compliant: { agent_id: number; pattern: string; rulings: number; first: number; last: number }[];
   dry_run: boolean;
   /** What this run put to the validators. Empty on a dry run. */
   challenges_resolved?: { challenge_id: number; verdict: string; error?: string }[];

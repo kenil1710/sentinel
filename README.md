@@ -141,13 +141,22 @@ afternoon must never read as a clean bill of health.
 
 ## The register is real
 
-**Ten agents are on active duty on Studio Dev today**, across the four chains
-the patrol can actually read — 6 on ethereum, 2 on polygon, and 1 each on
-arbitrum and base — in three agent types, with 6.385 GEN under watch after the
-slashing below. Eighteen were registered in total: five had their bonds
-exhausted by proven breaches, and the three on Robinhood Chain were **retired
-on purpose**, their bonds withdrawn, because that chain cannot be scanned at all
-(see below). The roster is what `test/seed_roster.mjs` defines.
+**Nine agents are on active duty on Studio Dev today**, across the chains the
+patrol can actually read — 6 on ethereum, 2 on polygon and 1 on base — in three
+agent types, with 7.6 GEN under watch after the slashing below. Eighteen were
+registered in total: six had their bonds exhausted by proven breaches (the last
+arbitrum agent among them, which is why that chain now carries none), and the
+three on Robinhood Chain were **retired on purpose**, their bonds withdrawn,
+because that chain cannot be scanned at all (see below). The roster is what
+`test/seed_roster.mjs` defines.
+
+Every one of the nine is patrolled, and none shows as never checked. A full run
+on 2026-09-12 examined all 9, read 106 transactions and stamped every one —
+`patrols_run` 246 → 247, `seconds_since_check` 10 across the board. The four
+chains carrying an agent were re-measured the same day and all answered `200`:
+`eth`, `base`, `arbitrum` and `polygon.blockscout.com`. The one failing host is
+`robinhoodchain.blockscout.com`, still `403`, and it carries no active agent —
+those three were retired for this exact reason.
 
 Fifteen agents, seeded from wallets taken out of the **live transaction lists** of
 Uniswap's UniversalRouter on four chains, Aave v3's Pool, and Robinhood Chain's
@@ -393,7 +402,7 @@ checks the served HTML of both to prove it.
 
 ```
 offline suite      410 tests    test/test_logic.py       (includes the mangled artifact)
-patrol suite        47 tests    test/test_patrol.mjs     (real Blockscout fixtures)
+patrol suite        51 tests    test/test_patrol.mjs     (real Blockscout fixtures)
 live suite          79 checks   test/e2e.mjs             (real validators — NOT re-run on Studio Dev)
 functional sweep    36 methods  test/verify_methods.mjs  (every public method, live)
 adversarial suite   99 checks   test/edge_cases.mjs      (the nasty states — NOT re-run on Studio Dev)
@@ -534,20 +543,38 @@ operator's bond, so the bot was losing 0.05 GEN a time, on a schedule, for being
 unable to notice that it had already been told the answer.
 
 So before it files, the bot reads that agent's settled history and defers to it.
-A COMPLIANT verdict becomes a key — `unlisted-token|ETH,WETH|WFC` — and the next
-identical accusation is withheld rather than staked, citing the challenge that
-withheld it. A dry run over the live register on 2026-09-12 withheld eight.
+**Two** COMPLIANT verdicts on the same accusation make a key —
+`unlisted-token|ETH,WETH|WFC` — and the next identical accusation is withheld
+rather than staked, citing the rulings behind it.
+
+Two, not one. The same register carries 53 INCONCLUSIVE settlements, so these
+rounds visibly do not always converge, and standing down on a single ruling
+would let one bad round blind the bot to a whole class of breach. Two rounds
+agreeing is a pattern; one is an anecdote. The extra cost is bounded and known —
+one more stake, once, per agent-and-pattern, ever.
+
+A full patrol on 2026-09-12 withheld eight and filed nothing, against the agent
+the bot had already challenged 113 times.
 
 The deference is narrow on purpose, because a watchdog that stops accusing too
 widely is a worse failure than a wasted stake:
 
 - per agent, per rule, per **subject** — a ruling about WFC says nothing about
   PONS, and one cleared address says nothing about another;
-- only COMPLIANT teaches anything. A VIOLATION confirms the rule, and an
-  INCONCLUSIVE round settled nothing — treating one as a clearance would let an
-  unreadable explorer permanently silence the bot;
+- a single **VIOLATION** on the same pattern vetoes the key outright, however
+  many clearances sit beside it. Once an accusation has been proven against this
+  agent even once, standing down on it is the one outcome that cannot be
+  defended. A contested pattern is one the bot keeps paying to argue;
+- an INCONCLUSIVE round settled nothing and counts toward nothing — counting it
+  would let an unreadable explorer talk the watchdog into silence;
 - a clearance reached on **injection-flagged** evidence is never learned from;
 - an accusation that is half-settled is re-argued on its unsettled half only.
+
+The list a run acted on is reported as `learned_compliant` — `{agent_id,
+pattern, rulings, first, last}` — and rendered on /patrol, so the decision to
+stay quiet is inspectable rather than merely asserted. It is rebuilt from the
+chain every run and never cached, so it cannot drift from the verdicts it
+claims to represent.
 
 There is no new state and no new contract method. The key carries the mandate
 constraint that produced it, so an operator who edits the mandate's token list
