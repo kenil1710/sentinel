@@ -68,30 +68,42 @@ VIOLATION, at 95%, 90% and 95% confidence, on three different transactions with
 three different evidence digests. The earlier evidence is kept because it is a
 wider sample than one verdict — not because the current contract lacks one.
 
-What the Studio Dev contract shows **right now**, read from `get_stats` and
-`get_challenges` at 13:15 UTC on 2026-09-10 — **a snapshot of a register that
-is still moving**, because the patrol runs every ten minutes and files against
-it unattended:
+### Snapshot as of 2026-09-12 13:53:13 UTC
+
+Read from `get_stats` on the Studio Dev contract. **These numbers are a
+snapshot, not a status** — the patrol runs every ten minutes and files,
+judges and stamps unattended, so every counter below moves on its own and this
+block is stale the moment it is written.
 
 ```
-agents          18 registered, 10 on active duty, 6.385 GEN under watch
-                (5 bonds exhausted by breaches, 3 retired off Robinhood Chain)
-challenges      30 filed, 30 settled, 0 pending
-verdicts        7 VIOLATION, 11 COMPLIANT, 12 INCONCLUSIVE
-economics       0.644 GEN slashed, 0.322 GEN paid out in bounties
-patrols_run     37
+snapshot        2026-09-12 13:53:13 UTC   (get_stats, studiodev)
+agents          21 registered, 9 on active duty, 7.6 GEN under watch
+                (9 bonds exhausted by proven breaches, 3 retired off Robinhood Chain)
+                active: 6 ethereum, 2 polygon, 1 base
+challenges      150 filed, 150 settled, 0 pending, 0 stalled
+verdicts        33 VIOLATION, 61 COMPLIANT, 56 INCONCLUSIVE
+economics       3.913 GEN slashed, 1.957 GEN paid out in bounties
+patrols_run     297
 ```
 
-Every one of those challenges was filed **and** judged by the patrol bot, not by
-hand. Challenge 0 found agent 0 receiving WFC against a mandate of "Only trade
-ETH and USDC"; agent 2 then drew three in a row. The penalty compounds, so a
-twice-slashed bond goes 0.5 → 0.4 → 0.32. Five agents are `SLASHED_OUT` because
-their bonds fell below the 0.5 GEN minimum, which is why 13 of 18 are active.
+**For live numbers, call `get_stats` — do not trust the block above.**
 
-**Read the live numbers rather than these** — `get_stats` on the contract, or
-`bash tools/audit.sh`, which checks them against this file. All three verdicts
-appear above on purpose: a watchdog that only ever returns VIOLATION is a
-watchdog nobody should trust.
+```bash
+curl -s https://sentinel-tau-ashen.vercel.app/api/check?wallet=0xaa3ab5ed0758717138acf345e2563d7588e1a3f9\&chain=ethereum
+bash tools/audit.sh          # checks the live chain against this file
+```
+
+`tools/audit.sh` compares this snapshot against the register and FAILS when
+they diverge, which is how the drift that produced this block was caught. A
+failing agent count there means these numbers need refreshing, not that
+anything is broken.
+
+Every challenge was filed **and** judged by the patrol bot, not by hand. The
+penalty compounds, so a twice-slashed bond goes 0.5 → 0.4 → 0.32; nine agents
+are `SLASHED_OUT` because their bonds fell below the 0.5 GEN minimum. All three
+verdicts appear above on purpose: a watchdog that only ever returns VIOLATION
+is a watchdog nobody should trust, and at a 35% violation rate this one is
+refuted more often than it is upheld.
 
 The penalty compounds, and the arithmetic below is what the contract computes —
 checkable on chain once a challenge here settles:
@@ -141,14 +153,22 @@ afternoon must never read as a clean bill of health.
 
 ## The register is real
 
-**Nine agents are on active duty on Studio Dev today**, across the chains the
-patrol can actually read — 6 on ethereum, 2 on polygon and 1 on base — in three
-agent types, with 7.6 GEN under watch after the slashing below. Eighteen were
-registered in total: six had their bonds exhausted by proven breaches (the last
-arbitrum agent among them, which is why that chain now carries none), and the
-three on Robinhood Chain were **retired on purpose**, their bonds withdrawn,
-because that chain cannot be scanned at all (see below). The roster is what
-`test/seed_roster.mjs` defines.
+**Nine agents are on active duty on Studio Dev** as of the snapshot above,
+across the chains the patrol can actually read — 6 on ethereum, 2 on polygon
+and 1 on base — in three agent types, with 7.6 GEN under watch after the
+slashing below. **Twenty-one** were registered in total: **nine** had their
+bonds exhausted by proven breaches (the last arbitrum agent among them, which
+is why that chain now carries none), and the three on Robinhood Chain were
+**retired on purpose**, their bonds withdrawn, because that chain cannot be
+scanned at all (see below). The seeded roster is what `test/seed_roster.mjs`
+defines; the rest were registered against live wallets found the same way.
+
+The three most recent registrations are worth naming, because they are the
+system working end to end rather than a fixture: three genuinely active DEX
+traders — an ethereum memecoin sniper, a Base USDC/LAPTOP bot and an Arbitrum
+USDC/USDai bot — were found in Blockscout's live transaction feed, registered
+under mandates naming only ETH and USDC, and **all three were slashed out**.
+Twenty challenges against them, twenty upheld.
 
 Every one of the nine is patrolled, and none shows as never checked. A full run
 on 2026-09-12 examined all 9, read 106 transactions and stamped every one —

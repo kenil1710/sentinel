@@ -51,14 +51,14 @@
       "verified": "`python3 tools/verify_onchain.py 0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e build/Sentinel.min.py` reports EQUIVALENT: the on-chain code and the local artifact are the same token stream under a bijective renaming of PRIVATE identifiers. They are not byte-identical - the deployed bytes were produced by an earlier run of the same pipeline, before the v0.3.0 migration was rebuilt here - and the public ABI, all 36 methods, is unchanged. The check reports MATCH, EQUIVALENT or DIFFER precisely so this distinction is not papered over.",
       "artifact_bytes_on_chain": 52726,
       "live_state": {
-        "read_at": "2026-09-10T18:10Z",
+        "read_at": "2026-09-12T13:53:13Z",
         "source": "get_stats, get_agents_by_chain and get_challenges on the deployed contract",
-        "agents_registered": 18,
-        "agents_active": 10,
-        "total_bonded_text": "11",
-        "challenges_filed": 30,
-        "challenges_settled": 30,
-        "patrols_run": 37,
+        "agents_registered": 21,
+        "agents_active": 9,
+        "total_bonded_text": "15",
+        "challenges_filed": 150,
+        "challenges_settled": 150,
+        "patrols_run": 297,
         "watchers": 2,
         "chains_configured": [
           "ethereum",
@@ -67,24 +67,39 @@
           "polygon",
           "robinhood"
         ],
-        "note": "A SNAPSHOT of a register that keeps moving: the patrol runs unattended and these counters climb between reads. Of 18 registered, 10 are on active duty: five had their bonds exhausted by proven breaches, and the three on Robinhood Chain were RETIRED DELIBERATELY on 2026-09-10 with withdraw_bond (2.5 GEN returned to their operators), because robinhoodchain.blockscout.com answers the address-transaction endpoint with a Cloudflare 403 from any egress - so the patrol can never scan them and they could only ever read as 'never checked'. Their records stay readable and the chain stays in the contract's table; the site simply no longer offers a chain whose agents cannot be watched. Verdicts span all three outcomes - 7 VIOLATION, 11 COMPLIANT, 12 INCONCLUSIVE - which matters more than a clean sweep: a judge that only ever returns VIOLATION proves nothing. Read get_stats or run tools/audit.sh for current numbers.",
-        "bond_under_watch_text": "6.385",
-        "violations": 7,
-        "total_slashed_text": "0.644",
-        "bounties_paid_text": "0.322",
+        "note": "A SNAPSHOT read from get_stats at 2026-09-12T13:53:13Z, NOT a status. The patrol runs unattended every ten minutes and files, judges and stamps on its own, so every counter here climbs between reads and this block is stale the moment it is written. Call get_stats on the contract for live numbers, or run tools/audit.sh, which compares this snapshot against the register and FAILS when they diverge - that check is how the previous drift (18 published vs 21 on chain) was caught. Of 21 registered, 9 are on active duty: 9 had their bonds exhausted by proven breaches, and the three on Robinhood Chain were RETIRED DELIBERATELY on 2026-09-10 with withdraw_bond (2.5 GEN returned to their operators), because robinhoodchain.blockscout.com answers the address-transaction endpoint with a Cloudflare 403 from any egress - so the patrol can never scan them and they could only ever read as 'never checked'. Their records stay readable and the chain stays in the contract's table; the site simply no longer offers a chain whose agents cannot be watched. Verdicts span all three outcomes - 33 VIOLATION, 61 COMPLIANT, 56 INCONCLUSIVE - which matters more than a clean sweep: a judge that only ever returns VIOLATION proves nothing.",
+        "bond_under_watch_text": "7.6",
+        "violations": 33,
+        "total_slashed_text": "3.9131298176",
+        "bounties_paid_text": "1.9565649088",
         "agents_by_chain": {
-          "ethereum": 6,
-          "base": 1,
-          "arbitrum": 1,
-          "polygon": 2
+          "ethereum": 8,
+          "base": 3,
+          "arbitrum": 4,
+          "polygon": 3,
+          "robinhood": 3
         },
         "agents_by_type": {
-          "TRADING": 3,
-          "DEFI": 6,
+          "TRADING": 13,
+          "DEFI": 7,
           "CUSTOM": 1
         },
-        "compliant": 11,
-        "inconclusive": 12
+        "compliant": 61,
+        "inconclusive": 56,
+        "challenges_pending": 0,
+        "stalled": 0,
+        "agents_slashed_out": 9,
+        "agents_withdrawn": 3,
+        "active_by_chain": {
+          "ethereum": 6,
+          "polygon": 2,
+          "base": 1
+        },
+        "agents_by_type_active": {
+          "TRADING": 3,
+          "DEFI": 5,
+          "CUSTOM": 1
+        }
       }
     }
   },
