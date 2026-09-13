@@ -102,18 +102,18 @@ earned on.
 
 ```
 CURRENT   0x67A1276E…F48dEe          deployed 2026-09-12
-agents          18 registered, 10 on active duty, 6.3 GEN under watch
-                (8 out of the active set: 2 retired while proving on real GenVM
-                 storage that a retired agent leaves the live set, then
-                 re-registered as #16 and #17; 1 probe left over from the fee
-                 diagnosis; 3 retired off Robinhood Chain; 2 slashed out when a
-                 proven breach took their bond below the minimum)
-                active: 7 ethereum, 1 arbitrum, 1 polygon, 1 base
-challenges      3 filed, 3 settled, 0 pending, 0 stalled
-verdicts        3 VIOLATION — the WFC swap at 85%, then two filed and judged
-                by the patrol bot itself at 100%
-economics       0.4 GEN slashed, 0.2 GEN paid out in bounties
-patrols_run     3 and climbing on its own
+                READ AT 2026-09-13T09:30Z — every counter below MOVES
+agents          18 registered, 8 on active duty, 5.175 GEN under watch
+                (6 WITHDRAWN holding no bond: 1 probe from the fee diagnosis,
+                 2 retired while proving on real GenVM storage that a retired
+                 agent leaves the live set, then re-registered as #16 and #17,
+                 and the 3 off Robinhood Chain; 4 SLASHED_OUT — #7, #8, #9 and
+                 #16 — each taken below the minimum bond by a proven breach)
+                active: 6 ethereum, 1 arbitrum, 1 polygon
+challenges      25 filed, 25 settled, 0 pending, 0 stalled
+verdicts        7 VIOLATION, 5 COMPLIANT, 13 INCONCLUSIVE
+economics       0.8904 GEN slashed, 0.4452 GEN paid out in bounties
+patrols_run     19, climbing on its own every ten minutes
 
 SUPERSEDED   0x3fc4E5dA…D563e        read-only, keeps its record
 agents          21 registered, 9 on active duty, 7.6 GEN under watch
@@ -124,9 +124,13 @@ economics       3.913 GEN slashed, 1.957 GEN paid out in bounties
 patrols_run     297
 ```
 
-**For live numbers, call `get_stats` — do not trust the block above.**
-`tools/audit.sh` compares it against the chain and fails when they diverge,
-which is how the last drift was caught.
+**For live numbers, call `get_stats` — do not trust the block above.** Since
+`ExternalAllocationInvalid` was fixed on 2026-09-13 the patrol has run unattended
+every ten minutes, so every counter in it — challenges, verdicts, GEN, active
+agents, `patrols_run` — is stale within minutes of being written down. Only
+`18 registered` is structural, and that is the figure `tools/audit.sh` enforces
+against the chain; it fails when the two diverge, which is how the last drift was
+caught. The superseded block below is frozen and stays accurate.
 
 ```bash
 curl -s https://sentinel-tau-ashen.vercel.app/api/check?wallet=0xaa3ab5ed0758717138acf345e2563d7588e1a3f9\&chain=ethereum
@@ -205,14 +209,15 @@ being exact about which is which.
 **The contract linked at the top was deployed on 2026-09-12** with the security
 fixes, on a new address because the storage layout changed. Its register was
 seeded by `test/seed_roster.mjs` and holds **15 agents on active duty across all
-four patrolled chains and three agent types, with 6.3 GEN under watch**. Three
-challenges have been filed and judged there. The first is the WFC swap below,
-filed by hand from the watcher account while verifying the new deployment and
-returned **VIOLATION** at 85% confidence, slashing the bond 1.0 → 0.8 and paying
-a 0.1 GEN bounty. The other two the **patrol bot filed and judged by itself**,
-both VIOLATION at 100% confidence, taking agents #7 and #8 below the minimum
-bond and out of the active set. Run `tools/audit.sh` for live figures — it reads
-the chain and fails if this paragraph has drifted from it.
+three patrolled chains and three agent types**. Twenty-five challenges have been
+filed and judged there. The first is the WFC swap below, filed by hand from the
+watcher account while verifying the new deployment and returned **VIOLATION** at
+85% confidence. **Every one since, the patrol bot filed and judged by itself**,
+and the verdicts now span all three outcomes — 7 VIOLATION, 5 COMPLIANT, 13
+INCONCLUSIVE — which the superseded deployment took 150 challenges to
+demonstrate. Four agents have been taken below the minimum bond by a proven
+breach and deactivated, which is why base carries no active agent and arbitrum
+carries one. Run `tools/audit.sh` for live figures.
 
 `patrols_run` sat at **0** here until 2026-09-13, and the cause was not the
 scheduler — it was firing the whole time. The patrol route asked for two

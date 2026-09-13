@@ -51,28 +51,27 @@
       "verified": "`python3 tools/verify_onchain.py 0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe build/Sentinel.min.py` reports MATCH: the on-chain code is BYTE-IDENTICAL to the local artifact, sha256 64d82a250f22bed0c243b37d1c523425556a63adc591f52237d9be926d313f46. The previous deployment reported EQUIVALENT rather than MATCH because its bytes predated a pipeline rebuild; this one was deployed from exactly the artifact in the tree. The check reports MATCH, EQUIVALENT or DIFFER precisely so that distinction is never papered over.",
       "artifact_bytes_on_chain": 50355,
       "live_state": {
-        "read_at": "2026-09-13T08:14:00Z",
+        "read_at": "2026-09-13T09:30:00Z",
         "source": "get_stats and get_patrol_queue on the deployed contract",
         "agents_registered": 18,
-        "agents_active": 10,
-        "bond_under_watch_text": "6.3",
+        "agents_active": 8,
+        "bond_under_watch_text": "5.175",
         "total_bonded_text": "12.5",
         "active_by_chain": {
-          "ethereum": 7,
-          "base": 1,
+          "ethereum": 6,
           "arbitrum": 1,
           "polygon": 1
         },
-        "challenges_filed": 3,
-        "challenges_settled": 3,
+        "challenges_filed": 25,
+        "challenges_settled": 25,
         "verdicts": {
-          "violation": 3,
-          "compliant": 0,
-          "inconclusive": 0
+          "violation": 7,
+          "compliant": 5,
+          "inconclusive": 13
         },
-        "total_slashed_text": "0.4",
-        "bounties_paid_text": "0.2",
-        "patrols_run": 2,
+        "total_slashed_text": "0.8904",
+        "bounties_paid_text": "0.4452",
+        "patrols_run": 19,
         "watchers": 2,
         "chains_configured": [
           "ethereum",
@@ -81,7 +80,8 @@
           "polygon",
           "robinhood"
         ],
-        "note": "A SNAPSHOT, NOT a status. This contract was deployed 2026-09-12 with the security fixes; the storage layout changed and could not migrate, so the previous address (0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) keeps its own accumulated record - 21 agents, 150 challenges, 33 VIOLATION / 61 COMPLIANT / 56 INCONCLUSIVE over 297 patrols - and is no longer pointed at by anything. The register here was seeded by test/seed_roster.mjs. Eight of the 18 are out of the active set: three probe/retired agents from the storage-migration checks, the three Robinhood Chain agents (retired again on 2026-09-13, see below), and agents #7 and #8, which were SLASHED_OUT when a proven violation took their bond below the minimum. patrols_run moved off 0 on 2026-09-13 once `ExternalAllocationInvalid` was fixed in the patrol route: the route asked for TWO external-message fee allocations naming the SAME recipient, which the consensus contract refuses at execution, so challenge_agent, resolve_challenge and mark_patrolled all reverted while the run still answered 200 with a full report. The cron had been firing the whole time. Challenges #1 and #2 are the first the deployed patrol bot filed and judged by itself, both VIOLATION at 100% confidence. Challenge #0 was filed by hand from the watcher account while verifying the new deployment. The three Robinhood Chain agents were retired here with withdraw_bond on 2026-09-13, returning 2.5 GEN, because robinhoodchain.blockscout.com answers the address-transaction endpoint with a Cloudflare 403 from any egress and the patrol can never read them. They had come back because test/seed_roster.mjs still carried them; those entries are now marked `retired: true` and are held out of a seed unless --include-retired is passed. Call get_stats for live numbers, or run tools/audit.sh, which compares this snapshot against the register and FAILS when they diverge."
+        "note": "A SNAPSHOT, NOT a status - see counters_move. This contract was deployed 2026-09-12 with the security fixes; the storage layout changed and could not migrate, so the previous address (0x3fc4E5dA7bc0a4c28EF52435aE62606D5aED563e) keeps its own accumulated record - 21 agents, 150 challenges, 33 VIOLATION / 61 COMPLIANT / 56 INCONCLUSIVE over 297 patrols - and is no longer pointed at by anything. The register here was seeded by test/seed_roster.mjs. Of the 18 registered, 8 are on active duty. Six are WITHDRAWN holding no bond - a probe agent from the fee diagnosis, two retired while proving on real GenVM storage that a retired agent leaves the live set (re-registered as #16 and #17), and the three Robinhood Chain agents. Four are SLASHED_OUT: #7, #8, #9 and #16, each taken below the minimum bond by a violation the patrol proved itself. That is why base and arbitrum look thin and why robinhood carries nobody. patrols_run moved off 0 on 2026-09-13 once ExternalAllocationInvalid was fixed in the patrol route: the route asked for TWO external-message fee allocations naming the SAME recipient, which the consensus contract refuses at execution, so challenge_agent, resolve_challenge and mark_patrolled all reverted while the run still answered 200 with a full report. The cron had been firing the whole time. Verdicts now span all three outcomes, which the previous deployment took 150 challenges to demonstrate. The three Robinhood Chain agents were retired here with withdraw_bond on 2026-09-13, returning 2.5 GEN, because robinhoodchain.blockscout.com answers the address-transaction endpoint with a Cloudflare 403 from any egress and the patrol can never read them. They had come back because test/seed_roster.mjs still carried them; those entries are now marked retired: true and are held out of a seed unless --include-retired is passed. Call get_stats for live numbers, or run tools/audit.sh, which compares the structural figure against the register and FAILS when they diverge.",
+        "counters_move": "EVERY COUNTER IN THIS BLOCK IS A MOVING TARGET and is stale within ten minutes. The patrol has run unattended on a ten-minute cadence since ExternalAllocationInvalid was fixed on 2026-09-13, so challenges_filed, challenges_settled, verdicts, patrols_run, agents_active and every GEN figure change on their own. Only agents_registered is structural, and it is the one tools/audit.sh enforces. For anything else call get_stats."
       },
       "artifact_bytes": 50355,
       "deployed_at": "2026-09-12T18:26:28Z",
