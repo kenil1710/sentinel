@@ -160,8 +160,21 @@ const ROSTER = [
   },
 
   /*
-   * Robinhood Chain. Read through a browser rather than a plain GET, because
-   * the explorer sits behind a bot check — contracts/NOTES.md 12.
+   * Robinhood Chain — RETIRED, and NOT seeded unless you ask for them with
+   * `--include-retired`.
+   *
+   * robinhoodchain.blockscout.com answers the ADDRESS-TRANSACTION endpoint with
+   * a Cloudflare 403 from any egress, and that is the endpoint the patrol reads.
+   * So no transaction here can ever be found, none can be challenged, and these
+   * three rows read "checked never" forever — decoration in a register whose
+   * whole claim is that everything in it is watched.
+   *
+   * They were retired with `withdraw_bond` on the previous deployment (commit
+   * 8d4eb3d), and then RE-ADDED by this script when the new contract was
+   * seeded, because the entries were still live here. Retiring them a second
+   * time cost another three transactions. Hence the flag: the research below is
+   * kept because it is real and was expensive to gather, but it stays out of
+   * the register until the explorer is readable.
    *
    * The mandates are strict on purpose, and each one is strict about something
    * this wallet was OBSERVED doing in the fifty rows above its registration:
@@ -172,7 +185,7 @@ const ROSTER = [
   {
     // 50 rows: PositionManager/modifyLiquidities, OKX DexRouter swaps — and
     // repeated calls to 0x86B417a08B…, which the explorer reports unverified.
-    role: operator, wallet: "0xc7455906fB8b53970405aC135e904db1850Bb71E", chain: "robinhood",
+    role: operator, wallet: "0xc7455906fB8b53970405aC135e904db1850Bb71E", chain: "robinhood", retired: true,
     name: "Robinhood LP Manager", type: "DEFI", bond: GEN,
     mandate: "Only manage liquidity positions through verified contracts. " +
              "Never call an unverified contract. Never trade a token that is " +
@@ -184,7 +197,7 @@ const ROSTER = [
   {
     // 50 rows: 32 DexRouter/dagSwapTo, seven unverified counterparties, and
     // approvals to GatedMaxToken and PonsV2LauncherToken.
-    role: operator, wallet: "0xbB91136e0ec8cb675F49c65D62D237BCdDAaB74d", chain: "robinhood",
+    role: operator, wallet: "0xbB91136e0ec8cb675F49c65D62D237BCdDAaB74d", chain: "robinhood", retired: true,
     name: "Robinhood Swap Desk", type: "TRADING", bond: GEN,
     mandate: "Only trade ETH and USDC. Never acquire or approve a newly " +
              "launched token. Never interact with an unverified contract. " +
@@ -196,7 +209,7 @@ const ROSTER = [
   {
     // 50 rows: 43 DexRouter/dagSwapTo plus seven approvals, six of them to
     // PonsV2LauncherToken — a launchpad token, not a pair it is allowed to hold.
-    role: operator2, wallet: "0xABc94D1a928E0c747517045E8208448aE460946f", chain: "robinhood",
+    role: operator2, wallet: "0xABc94D1a928E0c747517045E8208448aE460946f", chain: "robinhood", retired: true,
     name: "Robinhood Momentum Bot", type: "TRADING", bond: GEN / 2n,
     mandate: "Only trade ETH and USDC through the DEX router. Never grant a " +
              "token approval to any contract other than the router itself. " +
@@ -213,10 +226,24 @@ const ROSTER = [
  * refunded — but it is eleven pointless transactions to add a twelfth agent.
  */
 const onlyChain = argOf("chain", null);
-const SELECTED = onlyChain ? ROSTER.filter((a) => a.chain === onlyChain) : ROSTER;
+/*
+ * A `retired: true` entry is kept for its research but stays OUT of the
+ * register, because re-seeding a fresh contract would otherwise silently put
+ * back agents that were deliberately withdrawn — which is exactly what
+ * happened to the three Robinhood rows. `--include-retired` opts back in.
+ */
+const includeRetired = process.argv.includes("--include-retired");
+const LIVE = includeRetired ? ROSTER : ROSTER.filter((a) => !a.retired);
+const SELECTED = onlyChain ? LIVE.filter((a) => a.chain === onlyChain) : LIVE;
 
 console.log(`\nSeeding the register → ${address} on ${networkName}`);
-if (onlyChain) console.log(`  filtered to chain=${onlyChain} (${SELECTED.length} of ${ROSTER.length})`);
+const heldBack = ROSTER.length - LIVE.length;
+if (heldBack > 0) {
+  console.log(`  ${heldBack} retired entr${heldBack === 1 ? "y" : "ies"} held back ` +
+    `(${ROSTER.filter((a) => a.retired).map((a) => a.name).join(", ")}) — ` +
+    `pass --include-retired to seed them anyway`);
+}
+if (onlyChain) console.log(`  filtered to chain=${onlyChain} (${SELECTED.length} of ${LIVE.length})`);
 const cfg = await operator.viewJson("get_config");
 console.log(`  min bond ${cfg.min_bond_text} GEN   types ${cfg.agent_types.join(", ")}\n`);
 

@@ -124,6 +124,9 @@ const BUDGET_MS = FILE_UNTIL_MS;
  */
 const RATE_LIMITED = /at capacity|rate limit|exceeds defined limit|too many requests/i;
 
+/** Refused as an external-message recipient (`ExternalAllocationInvalid`). */
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 /**
  * Whether this network charges for a write, read once per run.
  *
@@ -167,24 +170,45 @@ async function estimateFees(
   w: ReturnType<typeof createClient>,
   args: Parameters<ReturnType<typeof createClient>["writeContract"]>[0],
   label: string,
-  payee: `0x${string}`,
+  payees: readonly string[],
 ) {
   /*
-   * An allocation per outbound transfer, and a REAL recipient on each.
+   * One allocation per DISTINCT recipient the call might pay.
    *
    * The contract pays out through an EXTERNAL message, and a deposit with no
    * allocation for one is refused with `fee no_matching_allocation # external`
-   * — after the call has already run. Every payable rejection refunds, and
-   * every settlement pays the challenger, so the bot needs them on both its
-   * writes. A zero-address recipient is refused too (`ExternalAllocationInvalid`),
-   * so the bot's own address is named: it is the challenger on everything it
-   * files, and the refundee on anything the contract turns down.
+   * — after the call has already run. So every recipient needs one.
    *
-   * The deposit is a ceiling; what the call does not consume comes back.
+   * But NOT more than one each. This asked for two allocations naming the SAME
+   * recipient, on the reasoning that two payout paths need two allocations.
+   * The consensus contract refuses that with `ExternalAllocationInvalid`, and
+   * it refuses it AT EXECUTION — so `challenge_agent`, `resolve_challenge` and
+   * `mark_patrolled` all reverted, the run still answered 200 with a full
+   * report, and `patrols_run` sat at 0 while every other signal said the patrol
+   * was healthy. Measured on studio-dev against the deployed contract: two
+   * allocations for one address revert, one succeeds.
+   *
+   * Two allocations were never needed anyway. Every write path in Sentinel.py
+   * makes AT MOST ONE outbound transfer — `_reject` refunds the sender,
+   * `_settle_violation` and `_settle_inconclusive` pay the challenger,
+   * `_settle_compliant` pays no one (the award is added to the bond), and
+   * `mark_patrolled` pays no one at all.
+   *
+   * A zero-address recipient is refused too (`ExternalAllocationInvalid`), so
+   * the caller names real addresses and empty entries are dropped. The deposit
+   * is a ceiling; what the call does not consume comes back.
    */
-  const messageAllocations = [0, 1].map(() => ({
+  const seen = new Set<string>();
+  const recipients: `0x${string}`[] = [];
+  for (const to of payees) {
+    const k = String(to ?? "").toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(k) || k === ZERO_ADDRESS || seen.has(k)) continue;
+    seen.add(k);
+    recipients.push(to as `0x${string}`);
+  }
+  const messageAllocations = recipients.map((to) => ({
     messageType: 0,
-    recipient: payee,
+    recipient: to,
     budget: 10n ** 17n,
     feeParams: encodeExternalMessageFeeParams({
       gasLimit: 200_000n, maxGasPrice: 250_000_000n,
@@ -221,13 +245,14 @@ async function writeWithRetry(
   args: Parameters<ReturnType<typeof createClient>["writeContract"]>[0],
   label: string,
   attempts = 4,
+  payees?: readonly string[],
 ): Promise<string> {
   // Estimated once, outside the retry loop: a capacity refusal does not change
   // what the transaction costs, and re-estimating on every attempt would add an
   // RPC round trip to exactly the path that is already being throttled.
   let fees: Awaited<ReturnType<typeof estimateFees>> | undefined;
   if (await feesRequired(w)) {
-    fees = await estimateFees(w, args, label, w.account!.address);
+    fees = await estimateFees(w, args, label, payees ?? [w.account!.address]);
     console.log(`[patrol] ${label} fee deposit ${fees.feeValue} wei`);
   }
   const withFees = fees ? { ...args, fees } : args;
@@ -392,12 +417,21 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
   const resolveOne = async (
     cid: number,
     w: NonNullable<typeof wallet>,
+    challenger?: string,
   ): Promise<{ challenge_id: number; verdict: string; error?: string }> => {
     try {
       console.log(`[patrol] resolve #${cid} submitting…`);
+      /*
+       * The payout goes to the CHALLENGER, not to whoever resolved it —
+       * resolve_challenge is permissionless, so the bot judges challenges other
+       * watchers filed, and naming only the bot leaves that settlement with no
+       * matching allocation. Both are named when they differ; estimateFees
+       * dedupes when they do not.
+       */
       const hash = await writeWithRetry(
         w, { address, functionName: "resolve_challenge", args: [cid], value: 0n },
-        `resolve_challenge(${cid})`,
+        `resolve_challenge(${cid})`, 4,
+        [w.account!.address, ...(challenger ? [challenger] : [])],
       );
       console.log(`[patrol] resolve #${cid} tx ${String(hash).slice(0, 14)}…`);
       const deadline = Date.now() + RESOLVE_POLL_MS;
@@ -484,11 +518,12 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
   if (!dry && wallet) {
     console.log(`[patrol] phaseA reading pending at ${Date.now() - started}ms`);
     const pending = await withTimeout(
-      view<{ challenges: { challenge_id: number }[] }>("get_pending_challenges", [MAX_RESOLVES_PER_RUN * 3]),
+      view<{ challenges: { challenge_id: number; challenger?: string }[] }>(
+        "get_pending_challenges", [MAX_RESOLVES_PER_RUN * 3]),
       25_000, "get_pending_challenges",
     ).catch((e) => {
       console.log(`[patrol] phaseA read FAILED: ${String(e?.message ?? e).slice(0, 160)}`);
-      return { challenges: [] as { challenge_id: number }[] };
+      return { challenges: [] as { challenge_id: number; challenger?: string }[] };
     });
     console.log(`[patrol] phaseA ${(pending.challenges ?? []).length} pending at ${Date.now() - started}ms`);
     for (const c of pending.challenges ?? []) {
@@ -497,7 +532,7 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
         notes.push("Out of budget with challenges still pending — the next patrol takes them.");
         break;
       }
-      resolved.push(await resolveOne(c.challenge_id, wallet));
+      resolved.push(await resolveOne(c.challenge_id, wallet, c.challenger));
     }
     if (resolved.length) {
       console.log(`[patrol] resolved ${resolved.length}: ` +
@@ -801,13 +836,17 @@ async function runPatrol({ started, url, chain, address, key, dryRun, notes }: {
            */
           if (Date.now() - started + RESOLVE_POLL_MS <= RESOLVE_UNTIL_MS
               && resolved.length < MAX_RESOLVES_PER_RUN) {
-            const pend = await view<{ challenges: { challenge_id: number; tx_hash: string }[] }>(
+            const pend = await view<{
+              challenges: { challenge_id: number; tx_hash: string; challenger?: string }[];
+            }>(
               "get_pending_challenges", [50],
-            ).catch(() => ({ challenges: [] as { challenge_id: number; tx_hash: string }[] }));
+            ).catch(() => ({
+              challenges: [] as { challenge_id: number; tx_hash: string; challenger?: string }[],
+            }));
             const mine = (pend.challenges ?? []).find(
               (c) => String(c.tx_hash).toLowerCase() === tx.hash.toLowerCase());
             if (mine) {
-              const r = await resolveOne(mine.challenge_id, wallet);
+              const r = await resolveOne(mine.challenge_id, wallet, mine.challenger);
               resolved.push(r);
               row.flagged[row.flagged.length - 1].challenge_id = mine.challenge_id;
               console.log(`[patrol] filed+judged #${mine.challenge_id} => ${r.verdict}`);

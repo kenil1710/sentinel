@@ -102,15 +102,18 @@ earned on.
 
 ```
 CURRENT   0x67A1276E…F48dEe          deployed 2026-09-12
-agents          18 registered, 15 on active duty, 9.8 GEN under watch
-                (3 withdrawn: 2 retired while proving on real GenVM storage
-                 that a retired agent leaves the live set, then re-registered
-                 as #16 and #17; 1 probe left over from the fee diagnosis)
-                active: 7 ethereum, 3 robinhood, 2 arbitrum, 2 polygon, 1 base
-challenges      1 filed, 1 settled, 0 pending, 0 stalled
-verdicts        1 VIOLATION — the WFC swap, judged here, 85% confidence
-economics       0.2 GEN slashed, 0.1 GEN paid out in bounties
-patrols_run     0
+agents          18 registered, 10 on active duty, 6.3 GEN under watch
+                (8 out of the active set: 2 retired while proving on real GenVM
+                 storage that a retired agent leaves the live set, then
+                 re-registered as #16 and #17; 1 probe left over from the fee
+                 diagnosis; 3 retired off Robinhood Chain; 2 slashed out when a
+                 proven breach took their bond below the minimum)
+                active: 7 ethereum, 1 arbitrum, 1 polygon, 1 base
+challenges      3 filed, 3 settled, 0 pending, 0 stalled
+verdicts        3 VIOLATION — the WFC swap at 85%, then two filed and judged
+                by the patrol bot itself at 100%
+economics       0.4 GEN slashed, 0.2 GEN paid out in bounties
+patrols_run     3 and climbing on its own
 
 SUPERSEDED   0x3fc4E5dA…D563e        read-only, keeps its record
 agents          21 registered, 9 on active duty, 7.6 GEN under watch
@@ -202,19 +205,31 @@ being exact about which is which.
 **The contract linked at the top was deployed on 2026-09-12** with the security
 fixes, on a new address because the storage layout changed. Its register was
 seeded by `test/seed_roster.mjs` and holds **15 agents on active duty across all
-five configured chains and three agent types, with 9.8 GEN under watch**. One
-challenge has been filed and judged there — the WFC swap below, put to the
-validators on the new contract and returned **VIOLATION** at 85% confidence,
-slashing the bond 1.0 → 0.8 and paying a 0.1 GEN bounty. The patrol has not run
-over it yet. Run `tools/audit.sh` for live figures — it reads the chain and
-fails if this paragraph has drifted from it.
+four patrolled chains and three agent types, with 6.3 GEN under watch**. Three
+challenges have been filed and judged there. The first is the WFC swap below,
+filed by hand from the watcher account while verifying the new deployment and
+returned **VIOLATION** at 85% confidence, slashing the bond 1.0 → 0.8 and paying
+a 0.1 GEN bounty. The other two the **patrol bot filed and judged by itself**,
+both VIOLATION at 100% confidence, taking agents #7 and #8 below the minimum
+bond and out of the active set. Run `tools/audit.sh` for live figures — it reads
+the chain and fails if this paragraph has drifted from it.
 
-Three of those 15 sit on Robinhood Chain, which still answers the
-address-transaction endpoint with a Cloudflare 403 from any egress. The patrol
-reports them as *"explorer unavailable — skipped, not cleared"* rather than
-clearing them, which is the behaviour that matters; on the superseded deployment
-they were retired outright for that reason, and that call has not been re-made
-here.
+`patrols_run` sat at **0** here until 2026-09-13, and the cause was not the
+scheduler — it was firing the whole time. The patrol route asked for two
+external-message fee allocations naming the same recipient, which the consensus
+contract refuses with `ExternalAllocationInvalid` at execution, so every write
+reverted while the run still answered 200 with a full report: 12 agents
+patrolled, 166 transactions scanned, 40 flagged, **none filed**. One allocation
+per distinct recipient fixed it, and the counter now climbs unattended.
+`frontend/CRON.md` records the measurement.
+
+The three agents on Robinhood Chain have been **retired here too**, their bonds
+withdrawn (2.5 GEN returned), because that chain answers the
+address-transaction endpoint with a Cloudflare 403 from any egress and the
+patrol can never read them — the same call that was made on the superseded
+deployment. They had reappeared because `test/seed_roster.mjs` still carried
+them; those entries are now marked `retired: true` and stay out of a seed unless
+`--include-retired` is passed.
 
 **Everything that follows in this section happened on the superseded address**,
 which stays readable and keeps the whole record. There, nine agents were on

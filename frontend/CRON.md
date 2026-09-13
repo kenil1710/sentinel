@@ -198,7 +198,7 @@ falling open.
 the route accepts it — production logs show
 `[patrol] START trusted=true (bearer token) dry_run=false` on each firing.
 
-Two bugs were found and fixed getting there, and one blocker remains.
+Three bugs were found and fixed getting there. None remains open.
 
 **Fixed — the token comparison was exact.** `authorised()` compared the header to
 `` `Bearer ${secret}` `` with `===`. Anything else — a lowercase scheme, stray
@@ -215,6 +215,64 @@ silence, and nothing on chain. Fluid Compute is off on this project, which is
 also why `maxDuration = 800` was ignored and runs were still cut at 300.02s. The
 work is inline again. A caller that gives up early does not stop it — a run cut
 off at the client at 255s had still filed two challenges server-side.
+
+**Fixed — every write reverted with `ExternalAllocationInvalid`.** This is the
+one that held `patrols_run` at 0 on the studio-dev contract, and it is the
+clearest example in this project of the lesson above: *the cron was firing the
+whole time.*
+
+A write on a fee-charging network carries a deposit, and the deposit must carry
+one allocation for each EXTERNAL message the call might emit — without one, the
+contract is refused with `fee no_matching_allocation # external` after the call
+has already run. `estimateFees` asked for **two** allocations, both naming the
+bot's own address, reasoning that a refund path and a settlement path are two
+payouts. The consensus contract refuses a duplicate recipient outright:
+
+```
+Transaction reverted: EVM tx 0x8c346a38… ExternalAllocationInvalid
+```
+
+Measured directly against the deployed contract, calling `mark_patrolled` with
+each shape:
+
+```
+two allocations, same recipient  ->  reverted: ExternalAllocationInvalid
+one allocation                   ->  ACCEPTED / SUCCESS
+```
+
+So `challenge_agent`, `resolve_challenge` and `mark_patrolled` ALL reverted. The
+run still walked the queue, scanned 166 transactions across 12 agents, answered
+**200 with a full report**, and moved nothing on chain — a patrol that flagged
+40 transactions and filed none of them:
+
+```
+patrolled: 12 | scanned: 166 | challenges_filed: 0 | 149.4s
+notes: ["mark_patrolled failed: … ExternalAllocationInvalid"]
+```
+
+Two allocations were never needed. Every write path in `Sentinel.py` makes AT
+MOST ONE outbound transfer: `_reject` refunds the sender, `_settle_violation`
+and `_settle_inconclusive` pay the challenger, `_settle_compliant` pays no one
+(the award is added to the bond), and `mark_patrolled` pays no one at all. The
+route now builds **one allocation per DISTINCT recipient**, dropping duplicates
+and the zero address.
+
+One recipient is not always the bot, though. `resolve_challenge` is
+permissionless and pays the **challenger**, so the bot judging a challenge some
+other watcher filed would have had no matching allocation for that settlement.
+`resolveOne` now names both the bot and that challenge's challenger, and the
+deduplication collapses them when they are the same address.
+
+After the fix, the first real run filed and judged in one pass:
+
+```
+patrolled: 4 | scanned: 46 | challenges_filed: 1 | 228.7s
+challenges_resolved: [{"challenge_id": 1, "verdict": "VIOLATION"}]
+patrols_run: 1 -> 2
+```
+
+(It reached only four agents because judgement is bought before scanning — see
+the three gates in the route — and the rest keep their place in the queue.)
 
 **Historical note — a node once refused the bot's writes.** Every
 `resolve_challenge` and `mark_patrolled` came back as
