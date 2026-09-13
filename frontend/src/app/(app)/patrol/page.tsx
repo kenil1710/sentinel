@@ -265,8 +265,12 @@ export default function PatrolPage() {
         </Panel>
       )}
 
+      {/* `min-w-0` on both columns is load-bearing, not decoration: a grid item
+          defaults to `min-width: auto`, so it refuses to shrink below its own
+          min-content width and the whole page scrolls sideways on a phone. The
+          queue rows below are what pushed it — 410px inside a 390px viewport. */}
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <div>
+        <div className="min-w-0">
           <Label>
             <span className="inline-flex items-center gap-1.5">
               <Icon name="agents" size={13} />
@@ -278,13 +282,13 @@ export default function PatrolPage() {
             {queue?.queue.length === 0 && <Empty title="Nothing to patrol yet" />}
             {queue?.queue.map((a) => (
               <Link key={a.agent_id} href={`/agent/${a.agent_id}`}
-                className="flex items-center gap-2.5 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
+                className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-line bg-panel shadow-[var(--shadow-card)] px-3.5 py-2.5 hover:border-signal/40">
                 {/* A register of bare hex is hard to read. The address stays the
                     fallback, because an unnamed agent must still be legible. */}
                 {a.name ? (
-                  <span className="truncate text-[13px] font-medium text-ink">{a.name}</span>
+                  <span className="min-w-0 truncate text-[13px] font-medium text-ink">{a.name}</span>
                 ) : (
-                  <span className="mono truncate text-[12px] text-ink-2">{shortAddress(a.wallet, 5)}</span>
+                  <span className="mono min-w-0 truncate text-[12px] text-ink-2">{shortAddress(a.wallet, 5)}</span>
                 )}
                 <TypeTag type={a.agent_type} className="shrink-0" />
                 <ChainTag chain={a.chain} className="shrink-0" />
@@ -297,7 +301,7 @@ export default function PatrolPage() {
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <Label>
             <span className="inline-flex items-center gap-1.5">
               <Icon name="waiting" size={13} />
