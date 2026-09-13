@@ -217,10 +217,38 @@ PY
       bad "the register is too thin to demonstrate the views (chains=${NCHAIN}, types=${NKIND})"
     elif [ -n "$MISSING" ]; then
       ok "the register spans ${NCHAIN} chains and ${NKIND} agent types"
-      # robinhood is a DELIBERATE gap, not an oversight: its explorer answers 403
-      # to every request, so its three agents were retired with withdraw_bond
-      # rather than left in the register as permanently unscanned rows.
-      skip "no ACTIVE agent on: ${MISSING} — see README, robinhood is retired on purpose"
+      # Two DIFFERENT reasons produce an uncovered chain, and reporting both as
+      # "robinhood is retired on purpose" misattributes the others:
+      #
+      #   robinhood - a DELIBERATE gap. Its explorer answers 403 to every
+      #     request, so its three agents were retired with withdraw_bond rather
+      #     than left in the register as permanently unscanned rows.
+      #   anything else - the patrol WORKED. Every agent that chain carried was
+      #     taken below the minimum bond by a proven violation and deactivated,
+      #     which is the watchdog succeeding, not a gap in the seed.
+      #
+      # So say which is which, and read the reason off the chain rather than
+      # hard-coding it.
+      for C in ${MISSING//,/ }; do
+        if [ "$C" = "robinhood" ]; then
+          skip "no ACTIVE agent on robinhood — retired on purpose, its explorer answers 403"
+        else
+          # get_active_agents cannot answer this: the agents in question are no
+          # longer active. get_agents_by_chain returns every status.
+          ONCHAIN=$(genlayer call "$CONTRACT" get_agents_by_chain --args "$C" --args 50 2>/dev/null | grep -o '{.*}' | head -1)
+          NSLASH=$(echo "$ONCHAIN" | python3 -c "
+import json,sys
+try: a=json.load(sys.stdin).get('agents',[])
+except Exception: a=[]
+print(sum(1 for x in a if x.get('status')=='SLASHED_OUT'))
+" 2>/dev/null || echo 0)
+          if [ "${NSLASH:-0}" -gt 0 ]; then
+            skip "no ACTIVE agent on ${C} — all ${NSLASH} were SLASHED_OUT by proven breaches, which is the patrol working"
+          else
+            skip "no ACTIVE agent on ${C} — a gap in the seed, not a contract fault"
+          fi
+        fi
+      done
     else
       ok "the register spans all ${NCFG} configured chains and ${NKIND} agent types"
     fi
