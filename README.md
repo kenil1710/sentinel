@@ -14,9 +14,9 @@ every payout is a pull balance.
 
 | Contract (GenLayer Studio Dev, chain 61997) | Address |
 |---|---|
-| **Sentinel** — canonical register, 1 h windows | <!--ADDR:Sentinel-->`0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D`<!--/ADDR--> |
-| **Sentinel** — demo, same code, 90 s windows | <!--ADDR:SentinelDemo-->`0xc128B02839a6668ff9d9689214986864821CdC0b`<!--/ADDR--> |
-| **SentinelConsumer** — reads the canonical register | <!--ADDR:SentinelConsumer-->`0xCcCc4495705bD11D47c2Cb0F719cD3B1630dc4b2`<!--/ADDR--> |
+| **Sentinel** — canonical register, 1 h windows | <!--ADDR:Sentinel-->`0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90`<!--/ADDR--> |
+| **Sentinel** — demo, same code, 90 s windows | <!--ADDR:SentinelDemo-->`0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393`<!--/ADDR--> |
+| **SentinelConsumer** — reads the canonical register | <!--ADDR:SentinelConsumer-->`0x02F421486a6de07c3D2cF624576ED7ecDFe711e5`<!--/ADDR--> |
 
 RPC `https://studio-dev.genlayer.com/api`, explorer <https://explorer-studio-dev.genlayer.com/>. All three were
 deployed from one commit, and `node tools/verify_source.mjs` reads each back with `gen_getContractCode` and compares

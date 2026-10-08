@@ -7,6 +7,51 @@
   "explorer": "https://explorer-studio-dev.genlayer.com/",
   "contracts": {
     "Sentinel": {
+      "address": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90",
+      "deploy_tx": "0x3b033f4a8e47c9c8aebe567be13de67b61d1363905f0673ceb069fe968d0b43d",
+      "file": "contracts/Sentinel.py",
+      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "bytes": 115442,
+      "sha256": "c56b3cda4340c415c326f4ec80a4911c7f92b321504ffd02a39f21345b7bfd97",
+      "constructor_args": [
+        "CANONICAL"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:22:48.400Z",
+      "mode": "CANONICAL"
+    },
+    "SentinelDemo": {
+      "address": "0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393",
+      "deploy_tx": "0x16b19f923919d9faca5e363425ff4f91e4f3aa297c3b9fe3b18ff7e837001b65",
+      "file": "contracts/Sentinel.py",
+      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "bytes": 115442,
+      "sha256": "c56b3cda4340c415c326f4ec80a4911c7f92b321504ffd02a39f21345b7bfd97",
+      "constructor_args": [
+        "DEMO"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:22:58.740Z",
+      "mode": "DEMO"
+    },
+    "SentinelConsumer": {
+      "address": "0x02F421486a6de07c3D2cF624576ED7ecDFe711e5",
+      "deploy_tx": "0x7865804def3a1b3daceaebd3ea8c67b759eeb5ea10e731c2a2d3e56a0acc4417",
+      "file": "contracts/SentinelConsumer.py",
+      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "bytes": 4757,
+      "sha256": "f67d0989e39466e04d69b2680f5d99f55c826c4e410b55085ea007c043ca1a64",
+      "constructor_args": [
+        "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:23:05.079Z",
+      "reads": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90"
+    }
+  },
+  "superseded": [
+    {
+      "name": "Sentinel",
       "address": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2",
       "deploy_tx": "0x3e5a7314b27454e4fe452c1bf851d495f5d4b09fbdde76e8b5f09b116889da21",
       "file": "contracts/Sentinel.py",
@@ -18,9 +63,12 @@
       ],
       "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
       "deployed_at": "2026-10-08T14:47:53.168Z",
-      "mode": "CANONICAL"
+      "mode": "CANONICAL",
+      "superseded_by": "0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D",
+      "why": "attack round 1 fixes (v2.0.1)"
     },
-    "SentinelDemo": {
+    {
+      "name": "SentinelDemo",
       "address": "0x0396d725d4a8D4F4E2BAC4Df1bc0BB80cbbC8e29",
       "deploy_tx": "0x70fde662d4593312e8eead0851c5cdda0d01f60903b5af32022d03b5fa4e37bd",
       "file": "contracts/Sentinel.py",
@@ -32,9 +80,12 @@
       ],
       "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
       "deployed_at": "2026-10-08T14:48:03.719Z",
-      "mode": "DEMO"
+      "mode": "DEMO",
+      "superseded_by": "0xc128B02839a6668ff9d9689214986864821CdC0b",
+      "why": "attack round 1 fixes (v2.0.1)"
     },
-    "SentinelConsumer": {
+    {
+      "name": "SentinelConsumer",
       "address": "0x02B793C1603fAa78997De8Cf2C6F370f205bDF83",
       "deploy_tx": "0xd7218bb590befdd49a8ba6f521167add4f710b2b8a82a2f364b06ab44df089a0",
       "file": "contracts/SentinelConsumer.py",
@@ -46,8 +97,60 @@
       ],
       "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
       "deployed_at": "2026-10-08T14:48:12.833Z",
-      "reads": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2"
+      "reads": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2",
+      "superseded_by": "0xCcCc4495705bD11D47c2Cb0F719cD3B1630dc4b2",
+      "why": "attack round 1 fixes (v2.0.1)"
+    },
+    {
+      "name": "Sentinel",
+      "address": "0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D",
+      "deploy_tx": "0x65aea91b5618c3f638f52a202af190ec18e56ece1f46597f6e139c9914fe8e32",
+      "file": "contracts/Sentinel.py",
+      "commit": "eae94e5af97161630ae6574305f428599c2505b0",
+      "bytes": 114911,
+      "sha256": "e885df290f3265aa7581b6378dce6f104d8533637ef329d6b2e4a17747850508",
+      "constructor_args": [
+        "CANONICAL"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:18:20.162Z",
+      "mode": "CANONICAL",
+      "superseded_by": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90",
+      "why": "attack round 2 fix (v2.0.2)"
+    },
+    {
+      "name": "SentinelDemo",
+      "address": "0xc128B02839a6668ff9d9689214986864821CdC0b",
+      "deploy_tx": "0x16c0306b20a07cf521432a7f4fc4b862915dde1f8c384a1ae3e32b3b001fec6d",
+      "file": "contracts/Sentinel.py",
+      "commit": "eae94e5af97161630ae6574305f428599c2505b0",
+      "bytes": 114911,
+      "sha256": "e885df290f3265aa7581b6378dce6f104d8533637ef329d6b2e4a17747850508",
+      "constructor_args": [
+        "DEMO"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:18:28.630Z",
+      "mode": "DEMO",
+      "superseded_by": "0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393",
+      "why": "attack round 2 fix (v2.0.2)"
+    },
+    {
+      "name": "SentinelConsumer",
+      "address": "0xCcCc4495705bD11D47c2Cb0F719cD3B1630dc4b2",
+      "deploy_tx": "0x7e2523f78cba450c60a33167bb2055fdfaa0da2371e278c095b198c360ada206",
+      "file": "contracts/SentinelConsumer.py",
+      "commit": "eae94e5af97161630ae6574305f428599c2505b0",
+      "bytes": 4757,
+      "sha256": "f67d0989e39466e04d69b2680f5d99f55c826c4e410b55085ea007c043ca1a64",
+      "constructor_args": [
+        "0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:18:34.850Z",
+      "reads": "0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D",
+      "superseded_by": "0x02F421486a6de07c3D2cF624576ED7ecDFe711e5",
+      "why": "attack round 2 fix (v2.0.2)"
     }
-  },
-  "superseded": []
+  ]
 }
