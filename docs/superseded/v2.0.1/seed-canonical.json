@@ -1,0 +1,121 @@
+{
+  "contract": "0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D",
+  "started_at": "2026-10-08T18:18:57.958Z",
+  "agents": {
+    "e1": {
+      "agent_id": 0,
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "start_block": 26149425,
+      "registered_at": 1791483544,
+      "register_tx": "0xbdb25224dff1322ba274a35a0c728f3cb8d6e37cc25cb74f5251ee57d38fc36f",
+      "lint": {}
+    },
+    "e2": {
+      "agent_id": 1,
+      "chain": "ethereum",
+      "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+      "start_block": 26149427,
+      "registered_at": 1791483558,
+      "register_tx": "0x93670e66b2ee7c4e24cd21a54878d59b0980f3d0a945b19b8a495d6e4b2cf906",
+      "lint": {}
+    },
+    "e3": {
+      "agent_id": 2,
+      "chain": "ethereum",
+      "wallet": "0x21a31ee1afc51d94c2efccaa2092ad1028285549",
+      "start_block": 26149428,
+      "registered_at": 1791483666,
+      "register_tx": "0xf931ad03b55ac45050c7aca4b34cd78d4985143516cbbd4c26c7e28f7cf8b150",
+      "lint": {}
+    },
+    "arb": {
+      "agent_id": 3,
+      "chain": "arbitrum",
+      "wallet": "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32",
+      "start_block": 512962582,
+      "registered_at": 1791483683,
+      "register_tx": "0xfef426a38fd5b6b07fbca24371c47b83d2e19597a1c8512d00af59b2e2f073e1",
+      "lint": {}
+    },
+    "poly": {
+      "agent_id": 4,
+      "chain": "polygon",
+      "wallet": "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32",
+      "start_block": 95185659,
+      "registered_at": 1791483699,
+      "register_tx": "0xca3a26088f1b3f75fb6d9bd1546627875919af412c626acf36b0ddcfc89ee307",
+      "lint": {}
+    },
+    "base": {
+      "agent_id": 5,
+      "chain": "base",
+      "wallet": "0x1d7f97d26ae2c01f9b01fc252b73cf0db3397e95",
+      "start_block": 52347181,
+      "registered_at": 1791483715,
+      "register_tx": "0x31318bba772bf9bc5ebc8e0aec562d433c78e0e5cd273ea194a8673aa51c88b9",
+      "lint": {}
+    },
+    "rh": {
+      "agent_id": 6,
+      "chain": "robinhood",
+      "wallet": "0x119a94d53df9cc78b4167f30756b64aa62505baf",
+      "start_block": 83520957,
+      "registered_at": 1791483730,
+      "register_tx": "0xe51f5d03491fb6122b62446d99e97f337cdbbfbdb9cbe643369b03d0c25ef20b",
+      "lint": {}
+    }
+  },
+  "cases": {},
+  "events": [
+    {
+      "at": "2026-10-08T18:19:14.378Z",
+      "kind": "registered",
+      "key": "e1",
+      "agent_id": 0,
+      "tx": "0xbdb25224dff1322ba274a35a0c728f3cb8d6e37cc25cb74f5251ee57d38fc36f"
+    },
+    {
+      "at": "2026-10-08T18:19:29.392Z",
+      "kind": "registered",
+      "key": "e2",
+      "agent_id": 1,
+      "tx": "0x93670e66b2ee7c4e24cd21a54878d59b0980f3d0a945b19b8a495d6e4b2cf906"
+    },
+    {
+      "at": "2026-10-08T18:21:19.199Z",
+      "kind": "registered",
+      "key": "e3",
+      "agent_id": 2,
+      "tx": "0xf931ad03b55ac45050c7aca4b34cd78d4985143516cbbd4c26c7e28f7cf8b150"
+    },
+    {
+      "at": "2026-10-08T18:21:34.381Z",
+      "kind": "registered",
+      "key": "arb",
+      "agent_id": 3,
+      "tx": "0xfef426a38fd5b6b07fbca24371c47b83d2e19597a1c8512d00af59b2e2f073e1"
+    },
+    {
+      "at": "2026-10-08T18:21:50.221Z",
+      "kind": "registered",
+      "key": "poly",
+      "agent_id": 4,
+      "tx": "0xca3a26088f1b3f75fb6d9bd1546627875919af412c626acf36b0ddcfc89ee307"
+    },
+    {
+      "at": "2026-10-08T18:22:05.541Z",
+      "kind": "registered",
+      "key": "base",
+      "agent_id": 5,
+      "tx": "0x31318bba772bf9bc5ebc8e0aec562d433c78e0e5cd273ea194a8673aa51c88b9"
+    },
+    {
+      "at": "2026-10-08T18:22:20.330Z",
+      "kind": "registered",
+      "key": "rh",
+      "agent_id": 6,
+      "tx": "0xe51f5d03491fb6122b62446d99e97f337cdbbfbdb9cbe643369b03d0c25ef20b"
+    }
+  ]
+}
