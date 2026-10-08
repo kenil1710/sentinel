@@ -19,27 +19,38 @@ const docs = JSON.parse(readFileSync(root + "test/fixtures/blockscout.json", "ut
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log("ok", name); };
 
-const py = (doc) => execFileSync("python3", ["-c", `
+const py = (doc, wallet) => execFileSync("python3", ["-c", `
 import sys, json
 sys.path.insert(0, "${root}test")
 import fixtures as F
-print(F.C._tx_kind(F.C._core(json.loads(sys.stdin.read()))))`], { input: JSON.stringify(doc) }).toString().trim();
+print(F.C._tx_kind(F.C._core(json.loads(sys.stdin.read())), "${wallet}"))`], { input: JSON.stringify(doc) }).toString().trim();
 
 for (const name of ["uniswap_swap_eth", "arbitrum_tx", "payout_batch_eth"]) {
-  t(`kind parity on ${name}`, () => {
-    const doc = JSON.parse(docs[name].body);
-    assert.equal(kindOfDoc(doc), py(doc));
-  });
+  const doc = JSON.parse(docs[name].body);
+  const sender = String(doc.from.hash).toLowerCase();
+  const recipient = String((doc.token_transfers?.[0]?.to?.hash) ?? "0x" + "0".repeat(40)).toLowerCase();
+  for (const w of [sender, recipient]) {
+    t(`kind parity on ${name} for ${w.slice(0, 10)}`, () => assert.equal(kindOfDoc(doc, w), py(doc, w)));
+  }
 }
 t("kind parity on a plain value transfer", () => {
   const doc = { hash: "0x" + "1".repeat(64), to: { hash: "0xAbC0000000000000000000000000000000000001" }, raw_input: "0x", value: "600000000000000000", token_transfers: [] };
-  assert.equal(kindOfDoc(doc), py(doc));
-  assert.equal(kindOfDoc(doc), "send:0xabc0000000000000000000000000000000000001:0x::lt1");
+  assert.equal(kindOfDoc(doc, "0x" + "2".repeat(40)), py(doc, "0x" + "2".repeat(40)));
+  assert.equal(kindOfDoc(doc, "0x" + "2".repeat(40)), "send:0xabc0000000000000000000000000000000000001:0x::lt1");
+});
+t("the same tokens sent and received are different kinds", () => {
+  const base = { to: "0xr", created: "", rawInput: "0xa9059cbb", value: "0" };
+  const out = txKind({ ...base, transfers: [{ token: "0xT", from: "0xW", to: "0xX" }] }, "0xw");
+  const inn = txKind({ ...base, transfers: [{ token: "0xT", from: "0xX", to: "0xW" }] }, "0xw");
+  assert.notEqual(out, inn);
+  assert.equal(out, "call:0xr:0xa9059cbb:out:0xt:0");
 });
 t("value buckets", () => {
   assert.deepEqual(["0", "1", "10000000000000000", "999999999999999999", "1000000000000000000", "10000000000000000000"].map(valueBucket),
     ["0", "lt0.01", "lt0.1", "lt1", "lt10", "ge10"]);
-  assert.equal(txKind({ to: "", created: "0xC", rawInput: "0x60806040", value: "0", tokens: ["0xB", "0xa", "0xb"] }), "call:0xc:0x60806040:0xa,0xb:0");
+  assert.equal(txKind({ to: "", created: "0xC", rawInput: "0x60806040", value: "0",
+    transfers: [{ token: "0xB", from: "0x1", to: "0x2" }, { token: "0xa", from: "0x1", to: "0x2" }, { token: "0xb", from: "0x1", to: "0x2" }] }, "0x9"),
+    "call:0xc:0x60806040:via:0xa,via:0xb:0");
 });
 
 const W = "0x28c6c06298d514db089934071355e5743bf21d60";

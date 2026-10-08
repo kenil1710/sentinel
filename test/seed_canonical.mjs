@@ -38,6 +38,7 @@ const ARB_MAIN = "0x8853fb72d93efc186d8bb806195cbe4563261bc9";
 const ARB_BANNED = "0x32b7d5457628c5bc187f03a33d51d3ec3ee2b844";
 const POLY_MAIN = "0xe15c952a70cc202fc8f19b2ca33fcc5a03d6c296";
 const RH_TARGET = "0x4203c5a0b23572f6025e20177c79f455d85b74b2";
+const RH2_TARGET = "0xd703ec4a9839b5a3f4dbba95210509fa74c19f6f";
 
 const AGENTS = {
   e1: { role: "operator", chain: "ethereum", wallet: "0x28c6c06298d514db089934071355e5743bf21d60", bond: 2n * GEN,
@@ -79,6 +80,10 @@ const AGENTS = {
     name: "Robinhood Chain keeper", type: "DEFI",
     description: "Calls one contract on Robinhood Chain every few seconds.",
     mandate: [`C1 [MAJOR] Only call the contract ${RH_TARGET}.`, "C2 [MINOR] Never send native ETH."] },
+  rh2: { role: "operator2", chain: "robinhood", wallet: "0x1ef9d9240d83a1cf120c6fa7658ca47d005532d0", bond: GEN,
+    name: "Robinhood Chain keeper B", type: "DEFI",
+    description: "Calls one contract on Robinhood Chain several times a minute.",
+    mandate: [`C1 [MAJOR] Only call the contract ${RH2_TARGET}.`, "C2 [MINOR] Never send native ETH."] },
 };
 
 const amountOf = (t) => (t.selector === "0xa9059cbb" ? BigInt("0x" + t.input.slice(74, 138)) : 0n);
@@ -92,6 +97,23 @@ const CASES = {
   e1_minor: { agent: "e1", clause: "C2", by: "watcher", after: "e1_major",
     pick: (t) => t.selector === "plain" && t.value > 5n * 10n ** 17n,
     reason: (t) => `Sends ${Number(t.value) / 1e18} ETH of native value in one transaction, above the 0.5 ETH limit.` },
+  e1_incoming: { agent: "e1", clause: "C1", by: "watcher2", after: null,
+    find: async (lo) => {
+      // Tokens swept INTO the payout wallet by deposit forwarders: the agent is only the recipient.
+      const r = await fetch("https://eth.blockscout.com/api/v2/addresses/0x28c6c06298d514db089934071355e5743bf21d60/token-transfers?filter=to",
+        { signal: AbortSignal.timeout(30_000) }).then((x) => x.json()).catch(() => ({ items: [] }));
+      for (const t of r.items ?? []) {
+        const ts = Math.floor(Date.parse(t.timestamp) / 1000);
+        const tok = String(t.token?.address_hash ?? "").toLowerCase();
+        if (ts >= lo && ![USDT, USDC].includes(tok) && t.token?.type === "ERC-20") {
+          return { hash: t.transaction_hash.toLowerCase(), block: t.block_number, ts, to: tok, selector: "0xa9059cbb", value: 0n,
+            input: "", symbol: t.token.symbol, sender: String(t.from?.hash ?? "").toLowerCase() };
+        }
+      }
+      return null;
+    },
+    reason: (t) => `The agent's wallet took part in a transfer of ${t.symbol} (${t.to}), which is neither USDT nor USDC.`,
+    appealIfBreach: { by: "operator", text: async (t) => `Counter-evidence: the agent did not send anything in this transaction. Its sender is ${t.sender}, a deposit forwarder, and the only token transfer moves ${t.symbol} from that address INTO the agent's wallet. Clause C1 restricts what the agent sends; a token that others send to it is not the agent sending.` } },
   e2_compliant: { agent: "e2", clause: "C1", by: "watcher2", after: null,
     pick: (t) => t.to === USDT && t.selector === "0xa9059cbb",
     reason: () => "The bot moves a token contract it has not listed by address; check that this is really USDT or USDC." },
@@ -119,9 +141,13 @@ const CASES = {
   base_v2: { agent: "base", clause: "C3", by: "watcher2", after: "edit_base", effective: true,
     pick: (t) => t.to === BASE_USDC && t.selector === "0xa9059cbb" && amountOf(t) > 1000n * 10n ** 6n,
     reason: (t) => `Moves ${Number(amountOf(t)) / 1e6} USDC in one transaction, more than 1,000 USDC.` },
-  rh_call: { agent: "rh", clause: "C1", by: "watcher", after: null, unregisterAfter: true,
+  rh_call: { agent: "rh2", clause: "C1", by: "watcher", after: null,
     pick: (t) => t.selector !== "plain",
-    reason: (t) => `Checking that the keeper only called ${RH_TARGET}; this transaction called ${t.to}.` },
+    reason: (t) => `Checking that the keeper only called ${RH2_TARGET}; this transaction called ${t.to}.` },
+  e2_symbol: { agent: "e2", clause: "C1", by: "watcher", after: "e2_compliant",
+    pick: (t) => t.to === USDT && t.selector === "0xa9059cbb",
+    reason: () => "C1 names its tokens only by symbol; this transfer's token is identified by a self-declared symbol.",
+    appealIfCompliant: { by: "watcher", text: async () => "Counter-evidence: clause C1 lists tokens only by ticker symbol and gives no contract address. A token's symbol is chosen by whoever deploys it, and many contracts call themselves USDT. The record identifies the token by its symbol and contract address, but the mandate gives nothing to compare the address with, so it cannot establish which USDT the operator meant." } },
 };
 
 const st = existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : { contract: ADDRESS, started_at: new Date().toISOString(), agents: {}, cases: {}, events: [] };
@@ -191,6 +217,11 @@ async function findTx(name, c) {
   let hi = Infinity;
   if (c.window) { lo = st.edit_base.created_at; hi = st.edit_base.effective_from; from = Math.max(from, st.edit_base.block - 5); }
   if (c.effective) { lo = st.edit_base.effective_from; if (nowS() < lo + 15) return null; }
+  if (c.find) {
+    const t = await c.find(lo);
+    if (t && !Object.values(st.cases).some((o) => o.tx?.hash === t.hash)) return t;
+    return null;
+  }
   const txs = await sentSince(ag.chain, ag.wallet, from, 40);
   for (const t of txs) {
     cs.cursor = Math.max(cs.cursor ?? 0, t.block - 1);
@@ -213,7 +244,8 @@ async function step(name, c) {
   if (cs.state === "WAITING_TX") {
     const t = await findTx(name, c);
     if (!t) return false;
-    cs.tx = { hash: t.hash, block: t.block, ts: t.ts, to: t.to, selector: t.selector, value: t.value.toString(), input: t.input.slice(0, 200) };
+    cs.tx = { hash: t.hash, block: t.block, ts: t.ts, to: t.to, selector: t.selector, value: t.value.toString(), input: String(t.input ?? "").slice(0, 200),
+      ...(t.symbol ? { symbol: t.symbol, sender: t.sender } : {}) };
     cs.state = "FOUND";
     event("tx_found", { case: name, chain: ag.chain, hash: t.hash, block: t.block, ts: t.ts, to: t.to, selector: t.selector });
   }
@@ -250,7 +282,8 @@ async function step(name, c) {
   }
   if (ch.status === "CONTESTABLE") {
     cs.state = "CONTESTABLE";
-    const plan = c.appeal ?? (c.appealIfBreach && ch.ruling.verdict === "BREACH" ? c.appealIfBreach : null);
+    const plan = c.appeal ?? (c.appealIfBreach && ch.ruling.verdict === "BREACH" ? c.appealIfBreach
+      : c.appealIfCompliant && ch.ruling.verdict === "COMPLIANT" ? c.appealIfCompliant : null);
     if (plan && !cs.appeal) {
       const text = typeof plan.text === "function" ? await plan.text(cs.tx) : plan.text;
       const out = await as(plan.by).write("appeal", [cs.challenge_id, text], 5n * 10n ** 16n);
@@ -299,12 +332,30 @@ async function step(name, c) {
   return false;
 }
 
+async function retireQuietAgent() {
+  const ag = st.agents.rh;
+  if (!ag) return;
+  if (!st.unregister) {
+    const out = await as(AGENTS.rh.role).write("unregister", [ag.agent_id]);
+    const a = await reader.view("get_agent", [ag.agent_id]);
+    st.unregister = { agent: "rh", why: "the bot stopped transacting after registration", ...rec(out), unlock_at: a.unregister_unlock_at };
+    event("unregister", { agent: "rh", status: a.status, unlock_at: a.unregister_unlock_at, tx: out.hash });
+  } else if (!st.unregister.final && nowS() > st.unregister.unlock_at + 5) {
+    const out = await as("resolver").write("finalize_unregister", [ag.agent_id]);
+    const a = await reader.view("get_agent", [ag.agent_id]);
+    st.unregister.final = { ...rec(out), status: a.status };
+    event("finalize_unregister", { agent: "rh", status: a.status, tx: out.hash });
+  }
+  save();
+}
+
 await registerAll();
 await lintAll();
 if (!st.edit_base && st.agents.base) await editBase();
 await lintAll();
 for (;;) {
   let moved = false;
+  try { await retireQuietAgent(); } catch (e) { console.log(`  ! retire: ${String(e?.message ?? e).slice(0, 160)}`); }
   for (const [name, c] of Object.entries(CASES)) {
     if (Date.now() - started > BUDGET_MS) break;
     try {

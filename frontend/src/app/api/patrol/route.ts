@@ -201,7 +201,7 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
       const known = await view<{ challenged: boolean; challenge_id?: number }>("is_tx_challenged", [agent.chain, t.hash, agent.agent_id]).catch(() => ({ challenged: false }));
       if (known.challenged) { row.skipped_already_challenged++; continue; }
       // C. precedents, for every flag that may defer to one.
-      const kind = doc ? kindOfDoc(doc) : "";
+      const kind = doc ? kindOfDoc(doc, agent.wallet) : "";
       const live: typeof flags = [];
       for (const f of flags) {
         if (f.precedentEligible && kind) {

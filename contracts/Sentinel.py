@@ -58,7 +58,7 @@ import json
 #   6. No value is pushed except by claim(); everything else is a pull balance.
 #   7. str.replace() is rejected by the runner; slice around find() instead.
 
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 
 # ── Modes ────────────────────────────────────────────────────────────────────
 # CANONICAL is the deployment the register lives on. DEMO is the same code with
@@ -658,16 +658,22 @@ def _value_bucket(wei) -> str:
 	return "ge10"
 
 
-def _tx_kind(core: dict) -> str:
-	"""What KIND of transaction this is, computed from immutable facts only:
-	counterparty, function selector, the set of tokens moved and a coarse
-	native-value bucket. A precedent covers exactly this kind. The patrol bot
-	computes the same string from the same fields (frontend/src/lib/kind.ts)."""
+def _tx_kind(core: dict, wallet: str) -> str:
+	"""What KIND of transaction this is for this agent, from immutable facts
+	only: counterparty, function selector, each token moved with its direction
+	relative to the agent's wallet (out / in / via), and a coarse native-value
+	bucket. A precedent covers exactly this kind. The patrol bot computes the
+	same string from the same fields (frontend/src/lib/kind.ts)."""
+	w = str(wallet).lower()
 	tokens = []
 	for t in core.get("transfers") or []:
 		a = str(t[0])
-		if a and a not in tokens:
-			tokens.append(a)
+		if not a:
+			continue
+		way = "out" if t[1] == w else ("in" if t[2] == w else "via")
+		entry = way + ":" + a
+		if entry not in tokens:
+			tokens.append(entry)
 	tokens.sort()
 	sel = str(core.get("selector") or "0x")
 	kind = "call" if len(sel) >= 10 else "send"
@@ -707,41 +713,58 @@ def _label_node(o) -> dict:
 		"is_scam": bool(o.get("is_scam", False)), "tags": names[:8]}
 
 
-def _render_evidence(doc: dict, core: dict) -> str:
-	"""Plain lines for the model, in two sections: what the chain says, and the
-	explorer's own labels, which are third-party and can change."""
+def _render_facts(core: dict) -> str:
+	"""The immutable facts as text, rendered from the core alone, so every
+	validator that agreed on the digest produces this exact string - which is
+	what makes the stored record checkable rather than the leader's word."""
 	lines = ["ON-CHAIN FACTS (immutable):"]
 	lines.append("transaction: " + core["hash"])
 	lines.append("status: " + ("succeeded" if core["status"] == "ok" else "failed"))
-	lines.append("block: " + str(core["block"]) + "   unix time: " + str(core["ts"])
-		+ "   (" + str(doc.get("timestamp") or "") + ")")
+	lines.append("block: " + str(core["block"]) + "   unix time: " + str(core["ts"]))
 	lines.append("sender: " + core["from"])
 	lines.append("recipient: " + (core["to"] or ("(contract creation) " + core["created"])))
 	lines.append("native value sent: " + _wei_text(core["value"]) + " (chain native units)")
 	lines.append("function selector: " + core["selector"])
-	decoded = doc.get("decoded_input") or {}
-	if decoded.get("method_call"):
-		lines.append("decoded call (explorer ABI): " + str(decoded.get("method_call"))[:200])
-	toks = {}
-	for t in (doc.get("token_transfers") or []):
-		if isinstance(t, dict):
-			tk = t.get("token") or {}
-			toks[str(tk.get("address_hash") or tk.get("address") or "").lower()] = (
-				tk.get("symbol"), (t.get("total") or {}).get("decimals"))
 	transfers = core["transfers"]
 	if not transfers:
 		lines.append("token transfers: none")
 	else:
-		lines.append("token transfers (" + str(len(transfers)) + "):")
+		lines.append("token transfers (" + str(len(transfers)) + "), raw integer amounts:")
 		for t in transfers[:MAX_TRANSFERS_SHOWN]:
-			sym, dec = toks.get(t[0], ("?", 18))
-			lines.append("  - " + _units_text(t[3], dec) + " " + str(sym or "?")
-				+ " (token contract " + t[0] + ") from " + t[1] + " to " + t[2])
+			lines.append("  - " + t[3] + " of token contract " + t[0] + " from " + t[1] + " to " + t[2])
 		if len(transfers) > MAX_TRANSFERS_SHOWN:
 			lines.append("  - ... and " + str(len(transfers) - MAX_TRANSFERS_SHOWN) + " more")
+	return "\n".join(lines)
+
+
+def _render_labels(doc: dict, core: dict) -> str:
+	"""What the explorer says ABOUT the transaction: token symbols and decimals
+	(so raw amounts can be read), the decoded call, names, tags, verification.
+	Third-party, mutable, and not compared between validators."""
+	lines = ["EXPLORER LABELS (third-party; can change; not on-chain):"]
+	decoded = doc.get("decoded_input") or {}
+	if decoded.get("method_call"):
+		lines.append("decoded call: " + str(decoded.get("method_call"))[:200])
+	seen = {}
+	for t in (doc.get("token_transfers") or []):
+		if not isinstance(t, dict):
+			continue
+		tk = t.get("token") or {}
+		a = str(tk.get("address_hash") or tk.get("address") or "").lower()
+		if a and a not in seen:
+			seen[a] = True
+			lines.append("token " + a + " is labelled " + str(tk.get("symbol") or "?")
+				+ " with " + str((t.get("total") or {}).get("decimals") or "?") + " decimals")
+	for t in core["transfers"][:MAX_TRANSFERS_SHOWN]:
+		for x in (doc.get("token_transfers") or []):
+			if not isinstance(x, dict):
+				continue
+			tk = x.get("token") or {}
+			if str(tk.get("address_hash") or tk.get("address") or "").lower() == t[0] and str((x.get("total") or {}).get("value") or "0") == t[3]:
+				lines.append("  so " + t[3] + " raw = " + _units_text(t[3], (x.get("total") or {}).get("decimals"))
+					+ " " + str(tk.get("symbol") or "?"))
+				break
 	to = _label_node(doc.get("to"))
-	lines.append("")
-	lines.append("EXPLORER METADATA (labels the explorer attaches; they can change and are not on-chain):")
 	if to.get("name"):
 		lines.append("recipient labelled: " + str(to["name"]))
 	lines.append("recipient is a contract: " + ("yes" if to["is_contract"] else "no"))
@@ -935,10 +958,10 @@ def _judge(chain: str, wallet: str, clauses: list, flags: list, alleged: str, tx
 	"""Fetch, bind, judge. No `self`, so it runs identically on the leader and
 	on every validator, and offline. The gates run in this order, all in code,
 	before the model sees anything."""
-	def done(verdict, code, reasoning, digest="", kind="", evidence="", flagged=False,
+	def done(verdict, code, reasoning, digest="", kind="", facts="", labels="", flagged=False,
 			clause="", severity="", quote=""):
 		return {"verdict": verdict, "code": code, "reasoning": reasoning, "digest": digest,
-			"kind": kind, "evidence": evidence, "flagged": flagged, "clause": clause,
+			"kind": kind, "facts": facts, "labels": labels, "flagged": flagged, "clause": clause,
 			"severity": severity, "quote": quote}
 
 	url = _tx_url(chain, tx_hash)
@@ -968,7 +991,7 @@ def _judge(chain: str, wallet: str, clauses: list, flags: list, alleged: str, tx
 	if gap:
 		return done(V_INCONCLUSIVE, "PARTIAL_DATA", "Not judged: " + gap + ". Partial data is never decided either way.")
 	digest = _digest(core)
-	kind = _tx_kind(core)
+	kind = _tx_kind(core, wallet)
 	if expect_digest and digest != expect_digest:
 		# The immutable facts read now differ from the ones the provisional
 		# ruling was made on: a replica behind the others. Wait, decide nothing.
@@ -982,7 +1005,9 @@ def _judge(chain: str, wallet: str, clauses: list, flags: list, alleged: str, tx
 	if bind:
 		return done(V_INCONCLUSIVE, "NOT_AGENT_TX",
 			"Dismissed before the mandate was read: " + bind + ".", digest, kind)
-	evidence = _defang(_render_evidence(doc, core))[:MAX_EVIDENCE_CHARS]
+	facts = _defang(_render_facts(core))[:MAX_EVIDENCE_CHARS]
+	labels = _defang(_render_labels(doc, core))[:MAX_EVIDENCE_CHARS]
+	evidence = facts + "\n\n" + labels
 	safe_reason = _defang(reason)[:MAX_REASON_CHARS]
 	safe_appeal = _defang(appeal_text)[:MAX_APPEAL_CHARS]
 	flagged = (_injection_seen(evidence) or _injection_seen(safe_reason)
@@ -990,7 +1015,7 @@ def _judge(chain: str, wallet: str, clauses: list, flags: list, alleged: str, tx
 	answer = _ask(_judge_prompt(chain, wallet, clauses, alleged, safe_reason, evidence,
 		safe_appeal, appeal_role, prior))
 	d = _decide(answer, clauses, flags)
-	return done(d["verdict"], d["code"], d["reasoning"], digest, kind, evidence, flagged,
+	return done(d["verdict"], d["code"], d["reasoning"], digest, kind, facts, labels, flagged,
 		d["clause"], d["severity"], d["quote"])
 
 
@@ -1016,7 +1041,7 @@ def _leader_shape_ok(data, clauses: list, flags: list) -> bool:
 	v = str(data.get("verdict", ""))
 	if v == V_RETRY:
 		return True
-	if len(str(data.get("evidence", ""))) > MAX_EVIDENCE_CHARS:
+	if len(str(data.get("facts", ""))) > MAX_EVIDENCE_CHARS or len(str(data.get("labels", ""))) > MAX_EVIDENCE_CHARS:
 		return False
 	if len(str(data.get("reasoning", ""))) > MAX_REASONING_CHARS:
 		return False
@@ -1167,7 +1192,8 @@ class Challenge:
 	reasoning: str
 	digest: str
 	tx_kind: str
-	evidence: str
+	evidence: str             # the immutable facts, identical for every agreeing validator
+	labels: str               # the leader's explorer labels: display only, never compared
 	injection_flagged: bool
 	ruled_at: u64
 	contest_deadline: u64
@@ -1229,6 +1255,9 @@ class Sentinel(gl.contract.Contract):
 	live_at: gl.storage.TreeMap[u32, u32]
 	next_agent_id: u32
 	wallet_claimed: gl.storage.TreeMap[str, u32]
+	# "<chain>:<wallet>" -> every agent id ever registered for it, so a record
+	# survives unregistering and registering the same wallet again.
+	wallet_agents: gl.storage.TreeMap[str, gl.storage.DynArray[u32]]
 	operator_agents: gl.storage.TreeMap[str, gl.storage.DynArray[u32]]
 	versions: gl.storage.TreeMap[str, MandateVersion]
 
@@ -1378,6 +1407,20 @@ class Sentinel(gl.contract.Contract):
 		elif str(agent.status) == AG_PAUSED and int(new_bond) >= MIN_BOND:
 			agent.status = AG_ACTIVE
 
+	def _earlier(self, a) -> list:
+		"""Earlier registrations of the same wallet on the same chain."""
+		bucket = self.wallet_agents.get(str(a.chain) + ":" + str(a.wallet))
+		out = []
+		for x in ([int(i) for i in bucket] if bucket is not None else []):
+			if x < int(a.agent_id):
+				e = self.agents.get(u32(x))
+				if e is not None:
+					out.append(e)
+		return out
+
+	def _breaches(self, a) -> int:
+		return int(a.breaches_minor) + int(a.breaches_major) + int(a.breaches_critical)
+
 	def _tx_key(self, chain: str, tx: str, aid: int) -> str:
 		return str(chain) + ":" + str(tx) + ":" + str(int(aid))
 
@@ -1481,6 +1524,7 @@ class Sentinel(gl.contract.Contract):
 		self.agent_ids.append(u32(aid))
 		self._live_add(aid)
 		self.wallet_claimed[c + ":" + w] = u32(aid + 1)
+		self.wallet_agents.get_or_insert_default(c + ":" + w).append(u32(aid))
 		self.operator_agents.get_or_insert_default(sender).append(u32(aid))
 		return json.dumps({"ok": True, "agent_id": aid, "chain": c, "wallet": w,
 			"bond": str(value), "version": 1, "mandate_hash": _sha(canonical),
@@ -1639,7 +1683,9 @@ class Sentinel(gl.contract.Contract):
 		cid = int(self.next_challenge_id)
 		self.next_challenge_id = u32(cid + 1)
 		self._receive(value)
-		prior = int(agent.breaches_minor) + int(agent.breaches_major) + int(agent.breaches_critical)
+		prior = self._breaches(agent)
+		for e in self._earlier(agent):
+			prior += self._breaches(e)
 		mult = _multiplier_bps(prior, int(mv.repeat_step), int(mv.repeat_cap))
 		self.challenges[u32(cid)] = Challenge(
 			challenge_id=u32(cid), agent_id=u32(int(agent.agent_id)), challenger=gl.message.sender_address,
@@ -1654,7 +1700,7 @@ class Sentinel(gl.contract.Contract):
 			appeal_resolve_window=u64(int(self.appeal_resolve_window)),
 			filed_at=u64(now), resolve_deadline=u64(now + int(self.resolve_window)),
 			status=ST_PENDING, verdict="", clause="", severity="", quote="", code="", reasoning="",
-			digest="", tx_kind="", evidence="", injection_flagged=False, ruled_at=u64(0),
+			digest="", tx_kind="", evidence="", labels="", injection_flagged=False, ruled_at=u64(0),
 			contest_deadline=u64(0), appellant=Address(ZERO_ADDRESS), appeal_role="", appeal_text="",
 			appeal_stake=u256(0), appealed_at=u64(0), appeal_deadline=u64(0), appeal_verdict="",
 			appeal_clause="", appeal_severity="", appeal_quote="", appeal_code="", appeal_reasoning="",
@@ -1704,7 +1750,9 @@ class Sentinel(gl.contract.Contract):
 				return False
 			mine = _judge(chain_s, wallet_s, clauses, flags, alleged, tx_s, ts, reason_s,
 				a_text, a_role, prior_s, exp)
-			return _axis(mine) == theirs
+			# The stored facts must be exactly the ones this validator rendered from
+			# the immutable core it agreed on; only the labels are the leader's.
+			return _axis(mine) == theirs and str(mine.get("facts", "")) == str(data.get("facts", ""))
 
 		return gl.vm.run_nondet(leader_fn, validator_fn)
 
@@ -1735,7 +1783,8 @@ class Sentinel(gl.contract.Contract):
 		ch.reasoning = str(result.get("reasoning", ""))[:MAX_REASONING_CHARS]
 		ch.digest = str(result.get("digest", ""))[:64]
 		ch.tx_kind = str(result.get("kind", ""))[:600]
-		ch.evidence = str(result.get("evidence", ""))[:MAX_EVIDENCE_CHARS]
+		ch.evidence = str(result.get("facts", ""))[:MAX_EVIDENCE_CHARS]
+		ch.labels = str(result.get("labels", ""))[:MAX_EVIDENCE_CHARS]
 		ch.injection_flagged = bool(result.get("flagged", False))
 		ch.ruled_at = u64(now)
 		if verdict in (V_BREACH, V_COMPLIANT):
@@ -1981,18 +2030,25 @@ class Sentinel(gl.contract.Contract):
 			self._credit(challenger, stake)
 			ch.to_challenger = u256(stake)
 			agent.inconclusive_count = u32(int(agent.inconclusive_count) + 1)
+			if how == "STALLED":
+				# Nothing was judged, so nothing was decided: the transaction goes
+				# back to the world. Otherwise letting a challenge stall would buy
+				# a permanent immunity for the price of a refundable stake.
+				self.tx_claimed[self._tx_key(str(ch.chain), str(ch.tx_hash), int(ch.agent_id))] = u32(0)
 			self.count_inconclusive = u32(int(self.count_inconclusive) + 1)
 			self.watcher_void[challenger] = u32(int(self.watcher_void.get(challenger, u32(0))) + 1)
 
 	def _maybe_precedent(self, ch, agent, how: str, now: int) -> None:
 		"""Only a FINAL COMPLIANT whose PROVISIONAL ruling was already COMPLIANT
-		becomes a precedent: unappealed, or confirmed against the challenger's
-		appeal. A COMPLIANT the operator won on appeal never does, a provisional
+		becomes a precedent: unappealed, or confirmed by a fresh panel against
+		the challenger's appeal. A COMPLIANT the operator won on appeal never does, a provisional
 		ruling never does, and neither does one reached on evidence that carried
 		an injection marker."""
 		if str(ch.verdict) != V_COMPLIANT:
 			return
-		if how not in ("UNAPPEALED", "APPEAL_CHALLENGER", "APPEAL_EXPIRED"):
+		if how not in ("UNAPPEALED", "APPEAL_CHALLENGER"):
+			# A ruling the challenger disputed and no panel re-examined
+			# (APPEAL_EXPIRED) teaches the patrol nothing.
 			return
 		if bool(ch.injection_flagged) or not str(ch.tx_kind):
 			return
@@ -2208,7 +2264,10 @@ class Sentinel(gl.contract.Contract):
 			"open_count": int(a.open_count), "challenge_count": int(a.challenge_count),
 			"withdraw_amount": str(int(a.withdraw_amount)), "withdraw_unlock_at": int(a.withdraw_unlock_at),
 			"unregister_unlock_at": int(a.unregister_unlock_at), "last_checked": int(a.last_checked),
-			"track_record": self._track(a), "standing": self._standing(a)}
+			"track_record": self._track(a), "standing": self._standing(a),
+			"previous_registrations": [{"agent_id": int(e.agent_id), "status": str(e.status),
+				"breaches": self._breaches(e), "breaches_critical": int(e.breaches_critical),
+				"total_slashed": str(int(e.total_slashed))} for e in self._earlier(a)]}
 
 	def _track(self, a) -> dict:
 		return {"breaches": {"MINOR": int(a.breaches_minor), "MAJOR": int(a.breaches_major),
@@ -2227,6 +2286,10 @@ class Sentinel(gl.contract.Contract):
 			reasons.append("bond below the " + _wei_text(MIN_BOND) + " GEN minimum")
 		if int(a.breaches_critical) > 0:
 			reasons.append(str(int(a.breaches_critical)) + " final CRITICAL breach(es)")
+		for e in self._earlier(a):
+			if int(e.breaches_critical) > 0:
+				reasons.append("previous registration #" + str(int(e.agent_id)) + " of this wallet has "
+					+ str(int(e.breaches_critical)) + " final CRITICAL breach(es)")
 		bucket = self.agent_challenges.get(u32(int(a.agent_id)))
 		open_breach = 0
 		if bucket is not None:
@@ -2258,6 +2321,7 @@ class Sentinel(gl.contract.Contract):
 			"ruling": {"verdict": str(c.verdict), "clause": str(c.clause), "severity": str(c.severity),
 				"quote": str(c.quote), "code": str(c.code), "reasoning": str(c.reasoning),
 				"digest": str(c.digest), "tx_kind": str(c.tx_kind), "evidence": str(c.evidence),
+				"labels": str(c.labels),
 				"injection_flagged": bool(c.injection_flagged), "ruled_at": int(c.ruled_at),
 				"contest_deadline": int(c.contest_deadline)},
 			"appeal": {"appellant": c.appellant.as_hex.lower() if int(c.appealed_at) > 0 else "",
@@ -2661,7 +2725,9 @@ class Sentinel(gl.contract.Contract):
 		for c in clauses:
 			if c["id"] == str(clause_id).strip().upper():
 				sev = c["severity"]
-		prior = int(a.breaches_minor) + int(a.breaches_major) + int(a.breaches_critical)
+		prior = self._breaches(a)
+		for e in self._earlier(a):
+			prior += self._breaches(e)
 		mult = _multiplier_bps(prior, int(mv.repeat_step), int(mv.repeat_cap))
 		sev_bps = {"MINOR": int(mv.sev_minor), "MAJOR": int(mv.sev_major),
 			"CRITICAL": int(mv.sev_critical)}.get(sev, 0)

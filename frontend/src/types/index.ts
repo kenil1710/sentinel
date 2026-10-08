@@ -44,6 +44,8 @@ export interface TrackRecord {
 
 export interface Standing { good_standing: boolean; reasons: string[] }
 
+export interface PreviousRegistration { agent_id: number; status: AgentStatus; breaches: number; breaches_critical: number; total_slashed: string }
+
 export interface Agent {
   agent_id: number;
   operator: string;
@@ -67,6 +69,7 @@ export interface Agent {
   last_checked: number;
   track_record: TrackRecord;
   standing: Standing;
+  previous_registrations: PreviousRegistration[];
 }
 
 export interface Snapshot {
@@ -95,6 +98,7 @@ export interface Ruling {
   digest: string;
   tx_kind: string;
   evidence: string;
+  labels: string;
   injection_flagged: boolean;
   ruled_at: number;
   contest_deadline: number;

@@ -138,9 +138,9 @@ class Evidence(unittest.TestCase):
         self.assertNotEqual(C._digest(C._core(d)), C._digest(C._core(F.SWAP)))
 
     def test_kind(self):
-        k = C._tx_kind(C._core(F.SWAP))
+        k = C._tx_kind(C._core(F.SWAP), F.SWAP_WALLET)
         self.assertTrue(k.startswith("call:" + F.ROUTER + ":0x3593564c:"), k)
-        self.assertIn(F.WFC, k)
+        self.assertIn("in:" + F.WFC, k)
         self.assertIn(F.WETH, k)
 
     def test_partial(self):
@@ -471,7 +471,7 @@ class Judgment(unittest.TestCase):
         ch = view(self.c, "get_challenge", 0)
         self.assertEqual((ch["status"], ch["final"]["verdict"]), ("FINAL", "INCONCLUSIVE"))
         self.assertEqual(view(self.c, "get_claimable", W1)["claimable"], str(F.STAKE))
-        self.assertTrue(view(self.c, "is_tx_challenged", "ethereum", F.SWAP_HASH, 0)["challenged"])
+        self.assertFalse(view(self.c, "is_tx_challenged", "ethereum", F.SWAP_HASH, 0)["challenged"])
 
 
 # =============================================================================
@@ -606,9 +606,9 @@ class Appeals(unittest.TestCase):
         self.assertIn("exactly", self.appeal(value=F.STAKE - 1).json["reason"])
         self.assertIn("closed", self.appeal(at=F.NOW + 61 + HOUR).json["reason"])
         self.assertTrue(self.appeal().json["ok"])
-        self.assertIn("CONTESTABLE", self.appeal().json["reason"] if False else "CONTESTABLE")
         o = self.appeal()
         self.assertFalse(o.json["ok"])
+        self.assertIn("APPEALED", o.json["reason"])
 
     def test_appeal_won_by_operator(self):
         self.appeal()
@@ -786,9 +786,8 @@ class Precedents(unittest.TestCase):
     def test_edited_clause_is_a_new_clause(self):
         self.final_compliant()
         kind = view(self.c, "get_challenge", 0)["ruling"]["tx_kind"]
-        tx(self.c, "update_mandate", 0, F.MANDATE.replace("and USDC", "and DAI") if False else
-           F.MANDATE[:F.MANDATE.index("\n")] + " Nothing else.\n" + F.MANDATE[F.MANDATE.index("\n") + 1:], "",
-           sender=OP, at=F.NOW + 2 * HOUR)
+        edited = F.MANDATE[:F.MANDATE.index("\n")] + " Nothing else.\n" + F.MANDATE[F.MANDATE.index("\n") + 1:]
+        tx(self.c, "update_mandate", 0, edited, "", sender=OP, at=F.NOW + 2 * HOUR)
         self.assertFalse(view(self.c, "precedent_for", 0, "C1", kind, F.NOW + 4 * HOUR)["match"])
         self.assertTrue(view(self.c, "precedent_for", 0, "C1", kind, F.NOW + 2 * HOUR)["match"])
 
@@ -966,8 +965,6 @@ class Static(unittest.TestCase):
         self.assertIn("0 violation(s)", r.stdout)
 
     def test_scanner_catches_a_violation(self):
-        bad = SRC.replace('		self.next_challenge_id = u32(cid + 1)\n		self._receive(value)',
-                          '		self.next_challenge_id = u32(cid + 1)\n		self._receive(value)', 1)
         bad = SRC.replace('	def close_lint(self, agent_id: int, version: int) -> str:\n		now = self._now()',
                           '	def close_lint(self, agent_id: int, version: int) -> str:\n		self.count_patrols = u32(1)\n		now = self._now()', 1)
         p = Path(__file__).parent / "_bad_contract.py"

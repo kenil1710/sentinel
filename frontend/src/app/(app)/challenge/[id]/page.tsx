@@ -132,8 +132,14 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
               <p className="mt-3 text-[13.5px] leading-relaxed">{r.reasoning}</p>
               {r.evidence && (
                 <details className="mt-3">
-                  <summary className="cursor-pointer text-xs font-medium text-signal">The transaction record the panel read</summary>
+                  <summary className="cursor-pointer text-xs font-medium text-signal">The on-chain facts every validator agreed on</summary>
                   <pre className="mono mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-panel-2 p-3 text-[11.5px] leading-relaxed">{r.evidence}</pre>
+                </details>
+              )}
+              {r.labels && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-ink-2">Explorer labels as the leader read them (not compared between validators)</summary>
+                  <pre className="mono mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-md bg-panel-2 p-3 text-[11.5px] leading-relaxed text-ink-2">{r.labels}</pre>
                 </details>
               )}
               <dl className="mt-3 grid gap-1 text-xs text-ink-2 sm:grid-cols-2">

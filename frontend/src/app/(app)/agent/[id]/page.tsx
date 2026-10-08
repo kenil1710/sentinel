@@ -57,6 +57,14 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
           <div className="mt-1 text-xs text-ink-2">{agent.open_count} open · {agent.challenge_count} filed in all</div>
         </div>
       </div>
+      {(agent.previous_registrations ?? []).length > 0 && (
+        <p className="mt-4 rounded-lg border border-line bg-panel-2 px-4 py-2.5 text-[13px] text-ink-2">
+          This wallet was registered before on {agent.chain}:{" "}
+          {agent.previous_registrations.map((p, i) => (
+            <span key={p.agent_id}>{i > 0 && ", "}<Link className="text-signal hover:underline" href={`/agent/${p.agent_id}`}>#{p.agent_id}</Link> ({p.status.toLowerCase()}, {p.breaches} final breach{p.breaches === 1 ? "" : "es"})</span>
+          ))}. Earlier breaches count toward the repeat multiplier, and an earlier CRITICAL breach keeps it out of good standing.
+        </p>
+      )}
       {!agent.standing.good_standing && agent.standing.reasons.length > 0 && (
         <p className="mt-4 rounded-lg border border-neutral/30 bg-neutral/5 px-4 py-2.5 text-[13px] text-neutral-ink">Not in good standing: {agent.standing.reasons.join("; ")}.</p>
       )}

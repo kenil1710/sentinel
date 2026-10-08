@@ -74,10 +74,21 @@ const nonceAt = async (chain, w, n) => parseInt(await rpc(chain, "eth_getTransac
  * Returns at most `max`, oldest first, with block time.
  */
 export async function sentSince(chain, wallet, from, max = 10) {
+  if (chain === "ethereum") {
+    // eth.blockscout.com answers a plain GET (the other four explorers sit behind
+    // Cloudflare), and public Ethereum nodes refuse nonce queries at older blocks.
+    const r = await fetch(`https://eth.blockscout.com/api/v2/addresses/${wallet}/transactions?filter=from`,
+      { signal: AbortSignal.timeout(30_000) }).then((x) => x.json());
+    return (r.items ?? []).filter((t) => t.block_number > from).reverse().slice(0, max).map((t) => ({
+      hash: t.hash.toLowerCase(), block: t.block_number, ts: Math.floor(Date.parse(t.timestamp) / 1000),
+      to: String(t.to?.hash ?? "").toLowerCase(), value: BigInt(t.value ?? "0"),
+      selector: (t.raw_input ?? "0x") === "0x" ? "plain" : String(t.raw_input).slice(0, 10), input: String(t.raw_input ?? "0x"),
+    }));
+  }
   try {
     return await sentByNonce(chain, wallet, from, max);
   } catch (e) {
-    if (!/historical state|missing trie|header not found/i.test(String(e?.message ?? e))) throw e;
+    if (!/historical state|missing trie|header not found|archive/i.test(String(e?.message ?? e))) throw e;
     // A pruned node cannot answer the nonce at a past block: read the blocks.
     const to = await head(chain);
     return (await sentIn(chain, wallet, Math.max(from, to - 150), to)).slice(0, max)

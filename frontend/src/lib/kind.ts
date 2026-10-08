@@ -1,7 +1,8 @@
 /**
- * The contract's `_tx_kind`, ported exactly: what KIND of transaction this is,
- * from immutable facts only - counterparty, function selector, the set of
- * tokens moved, and a coarse native-value bucket. A precedent key covers one
+ * The contract's `_tx_kind`, ported exactly: what KIND of transaction this is
+ * for one agent, from immutable facts only - counterparty, function selector,
+ * each token moved with its direction relative to the agent's wallet, and a
+ * coarse native-value bucket. A precedent key covers one
  * kind, so this must produce byte-for-byte the same string as the contract
  * (test/test_kind.mjs checks both against the same Blockscout documents).
  */
@@ -10,7 +11,8 @@ export interface KindInput {
   created: string;
   rawInput: string;
   value: string;
-  tokens: string[];
+  /** Every token transfer: token contract, from, to. */
+  transfers: { token: string; from: string; to: string }[];
 }
 
 export function valueBucket(wei: string): string {
@@ -24,23 +26,28 @@ export function valueBucket(wei: string): string {
   return "ge10";
 }
 
-export function txKind(k: KindInput): string {
+/** Direction-aware: each token is "out", "in" or "via" relative to the agent's wallet. */
+export function txKind(k: KindInput, wallet: string): string {
+  const w = wallet.toLowerCase();
   const raw = (k.rawInput || "0x").toLowerCase();
   const sel = raw.length >= 10 ? raw.slice(0, 10) : raw;
-  const tokens = [...new Set(k.tokens.map((t) => t.toLowerCase()).filter(Boolean))].sort();
+  const tokens = [...new Set(k.transfers.filter((t) => t.token).map((t) => {
+    const way = t.from.toLowerCase() === w ? "out" : t.to.toLowerCase() === w ? "in" : "via";
+    return `${way}:${t.token.toLowerCase()}`;
+  }))].sort();
   const kind = sel.length >= 10 ? "call" : "send";
   return `${kind}:${(k.to || k.created || "").toLowerCase()}:${sel}:${tokens.join(",")}:${valueBucket(k.value)}`;
 }
 
-/** The kind of a Blockscout /api/v2/transactions/{hash} document. */
-export function kindOfDoc(doc: Record<string, unknown>): string {
+/** The kind of a Blockscout /api/v2/transactions/{hash} document, for one agent's wallet. */
+export function kindOfDoc(doc: Record<string, unknown>, wallet: string): string {
   const node = (x: unknown) => String(((x ?? {}) as { hash?: string }).hash ?? "").toLowerCase();
-  const transfers = ((doc.token_transfers as unknown[]) ?? []) as { token?: { address_hash?: string; address?: string } }[];
+  const transfers = ((doc.token_transfers as unknown[]) ?? []) as { token?: { address_hash?: string; address?: string }; from?: unknown; to?: unknown }[];
   return txKind({
     to: node(doc.to),
     created: node(doc.created_contract),
     rawInput: String(doc.raw_input ?? "0x"),
     value: String(doc.value ?? "0"),
-    tokens: transfers.map((t) => String(t?.token?.address_hash ?? t?.token?.address ?? "")),
-  });
+    transfers: transfers.map((t) => ({ token: String(t?.token?.address_hash ?? t?.token?.address ?? ""), from: node(t?.from), to: node(t?.to) })),
+  }, wallet);
 }

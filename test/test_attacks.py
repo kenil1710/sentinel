@@ -98,7 +98,7 @@ class A4_LeaderWritesTheEvidence(unittest.TestCase):
         F.registered(c)
         F.filed(c)
         F.answers(judge=F.breach())
-        stub.FORGE["mutate"] = lambda r: dict(r, evidence=r["evidence"].replace("WFC", "USDC"))
+        stub.FORGE["mutate"] = lambda r: dict(r, facts=r.get("facts", r.get("evidence", "")).replace("7160883256709807603712", "1"))
         o = tx(c, "resolve_challenge", 0, sender=RES, at=F.NOW + 60)
         self.assertTrue(o.rolled, "a forged record was stored")
 
