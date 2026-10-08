@@ -22,7 +22,9 @@
 import { createClient, createAccount } from "genlayer-js";
 import { studioDevnet } from "genlayer-js/chains";
 import { transactionsStatusNumberToName } from "genlayer-js/types";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+
+const FEE_CACHE = new URL("./.fees.json", import.meta.url);
 
 /** STUDIO_RPC=<url> routes every request through a relay (e.g. the app's /api/rpc) — Studio meters per IP. */
 const relay = process.env.STUDIO_RPC;
@@ -316,14 +318,24 @@ export function contractAddressOf(tx) {
  */
 export async function estimateFees(client, label = "fees") {
   try {
-    const est = await retry(() => client.estimateTransactionFees(), { attempts: 3, baseMs: 2000, label });
-    if (!est?.distribution) return null;
-    return {
+    const est = await retry(() => client.estimateTransactionFees(), { attempts: 6, baseMs: 3000, label });
+    if (!est?.distribution) throw new Error("no distribution in the estimate");
+    const fees = {
       distribution: est.distribution,
       ...(est.messageAllocations ? { messageAllocations: est.messageAllocations } : {}),
       feeValue: est.feeValue,
     };
+    try { writeFileSync(FEE_CACHE, JSON.stringify(fees, (k, v) => (typeof v === "bigint" ? { $big: v.toString() } : v))); } catch { /* cache is best effort */ }
+    return fees;
   } catch (e) {
+    // Studio Dev refuses a write with no fee (FeeValueMustBeNonZero), so "node
+    // default" is not a fallback there. The last generic estimate that worked
+    // is: the policy moves rarely, and the deposit is a ceiling - what a call
+    // does not use comes back.
+    if (existsSync(FEE_CACHE)) {
+      console.log(`  … fee estimate unavailable (${String(e?.message ?? e).slice(0, 80)}), using the last good estimate`);
+      return JSON.parse(readFileSync(FEE_CACHE, "utf8"), (k, v) => (v && typeof v === "object" && "$big" in v ? BigInt(v.$big) : v));
+    }
     console.log(`  … fee estimate unavailable (${String(e?.message ?? e).slice(0, 80)}), using node default`);
     return null;
   }

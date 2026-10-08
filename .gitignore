@@ -16,3 +16,4 @@ test/.accounts.json
 test/probe/state.json
 test/probe/smoke.json
 test/_bad_contract.py
+test/.fees.json

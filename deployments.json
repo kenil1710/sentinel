@@ -1,0 +1,53 @@
+{
+  "project": "Sentinel",
+  "version": "2.0.0",
+  "network": "studiodev",
+  "chain_id": 61997,
+  "rpc": "https://studio-dev.genlayer.com/api",
+  "explorer": "https://explorer-studio-dev.genlayer.com/",
+  "contracts": {
+    "Sentinel": {
+      "address": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2",
+      "deploy_tx": "0x3e5a7314b27454e4fe452c1bf851d495f5d4b09fbdde76e8b5f09b116889da21",
+      "file": "contracts/Sentinel.py",
+      "commit": "1830a3458939937c60df85386b3a461332e611ca",
+      "bytes": 111581,
+      "sha256": "7e3a5e6d16088f9edd7a9d7105045f6697e45d07029a42915b5b84d5f51f8aa4",
+      "constructor_args": [
+        "CANONICAL"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T14:47:53.168Z",
+      "mode": "CANONICAL"
+    },
+    "SentinelDemo": {
+      "address": "0x0396d725d4a8D4F4E2BAC4Df1bc0BB80cbbC8e29",
+      "deploy_tx": "0x70fde662d4593312e8eead0851c5cdda0d01f60903b5af32022d03b5fa4e37bd",
+      "file": "contracts/Sentinel.py",
+      "commit": "1830a3458939937c60df85386b3a461332e611ca",
+      "bytes": 111581,
+      "sha256": "7e3a5e6d16088f9edd7a9d7105045f6697e45d07029a42915b5b84d5f51f8aa4",
+      "constructor_args": [
+        "DEMO"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T14:48:03.719Z",
+      "mode": "DEMO"
+    },
+    "SentinelConsumer": {
+      "address": "0x02B793C1603fAa78997De8Cf2C6F370f205bDF83",
+      "deploy_tx": "0xd7218bb590befdd49a8ba6f521167add4f710b2b8a82a2f364b06ab44df089a0",
+      "file": "contracts/SentinelConsumer.py",
+      "commit": "1830a3458939937c60df85386b3a461332e611ca",
+      "bytes": 4757,
+      "sha256": "f67d0989e39466e04d69b2680f5d99f55c826c4e410b55085ea007c043ca1a64",
+      "constructor_args": [
+        "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T14:48:12.833Z",
+      "reads": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2"
+    }
+  },
+  "superseded": []
+}
