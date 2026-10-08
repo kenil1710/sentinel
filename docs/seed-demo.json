@@ -1,0 +1,221 @@
+{
+  "contract": "0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393",
+  "started_at": "2026-10-08T18:23:16.384Z",
+  "steps": [
+    {
+      "name": "refused_register_bad_mandate",
+      "at": "2026-10-08T18:23:34.150Z",
+      "hash": "0x5fe7b4c86387569099d93a1dff324f201feac82ed4ece3a5f9ea13102c71493e",
+      "status": "ACCEPTED",
+      "returned": {
+        "ok": false,
+        "reason": "Each line must start with a clause id such as C1: be good",
+        "refunded_to_claimable": "1000000000000000000"
+      },
+      "revert": null
+    },
+    {
+      "name": "register",
+      "at": "2026-10-08T18:25:23.325Z",
+      "hash": "0x9f305cfc20d8e19a29d83b66597814cd3d0323c5184afdc7527557d38e440cca",
+      "status": "ACCEPTED",
+      "returned": {
+        "ok": true,
+        "agent_id": 0,
+        "chain": "ethereum",
+        "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+        "bond": "1000000000000000000",
+        "version": 1,
+        "mandate_hash": "0c14b8ebc0ff4de7a02098ed9e89e896fe58db6be1a27ed2f41d1549d6a94368",
+        "clauses": 3,
+        "lint": "PENDING"
+      },
+      "revert": null,
+      "agent": {
+        "agent_id": 0,
+        "operator": "0x37060ea656a9e65e72f9fab84528113b2999b615",
+        "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+        "chain": "ethereum",
+        "explorer": "eth.blockscout.com",
+        "name": "USDT payout bot (demo)",
+        "agent_type": "CUSTOM",
+        "description": "Demo copy of a real Ethereum payout bot.",
+        "operator_url": "",
+        "bond": "1000000000000000000",
+        "status": "ACTIVE",
+        "registered_at": 1791483818,
+        "versions": 1,
+        "latest_version": {
+          "version": 1,
+          "text": "C1 [MAJOR] Only move USDT 0xdac17f958d2ee523a2206206994597c13d831ec7.\nC2 [MINOR] Never send native ETH.\nC3 [CRITICAL] Never move more than 1,000,000 USDT in one transaction.",
+          "clauses": [
+            {
+              "id": "C1",
+              "severity": "MAJOR",
+              "text": "Only move USDT 0xdac17f958d2ee523a2206206994597c13d831ec7."
+            },
+            {
+              "id": "C2",
+              "severity": "MINOR",
+              "text": "Never send native ETH."
+            },
+            {
+              "id": "C3",
+              "severity": "CRITICAL",
+              "text": "Never move more than 1,000,000 USDT in one transaction."
+            }
+          ],
+          "mandate_hash": "0c14b8ebc0ff4de7a02098ed9e89e896fe58db6be1a27ed2f41d1549d6a94368",
+          "created_at": 1791483818,
+          "effective_from": 1791483818,
+          "severity_bps": {
+            "MINOR": 500,
+            "MAJOR": 2000,
+            "CRITICAL": 5000
+          },
+          "repeat_step_bps": 5000,
+          "repeat_cap_bps": 20000,
+          "lint_status": "PENDING",
+          "lint_flags": [],
+          "lint_deadline": 1791484418
+        },
+        "open_count": 0,
+        "challenge_count": 0,
+        "withdraw_amount": "0",
+        "withdraw_unlock_at": 0,
+        "unregister_unlock_at": 0,
+        "last_checked": 0,
+        "track_record": {
+          "breaches": {
+            "MINOR": 0,
+            "MAJOR": 0,
+            "CRITICAL": 0
+          },
+          "breaches_total": 0,
+          "compliant": 0,
+          "inconclusive": 0,
+          "void": 0,
+          "overrulings": 0,
+          "appeals_won": 0,
+          "appeals_lost": 0,
+          "last_breach_at": 0,
+          "total_slashed": "0"
+        },
+        "standing": {
+          "good_standing": true,
+          "reasons": []
+        },
+        "previous_registrations": []
+      }
+    }
+  ],
+  "done": {
+    "refused_register_bad_mandate": {
+      "name": "refused_register_bad_mandate",
+      "at": "2026-10-08T18:23:34.150Z",
+      "hash": "0x5fe7b4c86387569099d93a1dff324f201feac82ed4ece3a5f9ea13102c71493e",
+      "status": "ACCEPTED",
+      "returned": {
+        "ok": false,
+        "reason": "Each line must start with a clause id such as C1: be good",
+        "refunded_to_claimable": "1000000000000000000"
+      },
+      "revert": null
+    },
+    "register": {
+      "name": "register",
+      "at": "2026-10-08T18:25:23.325Z",
+      "hash": "0x9f305cfc20d8e19a29d83b66597814cd3d0323c5184afdc7527557d38e440cca",
+      "status": "ACCEPTED",
+      "returned": {
+        "ok": true,
+        "agent_id": 0,
+        "chain": "ethereum",
+        "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+        "bond": "1000000000000000000",
+        "version": 1,
+        "mandate_hash": "0c14b8ebc0ff4de7a02098ed9e89e896fe58db6be1a27ed2f41d1549d6a94368",
+        "clauses": 3,
+        "lint": "PENDING"
+      },
+      "revert": null,
+      "agent": {
+        "agent_id": 0,
+        "operator": "0x37060ea656a9e65e72f9fab84528113b2999b615",
+        "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+        "chain": "ethereum",
+        "explorer": "eth.blockscout.com",
+        "name": "USDT payout bot (demo)",
+        "agent_type": "CUSTOM",
+        "description": "Demo copy of a real Ethereum payout bot.",
+        "operator_url": "",
+        "bond": "1000000000000000000",
+        "status": "ACTIVE",
+        "registered_at": 1791483818,
+        "versions": 1,
+        "latest_version": {
+          "version": 1,
+          "text": "C1 [MAJOR] Only move USDT 0xdac17f958d2ee523a2206206994597c13d831ec7.\nC2 [MINOR] Never send native ETH.\nC3 [CRITICAL] Never move more than 1,000,000 USDT in one transaction.",
+          "clauses": [
+            {
+              "id": "C1",
+              "severity": "MAJOR",
+              "text": "Only move USDT 0xdac17f958d2ee523a2206206994597c13d831ec7."
+            },
+            {
+              "id": "C2",
+              "severity": "MINOR",
+              "text": "Never send native ETH."
+            },
+            {
+              "id": "C3",
+              "severity": "CRITICAL",
+              "text": "Never move more than 1,000,000 USDT in one transaction."
+            }
+          ],
+          "mandate_hash": "0c14b8ebc0ff4de7a02098ed9e89e896fe58db6be1a27ed2f41d1549d6a94368",
+          "created_at": 1791483818,
+          "effective_from": 1791483818,
+          "severity_bps": {
+            "MINOR": 500,
+            "MAJOR": 2000,
+            "CRITICAL": 5000
+          },
+          "repeat_step_bps": 5000,
+          "repeat_cap_bps": 20000,
+          "lint_status": "PENDING",
+          "lint_flags": [],
+          "lint_deadline": 1791484418
+        },
+        "open_count": 0,
+        "challenge_count": 0,
+        "withdraw_amount": "0",
+        "withdraw_unlock_at": 0,
+        "unregister_unlock_at": 0,
+        "last_checked": 0,
+        "track_record": {
+          "breaches": {
+            "MINOR": 0,
+            "MAJOR": 0,
+            "CRITICAL": 0
+          },
+          "breaches_total": 0,
+          "compliant": 0,
+          "inconclusive": 0,
+          "void": 0,
+          "overrulings": 0,
+          "appeals_won": 0,
+          "appeals_lost": 0,
+          "last_breach_at": 0,
+          "total_slashed": "0"
+        },
+        "standing": {
+          "good_standing": true,
+          "reasons": []
+        },
+        "previous_registrations": []
+      }
+    }
+  },
+  "start_block": 26149447
+}

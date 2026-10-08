@@ -37,7 +37,7 @@ it byte for byte with `contracts/` at HEAD. The hackathon contracts are untouche
 |---|---|---|
 | Ruling | final at once | **provisional → contestable (1 h) → final**; one appeal by the losing party, with a bond and counter-evidence; a fresh panel; a novelty gate refuses a verbatim or near-verbatim resend |
 | Mandate | free text, editable when nothing was pending | **numbered clauses, each with a severity**, stored as **versions with a hash and an effective time**; edits take effect after 1 h; a challenge is judged against the version in force at its transaction's block time, snapshotted at filing |
-| Challengers | anyone, fixed stake | anyone except the operator; a loser's stake goes **to the operator**; one challenge per (chain, transaction, agent); the bounty goes to the challenger who proved the breach |
+| Challengers | anyone, fixed stake | anyone except the operator; a loser's stake goes **to the operator**; one challenge per (chain, transaction, agent) once decided; the bounty goes to the challenger who proved the breach |
 | Slashing | 20% of the bond, whatever the breach | **severity table frozen in the mandate version** (MINOR / MAJOR / CRITICAL as a share of the bond at filing) × a **capped repeat multiplier**; code computes it; the model only returns BREACH / COMPLIANT and a severity label quoted from the mandate |
 | Bond | instant withdrawal | top-up; **timelocked withdrawal** and **unregister**, blocked while anything is open; **auto-pause** below the minimum; **pull payouts** only; a ledger invariant checked in tests and on chain |
 | Mandate quality | — | a **linter**: validators mark clauses that cannot be judged from on-chain data, quoted verbatim, strict equality on clause ids; a breach can never rest on a flagged clause |
@@ -71,6 +71,7 @@ transaction hash, agent and wallet.
 | COMPLIANT | + the challenger's stake | loses the stake | — |
 | INCONCLUSIVE | — | stake back | — |
 | VOID (filed with the wrong block time) | + the stake | loses the stake; the transaction is released so a correct filing can follow | — |
+| INCONCLUSIVE · STALLED (no panel in 24 h) | — | stake back; the transaction is released | — |
 
 `slash = bond_at_filing × severity_bps × multiplier_bps`, divided before multiplied and never more than the bond
 still there. `multiplier = min(1 + step × prior final breaches, cap)`, both from the mandate version. A lost appeal's
@@ -161,8 +162,18 @@ No wallet needed to look; a funded Studio Dev wallet to act (the Studio faucet f
   under mandates we wrote for their observable behaviour. The bond is the registrant's own money; the API and the badge
   say "bonded by", never "owned by".
 - **A mandate binds only transactions mined after registration.** There is no backfill, by design.
-- **One challenge per (chain, transaction, agent), for good**, except a VOID filing. A stalled challenge (no panel agreed
-  within 24 h) retires its transaction. Re-filing would let anyone re-roll a probabilistic judge until it said BREACH.
+- **One challenge per (chain, transaction, agent), for good, once anything is decided.** Only a VOID filing or a stall
+  (no panel agreed within 24 h) releases the transaction; re-filing a decided one would let anyone re-roll a
+  probabilistic judge until it said BREACH.
+- **A different operator address can launder a record.** Earlier registrations of a wallet count against it only when
+  made by the same operator (otherwise a stranger could frame a wallet it does not run, attack round 2). They are always
+  listed on the agent and in `/api/check`, with `same_operator`.
+- **Withdrawal griefing.** An open challenge blocks withdrawals and unregistering, by design. A challenger who can make
+  panels disagree can keep one open for 24 h at a time for a refundable stake; anyone can put it to the validators sooner.
+- **Track records can be padded.** An operator's friend can file challenges it expects to lose; the stake returns to the
+  operator and "cleared" rises. Standing does not use that count.
+- **The stored labels are the leader's.** A ruling stores the on-chain facts, which every validator must reproduce
+  exactly, and separately the explorer labels as the leader read them; the app shows the second as unverified.
 - **An operator can front-run with a friendly challenger.** A confederate who files first on the operator's own breach
   gets the bounty (50% of the slash) back to the operator's side; the other 50% still goes to the treasury, so a
   breach always costs at least half its slash.

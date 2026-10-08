@@ -1,0 +1,57 @@
+{
+  "contract": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90",
+  "started_at": "2026-10-08T18:23:16.382Z",
+  "agents": {
+    "e1": {
+      "agent_id": 0,
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "start_block": 26149447,
+      "registered_at": 1791483800,
+      "register_tx": "0xce1facb8c5360e174a33bf2e1e9dae121962decb937c69777f8c22b455fb90c4",
+      "lint": {}
+    },
+    "e2": {
+      "agent_id": 1,
+      "chain": "ethereum",
+      "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+      "start_block": 26149448,
+      "registered_at": 1791483816,
+      "register_tx": "0xdaf4063246ef480b7666ad3a5423db37b8f66e31c2c5848074874186c19568eb",
+      "lint": {}
+    },
+    "e3": {
+      "agent_id": 2,
+      "chain": "ethereum",
+      "wallet": "0x21a31ee1afc51d94c2efccaa2092ad1028285549",
+      "start_block": 26149449,
+      "registered_at": 1791483833,
+      "register_tx": "0x20fbc6c340e6368fb1dd7558ccb5968c6be297b7c2171c2e3fb4f2c0ea05667d",
+      "lint": {}
+    }
+  },
+  "cases": {},
+  "events": [
+    {
+      "at": "2026-10-08T18:23:31.299Z",
+      "kind": "registered",
+      "key": "e1",
+      "agent_id": 0,
+      "tx": "0xce1facb8c5360e174a33bf2e1e9dae121962decb937c69777f8c22b455fb90c4"
+    },
+    {
+      "at": "2026-10-08T18:23:45.532Z",
+      "kind": "registered",
+      "key": "e2",
+      "agent_id": 1,
+      "tx": "0xdaf4063246ef480b7666ad3a5423db37b8f66e31c2c5848074874186c19568eb"
+    },
+    {
+      "at": "2026-10-08T18:24:04.062Z",
+      "kind": "registered",
+      "key": "e3",
+      "agent_id": 2,
+      "tx": "0x20fbc6c340e6368fb1dd7558ccb5968c6be297b7c2171c2e3fb4f2c0ea05667d"
+    }
+  ]
+}
