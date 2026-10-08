@@ -1,25 +1,21 @@
 /**
- * Creates test/.accounts.json with a stable, reusable pool of signing keys.
+ * Creates test/.accounts.json (gitignored): throwaway Studio Dev signing keys.
+ * Existing roles are kept unless --force is passed, so a funded address is never
+ * silently replaced. Keys never leave this file; scripts print addresses only.
  *
- * A POOL rather than one key because Sentinel's rules are RELATIONAL: an
- * operator may not challenge their own agent, one wallet is rate limited
- * between challenges, and the leaderboard ranks watchers against each other.
- * None of those is expressible with a single address — the self-challenge
- * rejection needs an operator AND a separate watcher to even be stated.
+ *   deployer    deploys canonical, demo and SentinelConsumer (and is the treasury)
+ *   operator    registers agents on canonical
+ *   operator2   a second operator (identity checks: cannot act for operator's agents)
+ *   watcher     files challenges on canonical
+ *   watcher2    a second, independent challenger (open-challenger win and loss)
+ *   resolver    calls the permissionless writes (resolve, finalize, settle)
+ *   outsider    only ever probes access control
+ *   demo_op     operator on the demo deployment
+ *   demo_watch  challenger on the demo deployment
+ *   demo_watch2 second challenger on the demo deployment
+ *   probe       throwaway GenVM probes
  *
- * Keys are written by hand rather than read off `createAccount()`, because that
- * helper does NOT expose a `privateKey` field — it returns a viem account whose
- * key stays private to the closure. Persisting `account.privateKey` therefore
- * writes `undefined`, JSON.stringify drops the field entirely, and every later
- * `createAccount(undefined)` silently mints a brand-new random account. On
- * gasless Studionet that failure is invisible: every run works, just from a
- * different address each time. It surfaces only later, as cooldown and quota
- * tests that can never trigger and an owner nobody holds the key to.
- *
- * Existing roles are PRESERVED across runs unless --force is passed, so a
- * funded address is never silently replaced.
- *
- * Usage: node accounts.mjs [--force]
+ *   node accounts.mjs [--force]
  */
 import { createAccount } from "genlayer-js";
 import { randomBytes } from "node:crypto";
@@ -27,46 +23,14 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const target = new URL("./.accounts.json", import.meta.url);
 const force = process.argv.includes("--force");
-
-// `client` deploys and owns the contract. `operator` and `operator2` register
-// agents and post bonds. `watcher` and `watcher2` file challenges — two of them
-// because the per-wallet cooldown makes a single watcher unable to file two
-// challenges in one run, and because the leaderboard needs someone to rank
-// against. `resolver` calls resolve_challenge from an address with no stake in
-// the outcome, which is what proves judgement is permissionless rather than a
-// challenger privilege; `outsider` only ever probes access control.
-const ROLES = [
-  "client",
-  "operator",
-  "operator2",
-  "watcher",
-  "watcher2",
-  "resolver",
-  "outsider",
-];
-
+const ROLES = ["deployer", "operator", "operator2", "watcher", "watcher2", "resolver", "outsider",
+  "demo_op", "demo_watch", "demo_watch2", "probe"];
 const existing = existsSync(target) && !force ? JSON.parse(readFileSync(target, "utf8")) : {};
 const out = {};
-let created = 0;
-
 for (const role of ROLES) {
-  if (existing[role]?.key) {
-    out[role] = existing[role];
-    continue;
-  }
+  if (existing[role]?.key) { out[role] = existing[role]; continue; }
   const key = `0x${randomBytes(32).toString("hex")}`;
-  const account = createAccount(key);
-  // Round-trip assertion: the stored address must be the one this key actually
-  // derives. Without it a mismatch just sits in the file looking plausible.
-  if (createAccount(key).address !== account.address) {
-    throw new Error(`key for ${role} does not derive a stable address`);
-  }
-  out[role] = { key, address: account.address };
-  created++;
+  out[role] = { key, address: createAccount(key).address };
 }
-
-writeFileSync(target, JSON.stringify(out, null, 2) + "\n");
-
-console.log(`wrote .accounts.json — ${created} new, ${ROLES.length - created} preserved`);
-for (const role of ROLES) console.log(`  ${role.padEnd(12)} ${out[role].address}`);
-console.log(`\n(gasless on Studio Dev; a metered network needs these funded)`);
+writeFileSync(target, JSON.stringify(out, null, 2) + "\n", { mode: 0o600 });
+for (const role of ROLES) console.log(`  ${role.padEnd(11)} ${out[role].address}`);

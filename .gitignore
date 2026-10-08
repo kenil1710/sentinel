@@ -13,3 +13,6 @@ __pycache__/
 .accounts.json
 test/.accounts.json
 *.tsbuildinfo
+test/probe/state.json
+test/probe/smoke.json
+test/_bad_contract.py
