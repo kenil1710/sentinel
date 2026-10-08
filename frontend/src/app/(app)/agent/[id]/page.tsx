@@ -61,8 +61,8 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
         <p className="mt-4 rounded-lg border border-line bg-panel-2 px-4 py-2.5 text-[13px] text-ink-2">
           This wallet was registered before on {agent.chain}:{" "}
           {agent.previous_registrations.map((p, i) => (
-            <span key={p.agent_id}>{i > 0 && ", "}<Link className="text-signal hover:underline" href={`/agent/${p.agent_id}`}>#{p.agent_id}</Link> ({p.status.toLowerCase()}, {p.breaches} final breach{p.breaches === 1 ? "" : "es"})</span>
-          ))}. Earlier breaches count toward the repeat multiplier, and an earlier CRITICAL breach keeps it out of good standing.
+            <span key={p.agent_id}>{i > 0 && ", "}<Link className="text-signal hover:underline" href={`/agent/${p.agent_id}`}>#{p.agent_id}</Link> ({p.status.toLowerCase()}, {p.breaches} final breach{p.breaches === 1 ? "" : "es"}, {p.same_operator ? "same operator" : "another operator"})</span>
+          ))}. Earlier registrations by the same operator count: their breaches raise the repeat multiplier and an earlier CRITICAL breach keeps the wallet out of good standing. A different operator&apos;s record is shown but does not count, because registering never proved who runs the wallet.
         </p>
       )}
       {!agent.standing.good_standing && agent.standing.reasons.length > 0 && (
