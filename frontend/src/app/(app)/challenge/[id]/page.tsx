@@ -92,7 +92,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Panel className="p-5">
             <Label>Lifecycle</Label>
             <ol className="mt-4 space-y-5 border-l border-line pl-0 [&>li]:ml-[5px]">
@@ -186,7 +186,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Panel className="p-5">
             <Label>What happens next</Label>
             <div className="mt-3 flex flex-col gap-2">

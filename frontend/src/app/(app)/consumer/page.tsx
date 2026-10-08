@@ -39,7 +39,7 @@ export default function ConsumerPage() {
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Panel className="p-5">
+        <Panel className="min-w-0 p-5">
           <Label>Ask it</Label>
           <div className="mt-3 flex gap-2">
             <label htmlFor="cs-chain" className="sr-only">Chain</label>
@@ -72,7 +72,7 @@ export default function ConsumerPage() {
           <pre className="mono mt-5 overflow-x-auto rounded-md bg-panel-2 p-3 text-[11.5px] text-ink-2">{CODE}</pre>
         </Panel>
 
-        <Panel className="p-5">
+        <Panel className="min-w-0 p-5">
           <Label>Its log</Label>
           {!log ? <Spinner /> : (
             <>

@@ -17,8 +17,9 @@ import { Shield } from "./Shield";
  */
 const NAV = [
   { href: "/agents", label: "Agents" },
-  { href: "/patrol", label: "Patrol" },
-  { href: "/leaderboard", label: "Watchers" },
+  { href: "/challenges", label: "Challenges" },
+  { href: "/precedents", label: "Precedents" },
+  { href: "/consumer", label: "For contracts" },
   { href: "/docs", label: "How it works" },
 ];
 
@@ -49,7 +50,7 @@ export function MarketingHeader() {
             Register an agent
           </Link>
 
-          <button onClick={() => setOpen((v) => !v)} aria-label="Menu"
+          <button onClick={() => setOpen((v) => !v)} aria-label="Menu" aria-expanded={open}
             className="rounded-md border border-line bg-panel p-1.5 text-ink-2 md:hidden">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

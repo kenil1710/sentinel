@@ -1,6 +1,6 @@
 # Blockscout probe findings — Studionet, captured 2026-09-03
 
-Throwaway contract [`contracts/_render_probe.py`](../contracts/_render_probe.py),
+Throwaway contract [`docs/superseded/v1/source/_render_probe.py`](superseded/v1/source/_render_probe.py),
 deployed to Studionet at `0x96e022114f418F4708a08beD858324830226Fce4` (an earlier
 revision at `0xa931D970D89A0f33Dd86325BddD681f0C9AB576E`). Every fetch and every
 consensus rule in Sentinel is written against the shapes and the *movement*
@@ -397,3 +397,30 @@ reliably, on a digest* — is the reason Sentinel compares verdicts.
 The probe contract is kept in the repository deliberately. It is not part of
 Sentinel and is not deployed with it, but it is the evidence for why the
 contract reads what it reads and compares what it compares.
+
+---
+
+## 12. Re-measured for v2 (2026-10-08): four of five explorers now answer a GET with Cloudflare
+
+A throwaway probe ([`test/probe/Probe.py`](../test/probe/Probe.py)) fetched one known transaction per chain from
+validator egress:
+
+| Host | `gl.nondet.web.request` | `gl.nondet.web.render` |
+|---|---|---|
+| eth.blockscout.com | 200, JSON | — |
+| base.blockscout.com | **403** "Just a moment…" | 200, the same JSON |
+| arbitrum.blockscout.com | **403** | — |
+| polygon.blockscout.com | **403** | — |
+| robinhoodchain.blockscout.com | **403** | 200 (`/api/v2/stats`) |
+
+The same four hosts answer 403 to a laptop and to the Vercel function that runs the patrol bot. So v2 reads every
+chain with a plain GET first and falls back to `render` when it sees a Cloudflare interstitial (`_fetch` in
+`contracts/Sentinel.py`), while the patrol bot, which cannot run a browser, lists transactions on Ethereum only.
+
+Two more measurements from the same probe decided v2's design:
+
+- **A validator disagreement writes nothing.** A write that bumped a counter, then ran a round whose validators
+  always disagree, ended `UNDETERMINED` in 15 s with the counter unchanged.
+- **Studio Dev does not deliver value transfers.** `emit_transfer` of 0.1 GEN to a fresh address was accepted; the
+  recipient's balance stayed 0 and the contract's stayed unchanged. v2 therefore pays out only through pull balances
+  and reports the undelivered amount in `get_ledger`.

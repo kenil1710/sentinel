@@ -62,7 +62,7 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {track && <TrackRecord t={track} />}
 
           <section aria-labelledby="versions-h">
@@ -105,7 +105,7 @@ export default function AgentPage({ params }: { params: Promise<{ id: string }> 
           </section>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {isOperator && <OperatorPanel agent={agent} account={account!} onChange={() => { mutate(); mutateV(); }} />}
           <ChallengeForm agent={agent} />
           <Panel className="p-5">
