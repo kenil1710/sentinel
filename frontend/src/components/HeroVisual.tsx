@@ -1,27 +1,18 @@
 /**
- * The guardian. A shield whose scan ring sweeps the chains being watched — the
- * whole product in one figure: one watcher, several chains, agents under watch.
- *
- * FOUR, not five. The contract configures five chains and the register holds
- * agents on all of them, but robinhoodchain.blockscout.com answers every
- * request from datacenter egress with a Cloudflare interstitial, so the patrol
- * cannot actually read it. Drawing it here would advertise a watch that is not
- * happening. It stays a supported chain in the contract and on /docs, where the
- * limitation is written down next to it.
- *
- * The angles are spaced by hand rather than computed so that no label sits
- * under the shield's point: four at 90° apart, started at -55°.
+ * The guardian. A shield whose scan ring sweeps the five chains whose
+ * transactions validators can judge (four of them through a real browser,
+ * because their explorers sit behind a Cloudflare check; see README).
  */
 export function HeroVisual() {
   const chains = [
-    { label: "ETH", angle: -55 }, { label: "BASE", angle: 35 },
-    { label: "ARB", angle: 125 }, { label: "POL", angle: 215 },
+    { label: "ETH", angle: -90 }, { label: "BASE", angle: -18 }, { label: "ARB", angle: 54 },
+    { label: "POL", angle: 126 }, { label: "RH", angle: 198 },
   ];
   const R = 118;
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[380px]">
       <div className="absolute inset-0 grid-field rounded-full" />
-      <svg viewBox="0 0 320 320" className="relative size-full">
+      <svg viewBox="0 0 320 320" className="relative size-full" role="img" aria-label="A shield watching five chains: Ethereum, Base, Arbitrum, Polygon and Robinhood">
         <defs>
           <radialGradient id="glow" cx="50%" cy="45%">
             <stop offset="0%" stopColor="var(--color-signal-bright)" stopOpacity="0.14" />

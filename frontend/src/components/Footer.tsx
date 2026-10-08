@@ -20,21 +20,22 @@ export function Footer({ variant = "app" }: { variant?: "app" | "marketing" } = 
   return (
     <footer className="mt-20 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 text-sm sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2.5 text-ink-3">
+        <div className="flex items-center gap-2.5 text-ink-2">
           <Shield size={18} />
           <span>Sentinel — an autonomous agent that polices other autonomous agents.</span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-ink-3 sm:ml-auto">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-ink-2 sm:ml-auto">
           <Link href="/docs" className="hover:text-ink">How it works</Link>
           <Link href="/patrol" className="hover:text-ink">Patrol</Link>
           <Link href="/analytics" className="hover:text-ink">Analytics</Link>
+          <Link href="/consumer" className="hover:text-ink">For contracts</Link>
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer"
             className="hover:text-ink">Source ↗</a>
           {variant === "app" && (
             <a href={`${EXPLORER_BASE}/address/${CONTRACT_ADDRESS}`}
               target="_blank" rel="noopener noreferrer"
               title={CONTRACT_ADDRESS}
-              className="font-mono text-[12px] text-ink-3/70 hover:text-ink">
+              className="font-mono text-[12px] text-ink-3 hover:text-ink">
               {NETWORK_LABEL} · {CONTRACT_ADDRESS.slice(0, 6)}…{CONTRACT_ADDRESS.slice(-4)} ↗
             </a>
           )}

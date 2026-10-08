@@ -25,6 +25,7 @@ import { transactionsStatusNumberToName } from "genlayer-js/types";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
 const FEE_CACHE = new URL("./.fees.json", import.meta.url);
+const ATTEMPT_MS = Number(process.env.ATTEMPT_MS ?? 90_000);
 
 /** STUDIO_RPC=<url> routes every request through a relay (e.g. the app's /api/rpc) — Studio meters per IP. */
 const relay = process.env.STUDIO_RPC;
@@ -249,7 +250,15 @@ export async function retry(fn, { attempts = 6, baseMs = 4000, label = "rpc" } =
   let hourly = 0;
   for (let i = 1; i <= attempts; i++) {
     try {
-      return await fn();
+      // A request Studio accepts and never answers would otherwise hang the
+      // whole script; a bounded attempt turns it into ordinary retryable noise.
+      let timer;
+      const guard = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("request timed out (fetch failed)")), ATTEMPT_MS); });
+      try {
+        return await Promise.race([fn(), guard]);
+      } finally {
+        clearTimeout(timer);
+      }
     } catch (e) {
       last = e;
       const message = String(e?.message ?? e);

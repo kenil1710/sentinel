@@ -19,23 +19,53 @@ export function Label({ children }: { children: ReactNode }) {
 }
 
 /**
- * A verdict badge. The three colours are used ONLY here and on the score ring,
- * so a red anywhere in this app means exactly one thing.
+ * A verdict badge. The verdict colours are used ONLY for verdicts and the
+ * score ring, so a red anywhere in this app means exactly one thing: a breach.
+ * `provisional` marks a ruling that can still be appealed.
  */
-export function VerdictBadge({ verdict, size = "md" }: { verdict: Verdict | "PENDING"; size?: "sm" | "md" }) {
+export function VerdictBadge({ verdict, size = "md", provisional = false }:
+  { verdict: Verdict | "PENDING" | "APPEALED"; size?: "sm" | "md"; provisional?: boolean }) {
   const map: Record<string, { bg: string; text: string; ring: string; label: string }> = {
-    VIOLATION: { bg: "bg-violation/10", text: "text-violation-ink", ring: "ring-violation/30", label: "Violation" },
+    BREACH: { bg: "bg-violation/10", text: "text-violation-ink", ring: "ring-violation/30", label: "Breach" },
     COMPLIANT: { bg: "bg-compliant/10", text: "text-compliant-ink", ring: "ring-compliant/30", label: "Compliant" },
     INCONCLUSIVE: { bg: "bg-neutral/10", text: "text-neutral-ink", ring: "ring-neutral/30", label: "Inconclusive" },
-    PENDING: { bg: "bg-signal/10", text: "text-signal", ring: "ring-signal/30", label: "Awaiting judgement" },
+    VOID: { bg: "bg-panel-2", text: "text-ink-2", ring: "ring-line-2", label: "Void filing" },
+    PENDING: { bg: "bg-signal/10", text: "text-signal", ring: "ring-signal/30", label: "Awaiting judgment" },
+    APPEALED: { bg: "bg-signal/10", text: "text-signal", ring: "ring-signal/30", label: "Under appeal" },
     "": { bg: "bg-panel-2", text: "text-ink-3", ring: "ring-line", label: "—" },
   };
   const s = map[verdict] ?? map[""];
   const pad = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-md ring-1 font-medium ${pad} ${s.bg} ${s.text} ${s.ring}`}>
-      {verdict === "PENDING" && <span className="size-1.5 rounded-full bg-signal-bright live-dot" />}
-      {s.label}
+    <span className={`inline-flex items-center gap-1.5 rounded-md ring-1 font-medium ${pad} ${s.bg} ${s.text} ${s.ring} ${provisional ? "border border-dashed border-current" : ""}`}>
+      {(verdict === "PENDING" || verdict === "APPEALED") && <span className="size-1.5 rounded-full bg-signal-bright live-dot" />}
+      {s.label}{provisional ? " · provisional" : ""}
+    </span>
+  );
+}
+
+/** Severity as the operator labelled the clause. Monochrome weight, not verdict colour. */
+export function SeverityTag({ severity }: { severity: string }) {
+  if (!severity) return null;
+  const tone: Record<string, string> = {
+    MINOR: "text-ink-2 bg-panel-2 ring-line-2",
+    MAJOR: "text-ink bg-panel-2 ring-ink-3/40",
+    CRITICAL: "text-white bg-ink ring-ink",
+  };
+  return (
+    <span className={`mono inline-flex items-center rounded px-1.5 py-0.5 text-[10.5px] font-semibold tracking-wide ring-1 ${tone[severity] ?? tone.MINOR}`}>
+      {severity}
+    </span>
+  );
+}
+
+export function StandingBadge({ good, reasons = [] }: { good: boolean; reasons?: string[] }) {
+  return (
+    <span title={good ? "Active, bonded at or above the minimum, no open provisional breach and no final critical breach" : reasons.join("; ")}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${
+        good ? "text-compliant-ink bg-compliant/8 ring-compliant/25" : "text-neutral-ink bg-neutral/8 ring-neutral/30"}`}>
+      <span className={`size-1.5 rounded-full ${good ? "bg-compliant" : "bg-neutral"}`} />
+      {good ? "Good standing" : "Not in good standing"}
     </span>
   );
 }
@@ -86,24 +116,20 @@ export function TypeTag({ type, className = "" }: { type: string; className?: st
 export function StatusTag({ status }: { status: string }) {
   const tone: Record<string, string> = {
     ACTIVE: "text-compliant-ink bg-compliant/8 ring-compliant/25",
-    WITHDRAWN: "text-ink-3 bg-panel-2 ring-line",
-    SLASHED_OUT: "text-violation-ink bg-violation/8 ring-violation/25",
+    PAUSED: "text-neutral-ink bg-neutral/8 ring-neutral/30",
+    UNREGISTERING: "text-ink-2 bg-panel-2 ring-line-2",
+    RETIRED: "text-ink-3 bg-panel-2 ring-line",
   };
   const label: Record<string, string> = {
-    // "Bond exhausted" named the symptom and hid the cause — it reads equally
-    // like "something broke" and like "this one was caught". It was the latter,
-    // every time: the only route to this status is a proven violation.
-    ACTIVE: "On duty", WITHDRAWN: "Retired", SLASHED_OUT: "Caught — deactivated",
+    ACTIVE: "On duty", PAUSED: "Paused — bond below minimum", UNREGISTERING: "Unregistering", RETIRED: "Retired",
   };
   const why: Record<string, string> = {
-    ACTIVE: "Bonded above the minimum and open to challenge.",
-    WITHDRAWN: "The operator withdrew the bond. The record stays readable; it cannot be challenged.",
-    SLASHED_OUT: "Validators upheld a challenge against this agent. The slash carried its bond "
-      + "below the minimum, so the contract deactivated it automatically. A top-up reactivates it.",
+    ACTIVE: "Bonded at or above the minimum and open to challenge.",
+    PAUSED: "The bond fell below the minimum (a slash or a withdrawal). It still answers for past conduct; a top-up restores it.",
+    UNREGISTERING: "The operator asked to retire it. It stays challengeable until the timelock ends.",
+    RETIRED: "Unregistered and the bond released. The record stays readable.",
   };
-  const glyph: Record<string, IconName> = {
-    ACTIVE: "on_duty", SLASHED_OUT: "deactivated",
-  };
+  const glyph: Record<string, IconName> = { ACTIVE: "on_duty", RETIRED: "deactivated" };
   const mark = glyph[status];
   return (
     <span title={why[status] ?? status}

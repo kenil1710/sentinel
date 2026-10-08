@@ -1,207 +1,158 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import useSWR from "swr";
-import { Panel, Label } from "./ui";
-import { Icon } from "./icons";
-import { useWallet } from "./WalletProvider";
-import { challengeAgent, isTxChallenged, previewChallenge } from "@/lib/contract";
-import { formatGen, isTxHash, percentFromBps } from "@/lib/format";
-import type { Agent, Config, PatrolPreview, WriteResult } from "@/types";
-
 /**
- * `tx` is owned by the PARENT, not by this form.
+ * Open challenge: anyone but the operator may accuse an agent of breaching one
+ * clause in one transaction, staking the challenge stake.
  *
- * The agent page has a "Challenge" button on every transaction row, so the hash
- * arrives from outside. Mirroring a prop into local state needs an effect that
- * calls setState on every change, which is both a lint error and a real
- * cascading render — so the parent holds the value and this is a controlled
- * input, which is what it always should have been.
+ * The form looks the transaction up on its chain first (block time, sender),
+ * because the block time is part of the filing: it selects the mandate version
+ * the challenge will be judged against, and a wrong time voids the filing (the
+ * stake goes to the operator). It then shows exactly what will be snapshotted
+ * and what the challenger risks and stands to win.
  */
-export function ChallengeForm({ agent, config, tx, setTx, onFiled }: {
-  agent: Agent; config?: Config; tx: string; setTx: (v: string) => void; onFiled?: () => void;
-}) {
-  const router = useRouter();
-  const { account, connect, onWrongNetwork, switchNetwork } = useWallet();
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import useSWR from "swr";
+import { Label, Panel, SeverityTag } from "./ui";
+import { TxStatus, useTx } from "./tx";
+import { useWallet } from "./WalletProvider";
+import { challengeAgent, getConfig, getVersionAt, isTxChallenged, previewChallenge } from "@/lib/contract";
+import { absoluteTime, blockscoutUrl, formatGen, isTxHash, shortAddress } from "@/lib/format";
+import type { Agent } from "@/types";
+
+interface TxInfo { found: boolean; mined?: boolean; timestamp?: number; block?: number; from?: string; to?: string; error?: string }
+
+export function ChallengeForm({ agent, onFiled, initialTx = "" }: { agent: Agent; onFiled?: (id: number) => void; initialTx?: string }) {
+  const { account, connect } = useWallet();
+  const { data: cfg } = useSWR("config", getConfig);
+  const [hash, setHash] = useState(initialTx);
+  const [picked, setClause] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<WriteResult | null>(null);
+  const [filedId, setFiledId] = useState<number | null>(null);
+  const tx = useTx();
+  const h = hash.trim().toLowerCase();
+  const valid = isTxHash(h);
 
-  /*
-   * Check before spending. A duplicate is refused and refunded, which costs a
-   * transaction and nothing else — but knowing first is better than paying to
-   * find out. Keyed on the hash, so SWR handles the "not a hash yet" case by
-   * simply not fetching, with no effect and no setState.
-   */
-  const valid = isTxHash(tx);
-  const { data: probe } = useSWR(
-    valid ? ["challenge-probe", agent.agent_id, agent.chain, tx.trim()] : null,
-    async () => {
-      const [p, a] = await Promise.all([
-        previewChallenge(agent.agent_id, tx.trim()),
-        isTxChallenged(agent.chain, tx.trim(), agent.agent_id),
-      ]);
-      return { preview: p as PatrolPreview, already: a };
-    },
-    { shouldRetryOnError: false },
-  );
-  const preview = probe?.preview ?? null;
-  const already = probe?.already ?? null;
+  const { data: info } = useSWR<TxInfo>(valid ? ["txinfo", agent.chain, h] : null,
+    () => fetch(`/api/txinfo?chain=${agent.chain}&hash=${h}`).then((r) => r.json()).catch(() => ({ found: false, error: "lookup failed" })));
 
-  const stake = config ? BigInt(config.challenge_stake) : 5n * 10n ** 16n;
-  const isOperator = Boolean(account && account.toLowerCase() === agent.operator.toLowerCase());
-  const maxReason = config?.max_reason_chars ?? 300;
+  const ts = info?.mined ? info.timestamp ?? 0 : 0;
+  const { data: version } = useSWR(ts ? ["version-at", agent.agent_id, ts] : null, () => getVersionAt(agent.agent_id, ts));
+  const { data: dup } = useSWR(valid ? ["dup", agent.chain, h, agent.agent_id] : null, () => isTxChallenged(agent.chain, h, agent.agent_id));
+  const clauses = useMemo(() => version?.version?.clauses ?? [], [version]);
+  const clause = clauses.find((c) => c.id === picked) ? picked : clauses[0]?.id ?? "";
+  const { data: preview } = useSWR(ts && clause ? ["preview", agent.agent_id, ts, clause] : null, () => previewChallenge(agent.agent_id, ts, clause));
 
+  const isOperator = account && account.toLowerCase() === agent.operator.toLowerCase();
+  const involves = info?.from && [info.from, info.to].includes(agent.wallet.toLowerCase());
   const problems: string[] = [];
-  if (tx && !isTxHash(tx)) problems.push("A transaction hash is 0x followed by 64 hex characters.");
-  if (already?.challenged) problems.push("That transaction has already been judged — one judgement per transaction.");
-  if (isOperator) problems.push("You registered this agent; an operator cannot challenge their own.");
-  if (reason && reason.trim().length < 10) problems.push("Say what looks wrong, in a few words at least.");
-  if (reason.length > maxReason) problems.push(`The reason is capped at ${maxReason} characters.`);
-  /*
-   * "not currently challengeable" named a flag, not a reason. The contract has
-   * three distinct ways to reach it and they mean entirely different things to
-   * whoever is reading — one is "this agent was caught", one is "the operator
-   * took their money and left", one is "the whole contract is stopped". Say
-   * which, and say what would change it.
-   */
-  if (!agent.challengeable) {
-    const floor = config ? `${formatGen(config.min_bond, 2)} GEN` : "the minimum";
-    if (agent.status === "SLASHED_OUT") {
-      problems.push(
-        `This agent has already been deactivated after ${agent.violation_count} proven ` +
-        `violation${agent.violation_count === 1 ? "" : "s"} — its bond fell below ${floor}, ` +
-        `so it can no longer cover a penalty. No further challenges can be filed until ` +
-        `someone tops the bond back above ${floor}.`);
-    } else if (agent.status === "WITHDRAWN") {
-      problems.push(
-        "This agent is retired: its operator withdrew the bond, so there is nothing left " +
-        "to answer for its conduct. Its record stays readable, but it cannot be challenged.");
-    } else {
-      problems.push(
-        "This agent cannot be challenged right now — its bond is not available to answer " +
-        "for a penalty. Check its status above.");
-    }
-  }
+  if (agent.status === "RETIRED") problems.push("This agent is retired and can no longer be challenged.");
+  if (BigInt(agent.bond) <= 0n) problems.push("This agent's bond is exhausted.");
+  if (isOperator) problems.push("An operator cannot challenge their own agent.");
+  if (hash && !valid) problems.push("A transaction hash is 0x followed by 64 hex characters.");
+  if (valid && info && !info.found) problems.push(`No such transaction on ${agent.chain}.`);
+  if (info?.found && !info.mined) problems.push("That transaction is not in a block yet.");
+  if (ts && version && !version.found) problems.push("No mandate was in force when that transaction was mined: the agent registered later. Mandates never reach back.");
+  if (dup?.challenged) problems.push(`Already challenged against this agent (challenge #${dup.challenge_id}).`);
+  if (reason && (reason.trim().length < 10 || reason.trim().length > 300)) problems.push("The reason must be 10–300 characters.");
+  const ready = valid && ts > 0 && version?.found && clause && reason.trim().length >= 10 && problems.length === 0 && cfg;
 
-  const ready = Boolean(account) && isTxHash(tx) && reason.trim().length >= 10 && problems.length === 0;
-
-  async function submit() {
-    if (!account) return;
-    setBusy(true); setResult(null);
-    try {
-      const out = await challengeAgent(account, agent.agent_id, tx.trim(), reason.trim(), stake);
-      setResult(out);
-      if (out.kind === "ok") {
-        onFiled?.();
-        const id = (out.data as { challenge_id?: number })?.challenge_id;
-        if (typeof id === "number") setTimeout(() => router.push(`/challenge/${id}`), 1400);
+  const submit = async () => {
+    if (!account || !cfg || !ready) return;
+    await tx.run(async (onProgress) => {
+      const r = await challengeAgent(account, agent.agent_id, h, ts, clause, reason.trim(), BigInt(cfg.challenge_stake), {
+        onProgress,
+        confirm: async () => {
+          const d = await isTxChallenged(agent.chain, h, agent.agent_id);
+          if (d.challenged && d.challenge_id !== undefined) setFiledId(d.challenge_id);
+          return d.challenged;
+        },
+      });
+      if (r.kind === "ok") {
+        const d = await isTxChallenged(agent.chain, h, agent.agent_id);
+        if (d.challenge_id !== undefined) onFiled?.(d.challenge_id);
       }
-    } finally { setBusy(false); }
-  }
+      return r;
+    });
+  };
 
   return (
     <Panel className="p-5">
-      <Label>File a challenge</Label>
-      <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
-        Name one transaction you believe breaks this mandate and stake{" "}
-        <span className="mono text-ink">{formatGen(stake)} GEN</span> on being right.
-        Five validators decide.
+      <Label>Open a challenge</Label>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">
+        Anyone except the operator may challenge. Name one transaction of {shortAddress(agent.wallet)} on {agent.chain} and the
+        clause you say it broke. Stake: <b className="mono">{cfg ? formatGen(cfg.challenge_stake) : "…"} GEN</b>.
       </p>
 
-      <input value={tx} onChange={(e) => setTx(e.target.value)} spellCheck={false}
-        placeholder="0x… transaction hash"
-        className="mono mt-4 w-full rounded-lg border border-line bg-panel-2 px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3" />
+      <label htmlFor="ch-hash" className="mt-4 block text-xs font-medium text-ink-2">Transaction hash</label>
+      <input id="ch-hash" value={hash} onChange={(e) => setHash(e.target.value)} spellCheck={false} placeholder="0x…"
+        className="mono mt-1 w-full rounded-md border border-line-2 bg-panel px-2.5 py-2 text-[13px]" />
+      {info?.mined && (
+        <div className="mt-2 rounded-md bg-panel-2 px-3 py-2 text-xs text-ink-2">
+          Block {info.block} · mined {absoluteTime(info.timestamp)} (unix <span className="mono">{info.timestamp}</span>) ·
+          from <span className="mono">{shortAddress(info.from)}</span> to <span className="mono">{shortAddress(info.to)}</span>
+          {!involves && <span className="block text-neutral-ink">The agent is not the sender or recipient; it must appear in a token transfer, or validators will dismiss the challenge (stake refunded).</span>}
+          <a className="ml-1 text-signal hover:underline" href={blockscoutUrl(agent.chain, "tx", h)} target="_blank" rel="noreferrer">explorer ↗</a>
+        </div>
+      )}
 
-      <div className="mt-2.5 flex items-baseline justify-between">
-        <span className="text-[11px] text-ink-3">Why it looks wrong</span>
-        <span className={`mono text-[11px] ${reason.length > maxReason ? "text-violation-ink" : "text-ink-3"}`}>
-          {reason.length}/{maxReason}
-        </span>
-      </div>
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
-        placeholder="Swapped into a token the mandate does not permit…"
-        className="mt-1.5 w-full resize-y rounded-lg border border-line bg-panel-2 px-3 py-2.5 text-[13px] leading-relaxed text-ink placeholder:text-ink-3" />
+      {version?.found && version.version && (
+        <div className="mt-4">
+          <div className="text-xs font-medium text-ink-2">
+            Clause alleged — judged against version {version.version.version} of the mandate, the one in force at that block time
+          </div>
+          <div className="mt-1.5 space-y-1.5" role="radiogroup" aria-label="Clause alleged">
+            {clauses.map((c) => {
+              const flagged = version.version!.lint_flags.find((f) => f.clause === c.id);
+              return (
+                <label key={c.id} className={`flex cursor-pointer gap-2.5 rounded-md border px-3 py-2 text-[13px] ${clause === c.id ? "border-signal bg-signal/5" : "border-line"}`}>
+                  <input type="radio" name="clause" value={c.id} checked={clause === c.id} onChange={() => setClause(c.id)} className="mt-0.5" />
+                  <span className="mono font-semibold">{c.id}</span><SeverityTag severity={c.severity} />
+                  <span className="min-w-0 flex-1">{c.text}{flagged && <span className="block text-xs text-neutral-ink">Linter: not judgeable from on-chain data — a breach here cannot be slashed.</span>}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      {preview && isTxHash(tx) && !already?.challenged && (
-        <div className="mt-3.5 grid grid-cols-3 gap-2 text-center">
-          <Outcome label="Upheld" value={`+${formatGen(preview.if_violation.bounty, 3)}`} tone="compliant" note="bounty" />
-          <Outcome label="Refuted" value={`−${formatGen(preview.if_compliant.you_lose, 3)}`} tone="violation" note="your stake" />
-          <Outcome label="Inconclusive" value="±0" tone="neutral" note="refunded" />
+      <label htmlFor="ch-reason" className="mt-4 block text-xs font-medium text-ink-2">What looks wrong (10–300 characters)</label>
+      <textarea id="ch-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300}
+        className="mt-1 w-full rounded-md border border-line-2 bg-panel px-2.5 py-2 text-[13px]" />
+
+      {preview?.ok && (
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+          <div className="rounded-md border border-violation/25 bg-violation/5 p-2.5">
+            <div className="font-medium text-violation-ink">If BREACH ({preview.clause_severity}, ×{(preview.multiplier_bps / 10000).toFixed(2)})</div>
+            <div className="mt-1 text-ink-2">Slash {formatGen(preview.if_breach.slash)} GEN; you get back <b>{formatGen(preview.if_breach.you_receive)} GEN</b> (stake + half the slash).</div>
+          </div>
+          <div className="rounded-md border border-compliant/25 bg-compliant/5 p-2.5">
+            <div className="font-medium text-compliant-ink">If COMPLIANT</div>
+            <div className="mt-1 text-ink-2">Your stake ({formatGen(preview.if_compliant.you_lose)} GEN) goes to the operator.</div>
+          </div>
+          <div className="rounded-md border border-neutral/25 bg-neutral/5 p-2.5">
+            <div className="font-medium text-neutral-ink">If INCONCLUSIVE</div>
+            <div className="mt-1 text-ink-2">Your stake comes back in full. A wrong block time is VOID: stake to the operator.</div>
+          </div>
         </div>
       )}
 
       {problems.length > 0 && (
-        <ul className="mt-3.5 space-y-1 rounded-lg border border-neutral/25 bg-neutral/5 p-3 text-[12px] text-neutral-ink">
-          {problems.map((p) => <li key={p}>• {p}</li>)}
-        </ul>
+        <ul className="mt-3 space-y-1 text-xs text-neutral-ink">{problems.map((p) => <li key={p}>• {p}</li>)}</ul>
       )}
 
-      {already?.challenged && typeof already.challenge_id === "number" && (
-        <a href={`/challenge/${already.challenge_id}`}
-          className="mt-2 block text-[12px] text-signal hover:underline">
-          See the existing judgement →
-        </a>
-      )}
-
-      <div className="mt-4">
-        {!account ? (
-          <button onClick={connect} className="w-full rounded-lg bg-signal px-4 py-2.5 text-sm font-medium text-white">
-            Connect wallet to challenge
-          </button>
-        ) : onWrongNetwork ? (
-          <button onClick={switchNetwork}
-            className="w-full rounded-lg border border-neutral/40 bg-neutral/10 px-4 py-2.5 text-sm font-medium text-neutral-ink">
-            Switch network
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {account ? (
+          <button onClick={submit} disabled={!ready || tx.busy}
+            className="rounded-md bg-signal px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {tx.busy ? "Filing…" : `Stake ${cfg ? formatGen(cfg.challenge_stake) : ""} GEN and file`}
           </button>
         ) : (
-          <button onClick={submit} disabled={!ready || busy}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-violation px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40">
-            <Icon name="challenges" size={16} />
-            {busy ? "Filing…" : `Challenge and stake ${formatGen(stake)} GEN`}
-          </button>
+          <button onClick={connect} className="rounded-md border border-line-2 bg-panel px-4 py-2 text-sm">Connect a wallet to file</button>
         )}
+        {filedId !== null && <Link href={`/challenge/${filedId}`} className="text-sm text-signal hover:underline">Open challenge #{filedId} →</Link>}
       </div>
-
-      {config && (
-        <div className="mt-3 text-[11px] leading-relaxed text-ink-3">
-          If upheld, the operator is slashed {percentFromBps(config.penalty_bps)}% of their bond
-          and you take {percentFromBps(config.bounty_bps)}% of that as a bounty, plus your stake
-          back. If refuted, {percentFromBps(config.vindication_bps)}% of your stake goes to the
-          operator you accused.
-        </div>
-      )}
-
-      {result?.kind === "ok" && (
-        <div className="mt-3 rounded-lg border border-compliant/30 bg-compliant/10 p-3 text-[13px] text-compliant-ink">
-          Filed. Opening the challenge…
-        </div>
-      )}
-      {result?.kind === "rejected" && (
-        <div className="mt-3 rounded-lg border border-neutral/30 bg-neutral/10 p-3 text-[13px] text-neutral-ink">
-          <div className="font-medium">Turned down — your stake came back.</div>
-          <div className="mt-1">{result.reason}</div>
-        </div>
-      )}
-      {result?.kind === "failed" && (
-        <div className="mt-3 rounded-lg border border-violation/30 bg-violation/10 p-3 text-[13px] text-violation-ink">
-          {result.error}
-        </div>
-      )}
+      <TxStatus progress={tx.progress} success={filedId !== null ? `Filed as challenge #${filedId}, confirmed in contract state.` : undefined} />
     </Panel>
-  );
-}
-
-function Outcome({ label, value, tone, note }: {
-  label: string; value: string; tone: "compliant" | "violation" | "neutral"; note: string;
-}) {
-  const colour = { compliant: "text-compliant-ink", violation: "text-violation-ink", neutral: "text-neutral-ink" }[tone];
-  return (
-    <div className="rounded-lg border border-line bg-panel-2 px-2 py-2.5">
-      <div className="text-[10px] uppercase tracking-wide text-ink-3">{label}</div>
-      <div className={`mono mt-1 text-[13px] font-semibold ${colour}`}>{value}</div>
-      <div className="text-[10px] text-ink-3">{note}</div>
-    </div>
   );
 }

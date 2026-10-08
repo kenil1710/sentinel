@@ -1,35 +1,48 @@
-/** Shapes the contract's views return. Every view emits a JSON *string*. */
+/**
+ * Shapes of what Sentinel v2's views return. Every amount is a WEI STRING and
+ * every time is unix seconds; views carry no clock, so "is this deadline past"
+ * is always decided here against Date.now().
+ */
 
 export type Chain = "ethereum" | "base" | "arbitrum" | "polygon" | "robinhood";
-export type AgentStatus = "ACTIVE" | "WITHDRAWN" | "SLASHED_OUT";
-export type ChallengeStatus = "PENDING" | "SETTLED" | "REFUNDED";
-export type Verdict = "" | "VIOLATION" | "COMPLIANT" | "INCONCLUSIVE";
+export type Severity = "MINOR" | "MAJOR" | "CRITICAL";
+export type Verdict = "BREACH" | "COMPLIANT" | "INCONCLUSIVE" | "VOID" | "";
+export type AgentStatus = "ACTIVE" | "PAUSED" | "UNREGISTERING" | "RETIRED";
+export type ChallengeStatus = "PENDING" | "CONTESTABLE" | "APPEALED" | "FINAL";
 export type AgentType = "TRADING" | "DEFI" | "SHOPPING" | "CONTENT" | "CUSTOM";
 
-export interface Config {
-  owner: string;
-  paused: boolean;
-  min_bond: string;
-  min_bond_text: string;
-  challenge_stake: string;
-  challenge_stake_text: string;
-  penalty_bps: number;
-  bounty_bps: number;
-  vindication_bps: number;
-  challenge_cooldown: number;
-  max_pending_per_agent: number;
-  resolution_window: number;
-  max_mandate_chars: number;
-  min_mandate_chars: number;
-  max_reason_chars: number;
-  chains: Chain[];
-  explorers: Record<Chain, string>;
-  verdicts: string[];
-  agent_types: AgentType[];
-  max_name_chars: number;
-  max_description_chars: number;
-  max_url_chars: number;
+export interface Clause { id: string; severity: Severity; text: string }
+export interface LintFlag { clause: string; quote: string }
+
+export interface MandateVersion {
+  version: number;
+  text: string;
+  clauses: Clause[];
+  mandate_hash: string;
+  created_at: number;
+  effective_from: number;
+  severity_bps: Record<Severity, number>;
+  repeat_step_bps: number;
+  repeat_cap_bps: number;
+  lint_status: "PENDING" | "DONE" | "INCONCLUSIVE";
+  lint_flags: LintFlag[];
+  lint_deadline: number;
 }
+
+export interface TrackRecord {
+  breaches: Record<Severity, number>;
+  breaches_total: number;
+  compliant: number;
+  inconclusive: number;
+  void: number;
+  overrulings: number;
+  appeals_won: number;
+  appeals_lost: number;
+  last_breach_at: number;
+  total_slashed: string;
+}
+
+export interface Standing { good_standing: boolean; reasons: string[] }
 
 export interface Agent {
   agent_id: number;
@@ -37,7 +50,6 @@ export interface Agent {
   wallet: string;
   chain: Chain;
   explorer: string;
-  mandate: string;
   name: string;
   agent_type: AgentType;
   description: string;
@@ -45,187 +57,224 @@ export interface Agent {
   bond: string;
   status: AgentStatus;
   registered_at: number;
-  mandate_updated_at: number;
-  last_checked: number;
+  versions: number;
+  latest_version: MandateVersion | null;
+  open_count: number;
   challenge_count: number;
-  violation_count: number;
-  compliant_count: number;
-  inconclusive_count: number;
-  pending_count: number;
-  total_slashed: string;
-  total_topped_up: string;
-  compliance_bps: number;
-  decided_count: number;
-  challengeable: boolean;
+  withdraw_amount: string;
+  withdraw_unlock_at: number;
+  unregister_unlock_at: number;
+  last_checked: number;
+  track_record: TrackRecord;
+  standing: Standing;
 }
 
-/** What list views return: the agent record minus detail-only fields. */
-export interface AgentSummary
-  extends Omit<Agent,
-    "mandate" | "explorer" | "total_topped_up" | "mandate_updated_at" |
-    "inconclusive_count" | "description" | "operator_url"> {
-  mandate_preview: string;
-  /** Present only on the patrol queue, which re-adds them. */
-  mandate?: string;
-  explorer?: string;
-  seconds_since_check?: number;
+export interface Snapshot {
+  mandate_version: number;
+  mandate_hash: string;
+  clauses: Clause[];
+  lint_status: string;
+  lint_flags: LintFlag[];
+  severity_bps: Record<Severity, number>;
+  multiplier_bps: number;
+  prior_breaches: number;
+  bond_at_filing: string;
+  bounty_bps: number;
+  appeal_window: number;
+  appeal_bond: string;
+  appeal_resolve_window: number;
 }
 
-export interface Settlement {
-  bond_before: string;
-  penalty: string;
+export interface Ruling {
+  verdict: Verdict;
+  clause: string;
+  severity: Severity | "";
+  quote: string;
+  code: string;
+  reasoning: string;
+  digest: string;
+  tx_kind: string;
+  evidence: string;
+  injection_flagged: boolean;
+  ruled_at: number;
+  contest_deadline: number;
+}
+
+export interface Appeal {
+  appellant: string;
+  role: "OPERATOR" | "CHALLENGER" | "";
+  text: string;
+  stake: string;
+  appealed_at: number;
+  deadline: number;
+  verdict: Verdict;
+  clause: string;
+  severity: string;
+  quote: string;
+  code: string;
+  reasoning: string;
+  outcome: "UPHELD" | "REJECTED" | "EXPIRED" | "";
+}
+
+export interface FinalRuling {
+  verdict: Verdict;
+  clause: string;
+  severity: string;
+  how: string;
+  finalized_at: number;
+  slash: string;
   bounty: string;
-  protocol_cut: string;
-  operator_award: string;
-  refunded: string;
+  treasury_cut: string;
+  to_operator: string;
+  to_challenger: string;
+  precedent_key: string;
 }
 
 export interface Challenge {
   challenge_id: number;
   agent_id: number;
   challenger: string;
-  tx_hash: string;
   chain: Chain;
+  tx_hash: string;
   tx_url: string;
+  wallet: string;
+  alleged_clause: string;
   reason: string;
   stake: string;
-  status: ChallengeStatus;
-  verdict: Verdict;
+  tx_timestamp: number;
+  snapshot: Snapshot;
   filed_at: number;
-  settled_at: number;
-  reasoning: string;
-  evidence_digest: string;
-  injection_flagged: boolean;
-  confidence: number;
-  stalled: boolean;
-  settlement: Settlement;
-  stalled_eligible: boolean;
-  stalled_in: number;
+  resolve_deadline: number;
+  status: ChallengeStatus;
+  ruling: Ruling;
+  appeal: Appeal;
+  final: FinalRuling;
+}
+
+export interface Precedent {
+  key: string;
+  agent_id: number;
+  tx_kind: string;
+  clause_id: string;
+  clause_hash: string;
+  challenge_id: number;
+  created_at: number;
+  active: boolean;
+  vetoed_by: number;
 }
 
 export interface Stats {
   agents_registered: number;
-  agents_active: number;
-  bond_under_watch: string;
-  bond_under_watch_text: string;
+  agents_by_status: Record<AgentStatus, number>;
   challenges_filed: number;
-  challenges_settled: number;
-  violations: number;
-  compliant: number;
-  inconclusive: number;
+  challenges_open: number;
+  final: Record<"BREACH" | "COMPLIANT" | "INCONCLUSIVE" | "VOID", number>;
   stalled: number;
-  patrols_run: number;
-  bounties_paid: string;
-  bounties_paid_text: string;
+  appeals: { filed: number; upheld: number; rejected: number; expired: number };
+  precedents: number;
+  precedents_active: number;
+  total_bonds: string;
   total_slashed: string;
-  total_slashed_text: string;
-  total_bonded: string;
+  total_bounties: string;
+  total_treasury: string;
+  patrols_run: number;
   watchers: number;
-  violation_rate_bps: number;
+}
+
+export interface Ledger {
+  received: string;
+  bonds: string;
+  open_stakes: string;
+  claimable: string;
+  claimed: string;
+  recomputed: { bonds: string; open_stakes: string; claimable: string; claimed: string };
+  invariant_holds: boolean;
+  views_match_storage: boolean;
+  held_now: string;
+  on_chain_balance: string;
+  undelivered_transfers: string;
+  note: string;
+}
+
+export interface Config {
+  version: string;
+  mode: "CANONICAL" | "DEMO";
+  treasury: string;
+  min_bond: string;
+  challenge_stake: string;
+  appeal_bond: string;
+  bounty_bps: number;
+  appeal_window: number;
+  mandate_delay: number;
+  withdraw_delay: number;
+  resolve_window: number;
+  appeal_resolve_window: number;
+  lint_window: number;
+  max_open_per_agent: number;
   chains: Chain[];
+  explorers: Record<Chain, string>;
+  severity_bounds: Record<Severity, [number, number]>;
+  step_bounds: [number, number];
+  cap_bounds: [number, number];
+  default_table: string;
+  agent_types: AgentType[];
+  max_clauses: number;
+  max_clause_chars: number;
+  max_reason_chars: number;
+  min_appeal_chars: number;
+  max_appeal_chars: number;
 }
 
 export interface Watcher {
   watcher: string;
-  upheld: number;
-  refuted: number;
-  inconclusive: number;
   filed: number;
+  won: number;
+  lost: number;
+  void_or_inconclusive: number;
   earned: string;
-  earned_text?: string;
-  staked: string;
-  accuracy_bps: number;
-  decided: number;
-  known?: boolean;
 }
 
-export interface ComplianceScore {
+export interface TrackView {
   agent_id: number;
-  compliance_bps: number;
-  compliance_percent: number;
-  decided: number;
-  compliant: number;
-  violations: number;
-  inconclusive: number;
-  pending: number;
-  basis: string;
+  track_record: TrackRecord;
+  recomputed: Omit<TrackRecord, "breaches_total">;
+  views_match_storage: boolean;
 }
 
-export interface PatrolPreview {
-  agent_id: number;
-  chain: Chain;
-  tx_hash: string;
-  tx_url: string;
-  stake_required: string;
-  stake_required_text: string;
-  valid_hash: boolean;
-  already_challenged: boolean;
-  agent_challengeable: boolean;
-  if_violation: { you_receive: string; you_receive_text: string; bounty: string; operator_slashed: string; protocol_cut: string };
-  if_compliant: { you_receive: string; you_lose: string; you_lose_text: string; operator_receives: string; protocol_cut: string };
-  if_inconclusive: { you_receive: string; you_receive_text: string; operator_affected: boolean };
+export interface PreviewChallenge {
+  ok: boolean;
+  reason?: string;
+  version: number;
+  clause_severity: Severity | "";
+  multiplier_bps: number;
+  bond: string;
+  stake: string;
+  if_breach: { slash: string; you_receive: string; bounty: string; treasury: string };
+  if_compliant: { you_lose: string; operator_receives: string };
+  if_inconclusive: { you_receive: string };
 }
 
-export interface VerifyResult {
-  challenge_id: number;
-  verdict: Verdict;
-  status: ChallengeStatus;
-  settled: boolean;
-  evidence_digest: string;
-  reasoning: string;
-  coherent: boolean;
-  injection_flagged: boolean;
-  checks: { field: string; expected: string; actual: string; ok: boolean }[];
-  all_ok: boolean;
-  paid_out: string;
-  retained: string;
-  conservation: { in: string; out: string; balanced: boolean };
+/** What a write did, in the words the UI shows. */
+export type TxPhase = "signing" | "submitted" | "accepted" | "finalized" | "rejected" | "failed";
+export interface TxProgress {
+  phase: TxPhase;
+  hash: string | null;
+  message: string;
 }
 
-export interface Treasury {
-  locked_bonds: string;
-  locked_stakes: string;
-  protocol_balance: string;
-  owed_total: string;
-  owed_text: string;
-  total_bonded: string;
-  total_slashed: string;
-  total_bounties: string;
-  total_paid: string;
-  total_refunded: string;
-  last_out_epoch: number;
-}
-
-/**
- * The three states a write can land in.
- *
- * `rejected` is the one that does not exist on most chains: Sentinel's payable
- * methods REFUND rather than revert on bad input, so a rejection arrives as a
- * SUCCESSFUL transaction whose return value says `ok: false`. Rendering that as
- * a confirmation would show someone a bond that was already sent back.
- */
-export type WriteResult<T = Record<string, unknown>> =
+export type WriteResult<T> =
   | { kind: "ok"; hash: string; data: T }
-  | { kind: "rejected"; hash: string; reason: string; refunded: string }
+  | { kind: "rejected"; hash: string; reason: string }
   | { kind: "failed"; hash: string | null; error: string };
 
-/** One agent's row in a patrol run. */
 export interface PatrolRow {
   agent_id: number;
   wallet: string;
   chain: Chain;
   scanned: number;
   skipped_already_challenged: number;
-  flagged: { tx_hash: string; reason: string; filed: boolean; challenge_id?: number; error?: string }[];
-  /**
-   * Accusations the bot DID NOT stake on, because the validators already ruled
-   * this agent COMPLIANT on the same rule and subject. `cleared_by` is the
-   * challenge whose verdict withheld it, so the silence is auditable — a
-   * watchdog that stops accusing must be able to say why.
-   */
-  withheld: { tx_hash: string; reason: string; cleared_by: number; rulings: number }[];
-  /** How many cleared rule-and-subject patterns this agent's history taught the bot. */
-  learned_rules: number;
+  flagged: { tx_hash: string; reason: string; clause: string; filed: boolean; challenge_id?: number; error?: string }[];
+  skipped_precedent: { tx_hash: string; clause: string; tx_kind: string; precedent_key: string; challenge_id: number }[];
   error?: string;
 }
 
@@ -239,26 +288,9 @@ export interface PatrolReport {
   patrolled: number;
   transactions_scanned: number;
   challenges_filed: number;
-  /** Accusations withheld across the run because the validators had already rejected them. */
-  challenges_withheld: number;
-  /**
-   * The standing stand-down list this run acted on — {agent_id, pattern} pairs
-   * the validators have ruled COMPLIANT at least LEARN_AFTER times. Rebuilt
-   * from the chain every run, never cached, so it cannot drift from the
-   * verdicts it represents.
-   */
-  /**
-   * Patterns the bot stood down on this run. `transactions` are the ones whose
-   * records CORROBORATED the clearance — a reason string alone no longer counts
-   * toward it, so this is the evidence, not just the claim.
-   */
-  learned_compliant: {
-    agent_id: number; pattern: string; rulings: number;
-    first: number; last: number; transactions: string[];
-  }[];
+  skipped_by_precedent: number;
   dry_run: boolean;
-  /** What this run put to the validators. Empty on a dry run. */
-  challenges_resolved?: { challenge_id: number; verdict: string; error?: string }[];
+  actions: { challenge_id: number; action: string; result: string }[];
   rows: PatrolRow[];
   notes: string[];
 }

@@ -1,0 +1,25 @@
+{
+  "contract": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2",
+  "started_at": "2026-10-08T15:47:38.433Z",
+  "agents": {
+    "e1": {
+      "agent_id": 0,
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "start_block": 26148673,
+      "registered_at": 1791474597,
+      "register_tx": "0x08e3f873f856082538a2acf31de07b08a952cb2ffc43b7a93635686e3c539b6a",
+      "lint": {}
+    }
+  },
+  "cases": {},
+  "events": [
+    {
+      "at": "2026-10-08T15:51:57.531Z",
+      "kind": "registered",
+      "key": "e1",
+      "agent_id": 0,
+      "tx": "0x08e3f873f856082538a2acf31de07b08a952cb2ffc43b7a93635686e3c539b6a"
+    }
+  ]
+}

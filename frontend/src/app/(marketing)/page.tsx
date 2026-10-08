@@ -6,40 +6,40 @@ import { HeroVisual } from "@/components/HeroVisual";
 import { Panel, Label } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import type { IconName } from "@/components/icons";
-import { getStats } from "@/lib/contract";
+import { getCanonicalStats } from "@/lib/contract";
 import { formatGen } from "@/lib/format";
 
 const STEPS: { n: string; title: string; icon: IconName; body: string }[] = [
   {
     n: "01", title: "Register", icon: "step_register",
-    body: "An operator publishes their agent's wallet, its chain and a plain-English mandate on chain, and posts a bond that answers for the agent's conduct.",
+    body: "An operator publishes the agent's wallet, its chain and a mandate of numbered clauses, each with a severity, and posts a bond. Validators lint it: clauses that cannot be judged from on-chain data are marked and can never be slashed.",
   },
   {
-    n: "02", title: "Patrol", icon: "step_patrol",
-    body: "Sentinel walks the register on a schedule, pulls each agent's recent transactions from Blockscout, and looks for ones that visibly contradict a rule it can check. Nobody points it at a transaction.",
+    n: "02", title: "Challenge", icon: "step_challenge",
+    body: "Anyone but the operator names one transaction and one clause, and stakes. The mandate version in force when that transaction was mined is snapshotted with every parameter the ruling will use.",
   },
   {
-    n: "03", title: "Challenge", icon: "step_challenge",
-    body: "A suspicious transaction becomes an on-chain challenge naming that exact hash. The accuser stakes GEN on being right — the bot included.",
+    n: "03", title: "Judge, then appeal", icon: "step_judge",
+    body: "Validators each fetch the transaction and must agree. The ruling is provisional: the party it went against may appeal once with a bond and new evidence, and a fresh panel decides.",
   },
   {
-    n: "04", title: "Judge", icon: "step_judge",
-    body: "Five GenLayer validators each fetch the transaction themselves, read it against the mandate, and agree on one verdict. A breach slashes the bond; a false accusation costs the accuser their stake.",
+    n: "04", title: "Final", icon: "accountable",
+    body: "After the window anyone makes it final. Code computes the slash from the clause's severity and the repeat multiplier; every payout is a pull balance. Final clearances teach the patrol bot what to stop accusing.",
   },
 ];
 
 const WHY: { title: string; icon: IconName; body: string }[] = [
   {
-    title: "Autonomous", icon: "autonomous",
-    body: "Nobody files the challenges. A scheduled bot walks the register, reads real transactions off public explorers, and stakes its own money on every accusation it makes. It is wrong sometimes, and it pays for that too.",
+    title: "Fair to the accused", icon: "trustless",
+    body: "A ruling is provisional for an hour and the operator can appeal it with new evidence. Edits to a mandate wait an hour and never reach back. A clause the validators say cannot be judged from on-chain data can never be slashed.",
   },
   {
-    title: "Trustless", icon: "trustless",
-    body: "There is no admin key that decides a case, no multisig that can reverse one, and no privileged reviewer. Five validators fetch the evidence independently and agree on a verdict, or the challenge stays open.",
+    title: "Open to anyone", icon: "autonomous",
+    body: "Any wallet can challenge with a stake, not just the patrol bot. A challenger who proves a breach gets their stake back and half the slash; one who is wrong pays the operator. The same transaction cannot be argued twice.",
   },
   {
-    title: "Accountable", icon: "accountable",
-    body: "Every verdict carries the reasoning that produced it and a digest of the evidence it was read from. The settlement arithmetic can be recomputed from what was stored, by anyone, without trusting our summary of it.",
+    title: "Checkable", icon: "accountable",
+    body: "Every number on this site is a contract read. The contract recomputes its own ledger and each track record from the records and says whether they match. The code on chain is byte-identical to the repository.",
   },
 ];
 
@@ -52,7 +52,8 @@ export default function Home() {
    * the grid belongs on /patrol and /analytics, where someone has come to read
    * instruments.
    */
-  const { data: stats } = useSWR("landing-proof", getStats, { refreshInterval: 60_000 });
+  const { data: stats } = useSWR("landing-proof", getCanonicalStats, { refreshInterval: 60_000 });
+  const n = (v: number | undefined) => (stats ? String(v ?? 0) : "—");
 
   return (
     <>
@@ -71,13 +72,12 @@ export default function Home() {
             </h1>
 
             <p className="mt-6 max-w-xl text-[16px] leading-relaxed text-ink-2">
-              Autonomous agents are moving real money against rules nobody enforces.
-              Sentinel makes those rules cost something: an operator publishes what
-              their agent may do and posts a bond behind it, and a bot patrols public
-              chains looking for transactions that contradict it. When it finds one,{" "}
-              <span className="font-medium text-ink">GenLayer validators judge the case</span>{" "}
-              — reading the mandate as prose against the transaction record — and the
-              bond pays for the breach.
+              Autonomous agents move real money under rules nobody enforces. Sentinel
+              makes those rules cost something: an operator publishes numbered clauses
+              with a severity each and bonds them; anyone can challenge a transaction;{" "}
+              <span className="font-medium text-ink">GenLayer validators judge it</span>{" "}
+              against the mandate version in force when it was mined. Rulings can be
+              appealed once, then they are final, and code computes the slash.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -100,29 +100,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Social proof — one banner, one sentence, not a wall of instruments. */}
-      <section className="mx-auto max-w-6xl px-5 pb-20">
-        <div className="overflow-hidden rounded-2xl border border-line bg-panel shadow-[var(--shadow-card-lifted)]">
-          <div className="flex flex-col gap-5 p-7 sm:flex-row sm:items-center sm:p-9">
-            <div className="min-w-0">
-              <Label>Already happening</Label>
-              <p className="mt-2.5 text-[19px] leading-snug tracking-tight sm:text-[22px]">
-                <span className="mono font-semibold text-violation-ink">
-                  {stats ? stats.violations : "—"}
-                </span>{" "}
-                <span className="font-medium">breaches proven on chain</span>, and{" "}
-                <span className="mono font-semibold text-ink">
-                  {stats ? formatGen(stats.total_slashed, 3) : "—"} GEN
-                </span>{" "}
-                <span className="font-medium">slashed from the agents that committed them</span>
-                <span className="text-ink-2"> — every case filed by the bot, and judged by validators nobody on this team controls.</span>
-              </p>
-            </div>
-            <Link href="/leaderboard"
-              className="shrink-0 rounded-lg border border-line bg-ground px-4 py-2.5 text-center text-sm font-medium text-ink transition-colors hover:border-signal/40 sm:ml-auto">
-              See who caught them →
-            </Link>
+      <section className="mx-auto max-w-6xl px-5 pb-20" aria-labelledby="live-h">
+        <div className="overflow-hidden rounded-2xl border border-line bg-panel p-7 shadow-[var(--shadow-card-lifted)] sm:p-9">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <Label>The canonical register, read from the contract just now</Label>
+            <Link href="/analytics" className="ml-auto text-sm text-signal hover:underline">All figures →</Link>
           </div>
+          <h2 id="live-h" className="sr-only">Live figures</h2>
+          <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
+            {([
+              ["Agents registered", n(stats?.agents_registered), "text-ink"],
+              ["Challenges filed", n(stats?.challenges_filed), "text-ink"],
+              ["Open now", n(stats?.challenges_open), "text-signal"],
+              ["Final breaches", n(stats?.final.BREACH), "text-violation-ink"],
+              ["Final compliant", n(stats?.final.COMPLIANT), "text-compliant-ink"],
+              ["Final inconclusive", n(stats?.final.INCONCLUSIVE), "text-neutral-ink"],
+              ["Appeals filed", n(stats?.appeals.filed), "text-ink"],
+              ["Appeals upheld", n(stats?.appeals.upheld), "text-ink"],
+              ["Precedents", n(stats?.precedents), "text-ink"],
+              ["GEN slashed", stats ? formatGen(stats.total_slashed, 4) : "—", "text-violation-ink"],
+              ["GEN in bounties", stats ? formatGen(stats.total_bounties, 4) : "—", "text-ink"],
+              ["Patrol runs", n(stats?.patrols_run), "text-ink"],
+            ] as const).map(([label, value, tone]) => (
+              <div key={label}>
+                <dt className="text-xs text-ink-2">{label}</dt>
+                <dd className={`mono mt-1 text-2xl font-semibold tabular-nums ${tone}`} data-stat={label}>{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
@@ -172,22 +177,19 @@ export default function Home() {
             <div>
               <Label>The hard part</Label>
               <h3 className="mt-2 text-xl font-semibold tracking-tight">
-                Two validators must agree about a document that never stops moving
+                Validators must agree about a document that never stops moving
               </h3>
               <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
-                A Blockscout transaction changes between two fetches seconds apart —
-                confirmations, exchange rates, and the token&apos;s own total supply all
-                move. Comparing the document would make every challenge permanently
-                unsettleable, for reasons that have nothing to do with the mandate.
+                A Blockscout transaction changes between two fetches seconds apart: confirmations, exchange rates and token supplies all move,
+                and labels can be edited at any time. So validators compare only the verdict, the clause, and a digest of the facts a chain cannot
+                change: sender, recipient, value, selector, token transfers, block and time.
               </p>
               <p className="mt-3 text-[13px] leading-relaxed text-ink-2">
-                So Sentinel compares <span className="font-medium text-ink">one string</span>: the
-                verdict. Validators fetch, project the record to the fields a mandate
-                can turn on, judge, and vote on the judgement alone. The evidence
-                digest is recorded for auditing and is never voted on.
+                If they disagree, nothing is written and the challenge waits for another panel. An appeal must read the same immutable facts
+                as the first ruling, or it waits too.
               </p>
               <Link href="/docs" className="mt-5 inline-block text-sm font-medium text-signal hover:underline">
-                Read the measurements →
+                How it works →
               </Link>
             </div>
             <div className="mono overflow-x-auto rounded-lg border border-line bg-panel-2 p-5 text-[12px] leading-relaxed">
@@ -195,12 +197,10 @@ export default function Home() {
               <div className="mt-2 text-violation-ink">- confirmations: 1 → 3</div>
               <div className="text-violation-ink">- exchange_rate: 2410.49 → 2412.93</div>
               <div className="text-violation-ink">- token.total_supply: …716 → …608</div>
-              <div className="mt-3 text-ink-3"># after projection</div>
-              <div className="mt-2 text-compliant-ink">+ digest ac21b94efc744e7a</div>
-              <div className="text-compliant-ink">+ digest ac21b94efc744e7a</div>
-              <div className="mt-3 text-ink-3">
-                # 1,596 bytes from 18,087 — and identical
-              </div>
+              <div className="mt-3 text-ink-3"># what validators compare</div>
+              <div className="mt-2 text-compliant-ink">+ BREACH|C1|c94ffd7f…|call:0xee7a…:0x34fcd5be…</div>
+              <div className="text-compliant-ink">+ BREACH|C1|c94ffd7f…|call:0xee7a…:0x34fcd5be…</div>
+              <div className="mt-3 text-ink-3"># verdict | clause | digest of immutable facts | kind</div>
             </div>
           </div>
         </Panel>

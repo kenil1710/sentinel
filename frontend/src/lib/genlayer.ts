@@ -6,13 +6,13 @@
  */
 import { createClient } from "genlayer-js";
 import { studioDevnet } from "genlayer-js/chains";
+import { DEPLOYMENTS } from "./deployments";
 
 /**
  * Next inlines `process.env.NEXT_PUBLIC_*` at build time only for *literal*
  * member access — `process.env[name]` silently yields undefined in the browser.
  * Hence the literal reads below rather than a lookup helper.
  */
-const rawContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 const rawNetwork = process.env.NEXT_PUBLIC_NETWORK;
 
 /**
@@ -129,7 +129,42 @@ function assertAddress(value: string | undefined, name: string): `0x${string}` {
   return value as `0x${string}`;
 }
 
-export const CONTRACT_ADDRESS = assertAddress(rawContractAddress, "NEXT_PUBLIC_CONTRACT_ADDRESS");
+/**
+ * ONE set of addresses, generated from deployments.json (tools/sync_addresses.mjs).
+ * NEXT_PUBLIC_CONTRACT_ADDRESS is still set on Vercel for the patrol route's
+ * logs and must equal it; the final check compares them.
+ */
+export const CONTRACT_ADDRESS = assertAddress(DEPLOYMENTS.sentinel, "deployments.sentinel");
+export const DEMO_ADDRESS = assertAddress(DEPLOYMENTS.demo, "deployments.demo");
+export const CONSUMER_ADDRESS = assertAddress(DEPLOYMENTS.consumer, "deployments.consumer");
+
+export type Deployment = "canonical" | "demo";
+const DEPLOYMENT_KEY = "sentinel-deployment";
+
+/**
+ * Which Sentinel the app is talking to. The canonical register is the default
+ * and the only one the landing page, /api/check and the badge ever read; the
+ * demo deployment runs the same code with 90-second windows so a visitor can
+ * walk a challenge from filing to final in a few minutes. Chosen per browser.
+ */
+export function getDeployment(): Deployment {
+  if (typeof window === "undefined") return "canonical";
+  try {
+    return window.localStorage.getItem(DEPLOYMENT_KEY) === "demo" ? "demo" : "canonical";
+  } catch {
+    return "canonical";
+  }
+}
+
+export function setDeployment(d: Deployment): void {
+  try {
+    window.localStorage.setItem(DEPLOYMENT_KEY, d);
+  } catch { /* storage blocked: stays canonical */ }
+}
+
+export function activeContract(): `0x${string}` {
+  return getDeployment() === "demo" ? DEMO_ADDRESS : CONTRACT_ADDRESS;
+}
 
 /**
  * Same-origin relay for Studio, implemented at `app/api/rpc/route.ts`.

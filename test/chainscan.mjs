@@ -64,3 +64,49 @@ export async function receipt(chain, hash) {
   }));
   return { status: r?.status, from: r?.from, to: r?.to, transfers };
 }
+
+const nonceAt = async (chain, w, n) => parseInt(await rpc(chain, "eth_getTransactionCount", [w, "0x" + n.toString(16)]), 16);
+
+/**
+ * Transactions SENT by `wallet` after block `from`, found by bisecting on the
+ * account nonce rather than reading every block: O(log blocks) reads per
+ * transaction, which is what makes a 4-blocks-a-second chain affordable.
+ * Returns at most `max`, oldest first, with block time.
+ */
+export async function sentSince(chain, wallet, from, max = 10) {
+  try {
+    return await sentByNonce(chain, wallet, from, max);
+  } catch (e) {
+    if (!/historical state|missing trie|header not found/i.test(String(e?.message ?? e))) throw e;
+    // A pruned node cannot answer the nonce at a past block: read the blocks.
+    const to = await head(chain);
+    return (await sentIn(chain, wallet, Math.max(from, to - 150), to)).slice(0, max)
+      .map((t) => ({ ...t, selector: t.input === "0x" ? "plain" : t.input.slice(0, 10) }));
+  }
+}
+
+async function sentByNonce(chain, wallet, from, max) {
+  const w = wallet.toLowerCase();
+  const to = await head(chain);
+  const n0 = await nonceAt(chain, w, from);
+  const n1 = await nonceAt(chain, w, to);
+  const out = [];
+  let lo = from;
+  for (let k = n0; k < n1 && out.length < max; k++) {
+    // smallest block b in (lo, to] with nonce(b) > k
+    let a = lo, b = to;
+    while (b - a > 1) {
+      const m = Math.floor((a + b) / 2);
+      if ((await nonceAt(chain, w, m)) > k) b = m; else a = m;
+    }
+    const blk = await block(chain, b);
+    for (const t of blk?.transactions ?? []) {
+      if (String(t.from).toLowerCase() === w && parseInt(t.nonce, 16) === k) {
+        out.push({ hash: t.hash, block: b, ts: parseInt(blk.timestamp, 16), to: (t.to ?? "").toLowerCase(),
+          value: BigInt(t.value), selector: t.input === "0x" ? "plain" : t.input.slice(0, 10), input: t.input });
+      }
+    }
+    lo = a;
+  }
+  return out;
+}

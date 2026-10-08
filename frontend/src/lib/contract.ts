@@ -1,38 +1,32 @@
 /**
- * Typed access to the Sentinel contract.
+ * Typed access to Sentinel v2 and SentinelConsumer.
  *
  * Two rules run through this file:
  *
- * 1. EVERY VIEW RETURNS A JSON STRING. The contract serialises with json.dumps,
- *    so `readContract` hands back text that has to be parsed. A caller that
- *    treats the result as an object gets `undefined` for every field and
- *    renders a page of blanks rather than an error.
+ * 1. EVERY VIEW RETURNS A JSON STRING; it is parsed here.
  *
- * 2. A PAYABLE WRITE CAN SUCCEED AND STILL HAVE BEEN TURNED DOWN. Sentinel
- *    refunds rather than reverts on bad input, because a GenVM revert rolls
- *    back storage but NOT the incoming value. So a rejection arrives as a
- *    SUCCESSFUL transaction whose return value says `ok: false`, and
- *    `readWriteResult` is what tells the two apart. No caller may skip it:
- *    treating a rejection as a confirmation would show someone a registered
- *    agent that does not exist and a bond that has already been sent back.
+ * 2. A WRITE IS NOT DONE WHEN IT IS SENT, AND NOT EVEN WHEN IT IS ACCEPTED.
+ *    `send` reports each phase (signing -> submitted -> accepted -> finalized)
+ *    and only reports success after the caller's `confirm` has re-read the
+ *    contract and found the effect it asked for. A payable call that the
+ *    contract turned down is a SUCCESSFUL transaction returning ok:false (the
+ *    value is credited to the sender's claimable balance), so it is shown as
+ *    "rejected", never as success.
  */
 import type { CalldataEncodable, TransactionHash } from "genlayer-js/types";
-import { CONTRACT_ADDRESS, NETWORK, getReadClient, getWalletClient } from "./genlayer";
+import { encodeExternalMessageFeeParams } from "genlayer-js";
+import { CONSUMER_ADDRESS, CONTRACT_ADDRESS, NETWORK, activeContract, getReadClient, getWalletClient } from "./genlayer";
 import type {
-  Agent, AgentSummary, AgentType, Challenge, ComplianceScore, Config,
-  PatrolPreview, Stats, Treasury, VerifyResult, Watcher, WriteResult,
+  Agent, Challenge, Config, Ledger, MandateVersion, Precedent, PreviewChallenge, Stats,
+  TrackView, TxProgress, Watcher, WriteResult,
 } from "@/types";
 
-/** Reads are capped so a hung endpoint surfaces as an error, not a spinner. */
-const READ_TIMEOUT_MS = 30_000;
+const READ_TIMEOUT_MS = 45_000;
 
-async function withTimeout<T>(work: Promise<T>, label: string): Promise<T> {
+async function withTimeout<T>(work: Promise<T>, label: string, ms = READ_TIMEOUT_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const guard = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${READ_TIMEOUT_MS / 1000}s`)),
-      READ_TIMEOUT_MS,
-    );
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
   });
   try {
     return await Promise.race([work, guard]);
@@ -41,12 +35,9 @@ async function withTimeout<T>(work: Promise<T>, label: string): Promise<T> {
   }
 }
 
-async function view<T>(functionName: string, args: CalldataEncodable[] = []): Promise<T> {
-  const client = getReadClient();
+async function viewOf<T>(address: `0x${string}`, functionName: string, args: CalldataEncodable[] = []): Promise<T> {
   const raw = await withTimeout(
-    client.readContract({ address: CONTRACT_ADDRESS, functionName, args }) as Promise<unknown>,
-    functionName,
-  );
+    getReadClient().readContract({ address, functionName, args }) as Promise<unknown>, functionName);
   if (typeof raw !== "string") return raw as T;
   try {
     return JSON.parse(raw) as T;
@@ -54,308 +45,279 @@ async function view<T>(functionName: string, args: CalldataEncodable[] = []): Pr
     throw new Error(`${functionName} returned text that is not JSON: ${raw.slice(0, 160)}`);
   }
 }
+const view = <T,>(fn: string, args: CalldataEncodable[] = []) => viewOf<T>(activeContract(), fn, args);
 
 // ── Reads ──────────────────────────────────────────────────────────────────
 
 export const getConfig = () => view<Config>("get_config");
 export const getStats = () => view<Stats>("get_stats");
-export const getTreasury = () => view<Treasury>("get_treasury");
+/** Always the canonical register, whatever the deployment switch says (landing page, patrol). */
+export const getCanonicalStats = () => viewOf<Stats>(CONTRACT_ADDRESS, "get_stats");
+export const getLedger = () => view<Ledger>("get_ledger");
 export const getAgent = (id: number) => view<Agent>("get_agent", [id]);
-export const getChallenge = (id: number) => view<Challenge>("get_challenge", [id]);
-export const getComplianceScore = (id: number) => view<ComplianceScore>("get_compliance_score", [id]);
-export const verifyChallenge = (id: number) => view<VerifyResult>("verify_challenge", [id]);
-export const getWatcher = (addr: string) => view<Watcher>("get_watcher", [addr]);
-export const previewChallenge = (id: number, tx: string) =>
-  view<PatrolPreview>("preview_challenge", [id, tx]);
-
-export const getActiveAgents = (count = 60) =>
-  view<{ count: number; agents: AgentSummary[] }>("get_active_agents", [count]);
-export const getAgentsByType = (agentType: string, count = 60) =>
-  view<{ agent_type: string; count: number; agents: AgentSummary[] }>("get_agents_by_type", [agentType, count]);
-export const getAgentsByChain = (chain: string, count = 60) =>
-  view<{ chain: string; count: number; agents: AgentSummary[] }>("get_agents_by_chain", [chain, count]);
-export const getAgentsByOperator = (addr: string, count = 60) =>
-  view<{ operator: string; count: number; agents: AgentSummary[] }>("get_agents_by_operator", [addr, count]);
-export const getPatrolQueue = (count = 25) =>
-  view<{ count: number; now: number; queue: AgentSummary[] }>("get_patrol_queue", [count]);
-export const getChallenges = (count = 60) =>
-  view<{ count: number; challenges: Challenge[] }>("get_challenges", [count]);
-export const getPendingChallenges = (count = 60) =>
-  view<{ count: number; now: number; challenges: Challenge[] }>("get_pending_challenges", [count]);
-export const getAgentHistory = (id: number, count = 60) =>
-  view<{ agent_id: number; wallet: string; chain: string; mandate: string; count: number; challenges: Challenge[] }>(
-    "get_agent_history", [id, count]);
-export const getLeaderboard = (count = 25) =>
-  view<{ count: number; watchers: Watcher[] }>("get_leaderboard", [count]);
-/**
- * Find an agent by the wallet it watches.
- *
- * This is the RECOVERY PATH for a write whose return payload did not survive
- * the transport. `readWriteResult` deliberately reports such a transaction as
- * `ok` with empty data — it settled, the money moved, and only the readable
- * value is missing — which leaves the caller holding a successful registration
- * and no agent id. The wallet is claimed on chain by then (`wallet_claimed`),
- * so the id can simply be read back rather than guessed at or given up on.
- */
+export const getAgents = (offset = 0, count = 100) =>
+  view<{ total: number; offset: number; count: number; agents: Agent[] }>("get_agents", [offset, count]);
 export const getAgentByWallet = (chain: string, wallet: string) =>
   view<{ found: boolean; agent?: Agent }>("get_agent_by_wallet", [chain, wallet]);
-
-/**
- * Has THIS AGENT already been judged over this transaction?
- *
- * `agentId` is required because the contract's claim is per agent, not per
- * transaction. Two agents that were both party to one transfer are two separate
- * accusations about two separate mandates, and one being challenged never
- * settles anything about the other.
- *
- * A challenge that settled INCONCLUSIVE, or that timed out through
- * `settle_stalled`, releases its claim — so this answers `false` again and the
- * transaction is open to a fresh challenge. That is deliberate: neither outcome
- * decided anything, and both refunded the stake in full.
- */
+export const getAgentsByOperator = (operator: string) =>
+  view<{ operator: string; count: number; agents: Agent[] }>("get_agents_by_operator", [operator]);
+export const getMandateVersions = (id: number) =>
+  view<{ agent_id: number; count: number; versions: MandateVersion[] }>("get_mandate_versions", [id]);
+export const getVersionAt = (id: number, ts: number) =>
+  view<{ agent_id: number; found: boolean; version: MandateVersion | null }>("get_version_at", [id, ts]);
+export const getChallenge = (id: number) => view<Challenge>("get_challenge", [id]);
+export const getChallenges = (offset = 0, count = 100) =>
+  view<{ total: number; offset: number; count: number; challenges: Challenge[] }>("get_challenges", [offset, count]);
+export const getOpenChallenges = (count = 100) =>
+  view<{ count: number; challenges: Challenge[] }>("get_open_challenges", [count]);
+export const getAgentChallenges = (id: number, count = 100) =>
+  view<{ agent_id: number; count: number; challenges: Challenge[] }>("get_agent_challenges", [id, count]);
+export const getTrackRecord = (id: number) => view<TrackView>("get_track_record", [id]);
+export const getStanding = (id: number) =>
+  view<{ found: boolean; good_standing: boolean; reasons: string[] }>("get_standing", [id]);
+export const getPrecedents = (agentId = -1) =>
+  view<{ agent_id: number; precedents: Precedent[] }>("get_precedents", [agentId]);
+export const getClaimable = (address: string) =>
+  view<{ address: string; claimable: string; claimed: string }>("get_claimable", [address]);
+export const getWatchers = () => view<{ count: number; watchers: Watcher[] }>("get_watchers");
 export const isTxChallenged = (chain: string, tx: string, agentId: number) =>
-  view<{ valid: boolean; challenged: boolean; challenge_id?: number; verdict?: string }>(
-    "is_tx_challenged", [chain, tx, agentId]);
+  view<{ valid: boolean; challenged: boolean; challenge_id?: number }>("is_tx_challenged", [chain, tx, agentId]);
+export const previewChallenge = (id: number, ts: number, clause: string) =>
+  view<PreviewChallenge>("preview_challenge", [id, ts, clause]);
+
+export const consumerRequests = (count = 25) =>
+  viewOf<{ sentinel: string; total: number; carried_out: number; refused: number;
+    requests: { request_id: number; sender: string; chain: string; wallet: string; agent_id: number;
+      instruction: string; carried_out: boolean; reasons: string[]; at: string }[] }>(
+    CONSUMER_ADDRESS, "get_requests", [count]);
+export const consumerStanding = async (chain: string, wallet: string) => {
+  const raw = await withTimeout(getReadClient().readContract({
+    address: CONSUMER_ADDRESS, functionName: "is_in_good_standing", args: [chain, wallet] }) as Promise<unknown>,
+  "is_in_good_standing");
+  return Boolean(raw);
+};
 
 // ── Writes ─────────────────────────────────────────────────────────────────
 
-/**
- * Turn a settled receipt into one of three states.
- *
- * The contract's own `ok: false` is the middle one, and it is NOT an error —
- * the transaction succeeded and the money came back.
- */
-function readWriteResult<T>(hash: string, tx: unknown): WriteResult<T> {
-  const receipt = (tx as { consensus_data?: { leader_receipt?: unknown[] } })?.consensus_data?.leader_receipt?.[0] as
-    | { result?: { payload?: unknown; status?: string }; execution_result?: string }
-    | undefined;
-  const named = (tx as { txExecutionResultName?: string })?.txExecutionResultName;
+const STATUS_NAMES = ["PENDING", "PROPOSING", "COMMITTING", "REVEALING", "ACCEPTED", "FINALIZED", "UNDETERMINED", "CANCELED"];
 
-  if (named === "FINISHED_WITH_ERROR" || receipt?.execution_result === "ERROR" ||
-      receipt?.result?.status === "rollback") {
-    const payload = receipt?.result?.payload;
-    return { kind: "failed", hash, error: typeof payload === "string" ? payload : "The transaction reverted" };
-  }
+function statusName(tx: unknown): string {
+  const s = (tx as { status?: number | string; statusName?: string })?.status;
+  if (typeof s === "number") return STATUS_NAMES[s] ?? "";
+  return String((tx as { statusName?: string })?.statusName ?? s ?? "");
+}
 
-  const payload = receipt?.result?.payload as { readable?: string } | string | undefined;
-  let text: string | null = null;
-  if (typeof payload === "string") text = payload;
-  else if (payload && typeof payload.readable === "string") text = payload.readable;
-
-  if (text === null) {
-    /**
-     * A transaction can settle with no readable return value — the payload
-     * lives in `consensus_data` and is not always populated. That is a property
-     * of the transport, not a rejection: callers refetch the contract state
-     * instead of showing an error.
-     */
-    return { kind: "ok", hash, data: {} as T };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    try {
-      parsed = JSON.parse(JSON.parse(text) as string);
-    } catch {
-      return { kind: "ok", hash, data: {} as T };
+/** The SDK's `readable` rendering drops commas between map entries; put them back. */
+export function repairReadable(text: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (const ch of text) {
+    if (inString) {
+      out += ch;
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
     }
+    if (ch === '"') {
+      const prev = out.replace(/\s+$/, "").slice(-1);
+      if (prev && !"{[,:".includes(prev)) out += ",";
+      out += ch;
+      inString = true;
+      continue;
+    }
+    out += ch;
   }
-  const body = parsed as { ok?: boolean; reason?: string; refunded?: string };
-  if (body && body.ok === false) {
-    return {
-      kind: "rejected",
-      hash,
-      reason: String(body.reason ?? "The contract turned this down"),
-      refunded: String(body.refunded ?? "0"),
-    };
-  }
-  return { kind: "ok", hash, data: (parsed ?? {}) as T };
+  return out;
 }
 
-/**
- * Whether this network charges a fee deposit on a write.
- *
- * Cached for the tab: the policy does not change between two clicks, and asking
- * again would put an extra RPC round trip in front of every confirmation
- * dialog. `null` means "not asked yet"; a failure to read is treated as "fees
- * are required", because sending a zero-fee write to a chain that charges is
- * refused outright, while overpaying a chain that does not is merely wasteful.
- */
-let feePolicyEnabled: boolean | null = null;
-
-async function feesRequired(wallet: ReturnType<typeof getWalletClient>): Promise<boolean> {
-  if (feePolicyEnabled !== null) return feePolicyEnabled;
-  try {
-    const policy = await wallet.getCurrentFeePolicy();
-    feePolicyEnabled = Boolean(policy?.enabled);
-  } catch {
-    feePolicyEnabled = true;
+function returned(tx: unknown): { reverted: boolean; reason: string; body: Record<string, unknown> | null } {
+  const receipt = (tx as { consensus_data?: { leader_receipt?: unknown[] } })?.consensus_data?.leader_receipt?.[0] as
+    | { result?: { payload?: unknown; status?: string }; execution_result?: string } | undefined;
+  const reverted = receipt?.execution_result === "ERROR" || receipt?.result?.status === "rollback" ||
+    (tx as { txExecutionResultName?: string })?.txExecutionResultName === "FINISHED_WITH_ERROR";
+  const payload = receipt?.result?.payload as { readable?: string } | string | undefined;
+  if (reverted) return { reverted, reason: typeof payload === "string" ? payload : "The contract refused this call", body: null };
+  const text = typeof payload === "string" ? payload : typeof payload?.readable === "string" ? payload.readable : null;
+  if (!text) return { reverted: false, reason: "", body: null };
+  for (const candidate of [text, repairReadable(text)]) {
+    try {
+      let v: unknown = JSON.parse(candidate);
+      if (typeof v === "string") v = JSON.parse(v);
+      if (v && typeof v === "object") return { reverted: false, reason: "", body: v as Record<string, unknown> };
+    } catch { /* next */ }
   }
-  return feePolicyEnabled;
+  return { reverted: false, reason: "", body: null };
 }
 
-/**
- * The contract's own refusal, dug out of a failed FEE ESTIMATE.
- *
- * A non-payable write that `gl.vm.UserError`s never reaches settlement: the
- * estimate simulates the call first, the simulation reverts, and the SDK throws
- * a viem `InvalidInputRpcError` whose message is "Missing or invalid
- * parameters. Double check you have provided the correct parameters." The
- * parameters were fine. The CONTRACT said no, and surfacing viem's guess
- * instead sends an operator off to re-check an address that was never wrong.
- *
- * The real sentence is on the simulated receipt, base64 of one length-prefixed
- * string — the same payload `readWriteResult` reads when a write does settle as
- * a rollback. Both spellings are accepted here because the estimate carries the
- * encoded string directly where a settled receipt nests it under `payload`.
- *
- * Only reached by `withdraw_bond`, `update_mandate`, `resolve_challenge` and
- * `settle_stalled`. The payable writes refund rather than raise, so their
- * simulation succeeds and their rejection arrives through `readWriteResult`.
- */
+/** The contract's own refusal, from a failed fee simulation (a non-payable write that would revert). */
 function contractRefusal(error: unknown): string | null {
   type Node = { cause?: unknown; data?: { receipt?: { result?: unknown } } };
   let node = error as Node | undefined;
   for (let depth = 0; node && depth < 6; depth++, node = node.cause as Node | undefined) {
     const result = node?.data?.receipt?.result;
-    const encoded = typeof result === "string"
-      ? result
-      : typeof (result as { payload?: unknown })?.payload === "string"
-        ? ((result as { payload: string }).payload)
-        : null;
+    const encoded = typeof result === "string" ? result
+      : typeof (result as { payload?: unknown })?.payload === "string" ? (result as { payload: string }).payload : null;
     if (!encoded) continue;
-    let bytes: Uint8Array;
     try {
-      bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
-    } catch {
-      continue;
-    }
-    // A leading length/tag byte precedes the text; anything below space is not
-    // part of the sentence.
-    let start = 0;
-    while (start < bytes.length && bytes[start] < 0x20) start++;
-    const text = new TextDecoder().decode(bytes.subarray(start)).trim();
-    if (text) return text;
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      let start = 0;
+      while (start < bytes.length && bytes[start] < 0x20) start++;
+      const text = new TextDecoder().decode(bytes.subarray(start)).trim();
+      if (text) return text;
+    } catch { /* not base64 */ }
   }
   return null;
 }
 
+let feePolicyEnabled: boolean | null = null;
+
 /**
- * A wallet that cannot cover the deposit fails inside the SDK with a message
- * written for a developer. Say what the person actually has to do instead, and
- * name the network so "get some GEN" is followed by "from where".
+ * Studio Dev refuses a write that carries no fee. The fee is estimated per
+ * call by simulating it; if the simulation fails the generic policy estimate is
+ * used, and a call that posts a value transfer (claim) names its recipient so
+ * the transfer has an allocation to draw on.
  */
-function fundingHint(message: string, network: string): string | null {
-  if (!/insufficient|exceeds balance|not enough|balance too low/i.test(message)) return null;
-  return network === "studiodev"
-    ? "This wallet does not hold enough GEN to cover the bond and the network fee. " +
-      "Studio Dev is a development network — fund the address from the Studio faucet and try again."
-    : "This wallet does not hold enough GEN to cover the bond and the network fee.";
+async function feesFor(wallet: ReturnType<typeof getWalletClient>, account: `0x${string}`,
+    address: `0x${string}`, functionName: string, args: CalldataEncodable[], value: bigint) {
+  if (feePolicyEnabled === null) {
+    try { feePolicyEnabled = Boolean((await wallet.getCurrentFeePolicy())?.enabled); } catch { feePolicyEnabled = true; }
+  }
+  if (!feePolicyEnabled) return undefined;
+  try {
+    return await withTimeout(wallet.estimateTransactionFeesForWrite({ address, functionName, args, value }), "fee estimate", 30_000);
+  } catch (e) {
+    const refusal = contractRefusal(e);
+    if (refusal) throw new Error(refusal);
+    const messageAllocations = functionName === "claim" ? [{
+      messageType: 0, recipient: account, budget: 10n ** 17n,
+      feeParams: encodeExternalMessageFeeParams({ gasLimit: 200_000n, maxGasPrice: 250_000_000n }),
+    }] : undefined;
+    return withTimeout(wallet.estimateTransactionFees(messageAllocations ? { messageAllocations } : {}), "fee estimate", 30_000);
+  }
 }
 
-async function send<T>(
-  account: `0x${string}`,
-  functionName: string,
-  args: CalldataEncodable[],
-  value = 0n,
-): Promise<WriteResult<T>> {
+export interface SendOptions<T> {
+  /** Re-reads the contract and says whether the call did what it was for. */
+  confirm?: (body: T | null) => Promise<boolean>;
+  onProgress?: (p: TxProgress) => void;
+  address?: `0x${string}`;
+}
+
+/**
+ * Submit, then follow the transaction to ACCEPTED, confirm the effect against
+ * contract state, report success, and keep following it to FINALIZED.
+ */
+export async function send<T>(account: `0x${string}`, functionName: string, args: CalldataEncodable[],
+    value = 0n, opts: SendOptions<T> = {}): Promise<WriteResult<T>> {
+  const address = opts.address ?? activeContract();
+  const report = (p: TxProgress) => opts.onProgress?.(p);
   const wallet = getWalletClient(account);
   const read = getReadClient();
   let hash: string;
+  report({ phase: "signing", hash: null, message: "Waiting for your wallet to sign…" });
   try {
-    /*
-     * Studio Dev charges a fee deposit on every write; Bradbury, which this
-     * app was first built against, does not. A `writeContract` with no `fees`
-     * sends a zero-fee transaction, and the consensus contract refuses it — so
-     * every register and every challenge from the browser failed here, with an
-     * error that pointed at the contract rather than at the missing deposit.
-     *
-     * Estimated per call, against the real calldata: the deposit depends on the
-     * method and its arguments, so a mandate of 900 characters does not cost
-     * what one of 30 does.
-     */
-    const fees = (await feesRequired(wallet))
-      ? await wallet.estimateTransactionFeesForWrite({
-          address: CONTRACT_ADDRESS, functionName, args, value,
-        })
-      : undefined;
-    hash = await wallet.writeContract({
-      address: CONTRACT_ADDRESS, functionName, args, value,
-      ...(fees ? { fees } : {}),
-    });
+    const fees = await feesFor(wallet, account, address, functionName, args, value);
+    hash = await wallet.writeContract({ address, functionName, args, value, ...(fees ? { fees } : {}) });
   } catch (e) {
     const message = String((e as Error)?.message ?? e);
-    // Most specific first: what the contract said, then what the wallet is
-    // short of, then whatever the SDK managed to say.
-    return {
-      kind: "failed", hash: null,
-      error: contractRefusal(e) ?? fundingHint(message, NETWORK) ?? message,
-    };
+    const funding = /insufficient|exceeds balance|not enough/i.test(message)
+      ? (NETWORK === "studiodev" ? "This wallet does not hold enough GEN for the value and the network fee. Fund it from the Studio Dev faucet." : "Not enough GEN.")
+      : null;
+    const error = contractRefusal(e) ?? funding ?? message;
+    report({ phase: "failed", hash: null, message: error });
+    return { kind: "failed", hash: null, error };
   }
+  report({ phase: "submitted", hash, message: "Submitted. Validators are processing it." });
 
   const started = Date.now();
+  let tx: unknown = null;
   for (;;) {
-    await new Promise((r) => setTimeout(r, 3000));
-    let tx: unknown = null;
-    try {
-      tx = await read.getTransaction({ hash: hash as TransactionHash });
-    } catch {
-      // Transient RPC noise. Keep polling; absence of an answer is not an answer.
+    await new Promise((r) => setTimeout(r, 3500));
+    try { tx = await read.getTransaction({ hash: hash as TransactionHash }); } catch { /* keep polling */ }
+    const name = statusName(tx);
+    if (name === "ACCEPTED" || name === "FINALIZED") break;
+    if (name === "UNDETERMINED") {
+      const error = "The validators did not agree, so nothing was written. The transaction can be sent again.";
+      report({ phase: "failed", hash, message: error });
+      return { kind: "failed", hash, error };
     }
-    const status = (tx as { status?: number | string })?.status;
-    const name = typeof status === "number"
-      ? ["PENDING", "PROPOSING", "COMMITTING", "REVEALING", "ACCEPTED", "FINALIZED", "UNDETERMINED", "CANCELED"][status] ?? ""
-      : String(status ?? "");
-    if (["ACCEPTED", "FINALIZED", "UNDETERMINED", "CANCELED"].includes(name)) {
-      if (name === "UNDETERMINED") {
-        return {
-          kind: "failed", hash,
-          error: "The validators did not converge on this one. Nothing was changed — try again in a moment.",
-        };
-      }
-      if (name === "CANCELED") return { kind: "failed", hash, error: "The transaction was canceled." };
-      return readWriteResult<T>(hash, tx);
+    if (name === "CANCELED") {
+      report({ phase: "failed", hash, message: "The transaction was canceled." });
+      return { kind: "failed", hash, error: "The transaction was canceled." };
     }
-    if (Date.now() - started > 300_000) {
-      return { kind: "failed", hash, error: "The transaction did not settle within 5 minutes." };
+    if (Date.now() - started > 600_000) {
+      const error = "Not accepted within 10 minutes. It may still land; check the explorer.";
+      report({ phase: "failed", hash, message: error });
+      return { kind: "failed", hash, error };
     }
   }
+  const r = returned(tx);
+  if (r.reverted) {
+    report({ phase: "failed", hash, message: r.reason });
+    return { kind: "failed", hash, error: r.reason };
+  }
+  if (r.body && r.body.ok === false) {
+    const reasons = Array.isArray(r.body.reasons) ? (r.body.reasons as string[]).join("; ") : "";
+    const reason = String(r.body.reason ?? (reasons || "The contract turned this down"));
+    report({ phase: "rejected", hash, message: reason });
+    return { kind: "rejected", hash, reason };
+  }
+  if (opts.confirm) {
+    report({ phase: "accepted", hash, message: "Accepted. Re-reading the contract to confirm…" });
+    let ok = false;
+    for (let i = 0; i < 6 && !ok; i++) {
+      try { ok = await opts.confirm(r.body as T | null); } catch { ok = false; }
+      if (!ok) await new Promise((res) => setTimeout(res, 4000));
+    }
+    if (!ok) {
+      const error = "Accepted, but the contract state does not show the change. Nothing is claimed until it does.";
+      report({ phase: "failed", hash, message: error });
+      return { kind: "failed", hash, error };
+    }
+  }
+  report({ phase: "accepted", hash, message: "Accepted and confirmed in contract state. Waiting for finality…" });
+  void (async () => {
+    for (let i = 0; i < 120; i++) {
+      await new Promise((res) => setTimeout(res, 10_000));
+      try {
+        const t = await read.getTransaction({ hash: hash as TransactionHash });
+        if (statusName(t) === "FINALIZED") {
+          report({ phase: "finalized", hash, message: "Finalized." });
+          return;
+        }
+      } catch { /* keep waiting */ }
+    }
+  })();
+  return { kind: "ok", hash, data: (r.body ?? {}) as T };
 }
 
-/**
- * The four profile arguments are positional and every one may be an empty
- * string. They are passed explicitly rather than defaulted here so a caller
- * cannot silently register an agent under a profile it never chose.
- */
-export const registerAgent = (
-  account: `0x${string}`, wallet: string, chain: string, mandate: string,
-  profile: { name: string; agentType: AgentType; description: string; operatorUrl: string },
-  bondWei: bigint,
-) => send<{ agent_id: number; chain: string; wallet: string; bond: string; status: string; agent_type: string }>(
-  account, "register_agent",
-  [wallet, chain, mandate, profile.name, profile.agentType, profile.description, profile.operatorUrl],
-  bondWei);
+type Opts<T> = SendOptions<T>;
+type Acc = `0x${string}`;
 
-export const challengeAgent = (
-  account: `0x${string}`, agentId: number, txHash: string, reason: string, stakeWei: bigint,
-) => send<{ challenge_id: number; agent_id: number; tx_hash: string; stake: string }>(
-  account, "challenge_agent", [agentId, txHash, reason], stakeWei);
-
-export const topUpBond = (account: `0x${string}`, agentId: number, amountWei: bigint) =>
-  send<{ agent_id: number; bond: string; reactivated: boolean }>(
-    account, "top_up_bond", [agentId], amountWei);
-
-export const withdrawBond = (account: `0x${string}`, agentId: number) =>
-  send<{ agent_id: number; withdrawn: string }>(account, "withdraw_bond", [agentId]);
-
-export const updateMandate = (account: `0x${string}`, agentId: number, mandate: string) =>
-  send<{ agent_id: number; mandate: string }>(account, "update_mandate", [agentId, mandate]);
-
-export const resolveChallenge = (account: `0x${string}`, challengeId: number) =>
-  send<{ challenge_id: number; verdict: string; reasoning: string }>(
-    account, "resolve_challenge", [challengeId]);
-
-export const settleStalled = (account: `0x${string}`, challengeId: number) =>
-  send<{ challenge_id: number; refunded: string }>(account, "settle_stalled", [challengeId]);
+export const registerAgent = (a: Acc, wallet: string, chain: string, mandate: string, table: string,
+  profile: { name: string; agentType: string; description: string; operatorUrl: string }, bond: bigint, o: Opts<{ agent_id: number }>) =>
+  send(a, "register_agent", [wallet, chain, mandate, table, profile.name, profile.agentType, profile.description, profile.operatorUrl], bond, o);
+export const lintMandate = (a: Acc, id: number, v: number, o: Opts<unknown>) => send(a, "lint_mandate", [id, v], 0n, o);
+export const closeLint = (a: Acc, id: number, v: number, o: Opts<unknown>) => send(a, "close_lint", [id, v], 0n, o);
+export const updateMandate = (a: Acc, id: number, mandate: string, table: string, o: Opts<unknown>) =>
+  send(a, "update_mandate", [id, mandate, table], 0n, o);
+export const challengeAgent = (a: Acc, id: number, tx: string, ts: number, clause: string, reason: string, stake: bigint,
+  o: Opts<{ challenge_id: number }>) => send(a, "challenge_agent", [id, tx, ts, clause, reason], stake, o);
+export const resolveChallenge = (a: Acc, cid: number, o: Opts<unknown>) => send(a, "resolve_challenge", [cid], 0n, o);
+export const appealRuling = (a: Acc, cid: number, text: string, bond: bigint, o: Opts<unknown>) => send(a, "appeal", [cid, text], bond, o);
+export const resolveAppeal = (a: Acc, cid: number, o: Opts<unknown>) => send(a, "resolve_appeal", [cid], 0n, o);
+export const expireAppeal = (a: Acc, cid: number, o: Opts<unknown>) => send(a, "expire_appeal", [cid], 0n, o);
+export const finalizeRuling = (a: Acc, cid: number, o: Opts<unknown>) => send(a, "finalize", [cid], 0n, o);
+export const settleStalled = (a: Acc, cid: number, o: Opts<unknown>) => send(a, "settle_stalled", [cid], 0n, o);
+export const topUpBond = (a: Acc, id: number, amount: bigint, o: Opts<unknown>) => send(a, "top_up_bond", [id], amount, o);
+export const requestWithdrawal = (a: Acc, id: number, amount: bigint, o: Opts<unknown>) =>
+  send(a, "request_withdrawal", [id, amount.toString()], 0n, o);
+export const cancelWithdrawal = (a: Acc, id: number, o: Opts<unknown>) => send(a, "cancel_withdrawal", [id], 0n, o);
+export const executeWithdrawal = (a: Acc, id: number, o: Opts<unknown>) => send(a, "execute_withdrawal", [id], 0n, o);
+export const unregisterAgent = (a: Acc, id: number, o: Opts<unknown>) => send(a, "unregister", [id], 0n, o);
+export const finalizeUnregister = (a: Acc, id: number, o: Opts<unknown>) => send(a, "finalize_unregister", [id], 0n, o);
+export const claimBalance = (a: Acc, o: Opts<unknown>) => send(a, "claim", [], 0n, o);
+export const actForAgent = (a: Acc, chain: string, wallet: string, instruction: string, o: Opts<{ carried_out: boolean; reasons: string[] }>) =>
+  send(a, "act_for_agent", [chain, wallet, instruction], 0n, { ...o, address: CONSUMER_ADDRESS });
