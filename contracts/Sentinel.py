@@ -58,7 +58,7 @@ import json
 #   6. No value is pushed except by claim(); everything else is a pull balance.
 #   7. str.replace() is rejected by the runner; slice around find() instead.
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 # ── Modes ────────────────────────────────────────────────────────────────────
 # CANONICAL is the deployment the register lives on. DEMO is the same code with
@@ -1407,14 +1407,19 @@ class Sentinel(gl.contract.Contract):
 		elif str(agent.status) == AG_PAUSED and int(new_bond) >= MIN_BOND:
 			agent.status = AG_ACTIVE
 
-	def _earlier(self, a) -> list:
-		"""Earlier registrations of the same wallet on the same chain."""
+	def _earlier(self, a, same_operator: bool) -> list:
+		"""Earlier registrations of the same wallet on the same chain. Only the
+		ones made by the SAME operator count against this agent: registering
+		does not prove control of a wallet, so a stranger's earlier record of
+		it (possibly under a mandate written to be broken) is history, not
+		guilt. A different operator address can still launder; that is listed
+		as a limitation."""
 		bucket = self.wallet_agents.get(str(a.chain) + ":" + str(a.wallet))
 		out = []
 		for x in ([int(i) for i in bucket] if bucket is not None else []):
 			if x < int(a.agent_id):
 				e = self.agents.get(u32(x))
-				if e is not None:
+				if e is not None and (not same_operator or self._operator_of(e) == self._operator_of(a)):
 					out.append(e)
 		return out
 
@@ -1684,7 +1689,7 @@ class Sentinel(gl.contract.Contract):
 		self.next_challenge_id = u32(cid + 1)
 		self._receive(value)
 		prior = self._breaches(agent)
-		for e in self._earlier(agent):
+		for e in self._earlier(agent, True):
 			prior += self._breaches(e)
 		mult = _multiplier_bps(prior, int(mv.repeat_step), int(mv.repeat_cap))
 		self.challenges[u32(cid)] = Challenge(
@@ -2266,8 +2271,9 @@ class Sentinel(gl.contract.Contract):
 			"unregister_unlock_at": int(a.unregister_unlock_at), "last_checked": int(a.last_checked),
 			"track_record": self._track(a), "standing": self._standing(a),
 			"previous_registrations": [{"agent_id": int(e.agent_id), "status": str(e.status),
+				"operator": self._operator_of(e), "same_operator": self._operator_of(e) == self._operator_of(a),
 				"breaches": self._breaches(e), "breaches_critical": int(e.breaches_critical),
-				"total_slashed": str(int(e.total_slashed))} for e in self._earlier(a)]}
+				"total_slashed": str(int(e.total_slashed))} for e in self._earlier(a, False)]}
 
 	def _track(self, a) -> dict:
 		return {"breaches": {"MINOR": int(a.breaches_minor), "MAJOR": int(a.breaches_major),
@@ -2286,7 +2292,7 @@ class Sentinel(gl.contract.Contract):
 			reasons.append("bond below the " + _wei_text(MIN_BOND) + " GEN minimum")
 		if int(a.breaches_critical) > 0:
 			reasons.append(str(int(a.breaches_critical)) + " final CRITICAL breach(es)")
-		for e in self._earlier(a):
+		for e in self._earlier(a, True):
 			if int(e.breaches_critical) > 0:
 				reasons.append("previous registration #" + str(int(e.agent_id)) + " of this wallet has "
 					+ str(int(e.breaches_critical)) + " final CRITICAL breach(es)")
@@ -2726,7 +2732,7 @@ class Sentinel(gl.contract.Contract):
 			if c["id"] == str(clause_id).strip().upper():
 				sev = c["severity"]
 		prior = self._breaches(a)
-		for e in self._earlier(a):
+		for e in self._earlier(a, True):
 			prior += self._breaches(e)
 		mult = _multiplier_bps(prior, int(mv.repeat_step), int(mv.repeat_cap))
 		sev_bps = {"MINOR": int(mv.sev_minor), "MAJOR": int(mv.sev_major),
