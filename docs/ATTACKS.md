@@ -40,6 +40,11 @@ the recipient; the facts check (A4) is deterministic because facts are rendered 
 
 Left as limitations after round 2 (README → Known limitations):
 
+- **Two spellings of INCONCLUSIVE on the consensus axis.** A breach on a flagged clause becomes INCONCLUSIVE with the
+  clause id on the axis; a direct INCONCLUSIVE has none. Validators that both mean "inconclusive" can therefore
+  disagree and the round writes nothing — seen once on v2.0.0 (#6, settled on the next attempt). Low: it costs a retry,
+  never a wrong verdict; fixing it needs a redeploy and was left for the next version.
+
 - **A different operator address can still launder** a record by unregistering and registering the wallet again; the
   earlier registration is listed (`same_operator: false`) but does not count. Telling an operator's second address from
   a stranger is not possible on chain.

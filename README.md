@@ -185,6 +185,10 @@ No wallet needed to look; a funded Studio Dev wallet to act (the Studio faucet f
   the fresh judgment is final.
 - **The novelty gate is lexical.** Word 3-gram overlap (Jaccard ≥ 60% or containment ≥ 80%) against the accusation, the
   ruling and its quote. A paraphrase passes it; it stops resends, not rewordings.
+- **Two kinds of INCONCLUSIVE can split a panel.** When a breach lands on a linter-flagged clause, code records
+  INCONCLUSIVE with that clause id; a model that answers INCONCLUSIVE directly carries none. Both refund the stake, but
+  they differ on the consensus axis, so one validator of each kind makes the round UNDETERMINED (nothing written; anyone
+  can resolve again). Observed once on v2.0.0 (challenge #6, settled on the second attempt). Liveness, not safety.
 - **The linter is advisory where it disagrees.** If validators do not agree on which clauses to flag, nothing is written;
   after 24 h `close_lint` records INCONCLUSIVE and no clause is excluded from slashing.
 - **Views carry no clock.** Deadlines are returned as unix times; the app and the API compare them with the wall clock.
