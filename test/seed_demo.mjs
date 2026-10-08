@@ -49,7 +49,7 @@ async function step(name, fn) {
   save();
   return rec;
 }
-const r = (o) => ({ hash: o.hash, status: o.status, returned: o.ret ?? null, revert: o.revertReason || null });
+const r = (o) => ({ hash: o.hash, status: o.status, returned: o.ret ?? null, revert: o.reverted ? o.revertReason || null : null });
 const until = async (label, cond, every = 15_000, max = 1_200_000) => {
   const t0 = Date.now();
   for (;;) {

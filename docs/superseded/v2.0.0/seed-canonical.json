@@ -1,0 +1,1569 @@
+{
+  "contract": "0x41Ad5F63d1FeE9b63D2B6f8cD6C92dF08a64c0a2",
+  "started_at": "2026-10-08T15:47:38.433Z",
+  "agents": {
+    "e1": {
+      "agent_id": 0,
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "start_block": 26148673,
+      "registered_at": 1791474597,
+      "register_tx": "0x08e3f873f856082538a2acf31de07b08a952cb2ffc43b7a93635686e3c539b6a",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "e3": {
+      "agent_id": 1,
+      "chain": "ethereum",
+      "wallet": "0x21a31ee1afc51d94c2efccaa2092ad1028285549",
+      "start_block": 26148827,
+      "registered_at": 1791476774,
+      "register_tx": "0x0461f5db194f35f602c82670e988f49b5445948f987e5f5ea028492855652d67",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": [
+            {
+              "clause": "C2",
+              "quote": "contract"
+            },
+            {
+              "clause": "C3",
+              "quote": "customer the exchange would consider high-risk"
+            }
+          ]
+        }
+      }
+    },
+    "arb": {
+      "agent_id": 2,
+      "chain": "arbitrum",
+      "wallet": "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32",
+      "start_block": 512935606,
+      "registered_at": 1791476801,
+      "register_tx": "0xfe512dd39adcfdd32e0ba26f44cc079252cbaa10595add0949582ad6f0f9c75e",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "poly": {
+      "agent_id": 3,
+      "chain": "polygon",
+      "wallet": "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32",
+      "start_block": 95181447,
+      "registered_at": 1791477416,
+      "register_tx": "0x78b4c8c37c64345fea1d229962797df0cc32421b8e48e136744a7e6db12ed002",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "base": {
+      "agent_id": 4,
+      "chain": "base",
+      "wallet": "0x1d7f97d26ae2c01f9b01fc252b73cf0db3397e95",
+      "start_block": 52344065,
+      "registered_at": 1791477495,
+      "register_tx": "0x49fbce1f50ad649bb9a4a12b4456cec65d748422c906b0406560bccf72bf1f09",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        },
+        "2": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "rh": {
+      "agent_id": 5,
+      "chain": "robinhood",
+      "wallet": "0x119a94d53df9cc78b4167f30756b64aa62505baf",
+      "start_block": 83459903,
+      "registered_at": 1791477509,
+      "register_tx": "0x207eb4ea8d452e85d173d0fbfeea37528bd9c2cdd5dc851f4ab9bf3c98f092ed",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "e2": {
+      "agent_id": 6,
+      "chain": "ethereum",
+      "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+      "start_block": 26148949,
+      "registered_at": 1791477801,
+      "register_tx": "0x159b6c26ad19f0cdb953687bf1569db11df32cc4517b5aa169789d6292546421",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "rh2": {
+      "agent_id": 7,
+      "chain": "robinhood",
+      "wallet": "0x1ef9d9240d83a1cf120c6fa7658ca47d005532d0",
+      "start_block": 83474763,
+      "registered_at": 1791479031,
+      "register_tx": "0x16c6563852621936a6f8737f704273f6411355d8079fbf4f0012968df1267712",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    }
+  },
+  "cases": {
+    "e1_major": {
+      "state": "FINAL",
+      "cursor": 26148995,
+      "tx": {
+        "hash": "0xf5630b046b87311d7354f6c15253e27e63583814533912f445082e538f24be3f",
+        "block": 26148996,
+        "ts": 1791478355,
+        "to": "0x118b70df4f06fa5678e7d543e6066e028c8ea0c0",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000fe263102682933297cb65dc813e5193249769251000000000000000000000000000000000000000000000249ff24e36de1cab000"
+      },
+      "challenge_id": 4,
+      "filed": {
+        "hash": "0xcb920097dcb94c9c7b5dadf51688421e70a0e9601a04a953113be083f785e13b",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 4,
+          "agent_id": 0,
+          "tx_hash": "0xf5630b046b87311d7354f6c15253e27e63583814533912f445082e538f24be3f",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791564882
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 4, \"agent_id\": 0, \"tx_hash\": \"0xf5630b046b87311d7354f6c15253e27e63583814533912f445082e538f24be3f\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791564882}"
+      },
+      "resolves": [
+        {
+          "hash": "0xb7532b565a7ffefdaa51312d04a4722a3c7a492c5d188735309fe060142dd51e",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 4,
+            "status": "CONTESTABLE",
+            "verdict": "BREACH",
+            "clause": "C1",
+            "severity": "MAJOR",
+            "code": "",
+            "contest_deadline": 1791482518
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 4, \"status\": \"CONTESTABLE\", \"verdict\": \"BREACH\", \"clause\": \"C1\", \"severity\": \"MAJOR\", \"code\": \"\", \"contest_deadline\": 1791482518}",
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "appeal": {
+        "hash": "0xb7294adf28998091ccc54edd453319d9a8b6c6072636e7df42ba7b11f900389c",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 4,
+          "status": "APPEALED",
+          "appeal_role": "OPERATOR",
+          "appeal_deadline": 1791565516
+        },
+        "revert": "�\u0006{\"ok\": true, \"challenge_id\": 4, \"status\": \"APPEALED\", \"appeal_role\": \"OPERATOR\", \"appeal_deadline\": 1791565516}",
+        "text": "Operator response: this is a customer withdrawal the exchange must honour. The payout bot forwards whatever asset a customer withdraws; the stablecoin-only rule was written for the bot's own treasury movements, not for customer withdrawals, which is how the bot has always been run.",
+        "status_after": "APPEALED"
+      },
+      "appeal_resolves": [
+        {
+          "hash": "0xeefe56eb1c0d96d69f2043d5c92ff95ec2a2dcd464939e73ee3f331fc8040cb2",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 4,
+            "status": "FINAL",
+            "appeal_outcome": "REJECTED",
+            "final_verdict": "BREACH",
+            "final_clause": "C1"
+          },
+          "revert": "�\b{\"ok\": true, \"challenge_id\": 4, \"status\": \"FINAL\", \"appeal_outcome\": \"REJECTED\", \"final_verdict\": \"BREACH\", \"final_clause\": \"C1\"}",
+          "status_after": "FINAL"
+        }
+      ]
+    },
+    "e1_minor": {
+      "state": "CONTESTABLE",
+      "cursor": 26149103,
+      "tx": {
+        "hash": "0xe9c554b2bc8bc5e455103bab40e24865b41a89c3eddaf36c6a3e9c5733d1bc0c",
+        "block": 26149104,
+        "ts": 1791479663,
+        "to": "0xf1b50a41ced74a553e5ed3aed2545efadebe1dcd",
+        "selector": "plain",
+        "value": "2802275310000000000",
+        "input": "0x"
+      },
+      "challenge_id": 7,
+      "filed": {
+        "hash": "0x341a70cd7373649aa65170db1b38b068899a31bb9fa96287ae5b1edd79217265",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 7,
+          "agent_id": 0,
+          "tx_hash": "0xe9c554b2bc8bc5e455103bab40e24865b41a89c3eddaf36c6a3e9c5733d1bc0c",
+          "mandate_version": 1,
+          "multiplier_bps": 15000,
+          "resolve_deadline": 1791566100
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 7, \"agent_id\": 0, \"tx_hash\": \"0xe9c554b2bc8bc5e455103bab40e24865b41a89c3eddaf36c6a3e9c5733d1bc0c\", \"mandate_version\": 1, \"multiplier_bps\": 15000, \"resolve_deadline\": 1791566100}"
+      },
+      "resolves": [
+        {
+          "hash": "0x7ccbd9580ad031a668d3af8a46963200aba0fbb761c8599ff99e9116020be0d3",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 7,
+            "status": "CONTESTABLE",
+            "verdict": "BREACH",
+            "clause": "C2",
+            "severity": "MINOR",
+            "code": "",
+            "contest_deadline": 1791483712
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 7, \"status\": \"CONTESTABLE\", \"verdict\": \"BREACH\", \"clause\": \"C2\", \"severity\": \"MINOR\", \"code\": \"\", \"contest_deadline\": 1791483712}",
+          "status_after": "CONTESTABLE"
+        }
+      ]
+    },
+    "e1_incoming": {
+      "state": "FINAL",
+      "tx": {
+        "hash": "0x8e68e7608883c174da41e57980d5e2e9f450e35f5c125fcbe21e1c372c8093f1",
+        "block": 26148949,
+        "ts": 1791477791,
+        "to": "0x491604c0fdf08347dd1fa4ee062a822a5dd06b5d",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "",
+        "symbol": "CTSI",
+        "sender": "0xf566fd08fec0a858bcf2b3c42fbaced407619b5f"
+      },
+      "challenge_id": 0,
+      "filed": {
+        "hash": "0x3b4a5c016214841e0d800f4321e7b164fad66065bfa432e10723c33fa197298f",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 0,
+          "agent_id": 0,
+          "tx_hash": "0x8e68e7608883c174da41e57980d5e2e9f450e35f5c125fcbe21e1c372c8093f1",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791564301
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 0, \"agent_id\": 0, \"tx_hash\": \"0x8e68e7608883c174da41e57980d5e2e9f450e35f5c125fcbe21e1c372c8093f1\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791564301}"
+      },
+      "resolves": [
+        {
+          "hash": "0x99b70b5f75477d5b9318cbfe890110ef69289b2eab8c019dc391b3225a097c40",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 0,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791482111
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 0, \"status\": \"CONTESTABLE\", \"verdict\": \"COMPLIANT\", \"clause\": \"\", \"severity\": \"\", \"code\": \"\", \"contest_deadline\": 1791482111}",
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x326f321564059fe39e0f3f4d34e1cf7a1a0410a3c842b78d05249f3b35a5777f",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 0,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "269d20c956e99c912c635e91d57f094c"
+        },
+        "revert": "�\t{\"ok\": true, \"challenge_id\": 0, \"status\": \"FINAL\", \"final_verdict\": \"COMPLIANT\", \"slash\": \"0\", \"precedent_key\": \"269d20c956e99c912c635e91d57f094c\"}"
+      }
+    },
+    "e2_compliant": {
+      "state": "FINAL",
+      "cursor": 26148949,
+      "tx": {
+        "hash": "0x92692d3e2ef8552b7efa78cec77bb3fb32508574418e20cd5ea80314b4b85080",
+        "block": 26148950,
+        "ts": 1791477803,
+        "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb00000000000000000000000077d38431443f5cdf4e225873a78def6069589ea60000000000000000000000000000000000000000000000000000000008fcb860"
+      },
+      "challenge_id": 1,
+      "filed": {
+        "hash": "0x12446fb0ed2e088768c874ed4318c2ae6af7bf2253c98d0a4fb254afd5257748",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 1,
+          "agent_id": 6,
+          "tx_hash": "0x92692d3e2ef8552b7efa78cec77bb3fb32508574418e20cd5ea80314b4b85080",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791564335
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 1, \"agent_id\": 6, \"tx_hash\": \"0x92692d3e2ef8552b7efa78cec77bb3fb32508574418e20cd5ea80314b4b85080\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791564335}"
+      },
+      "resolves": [
+        {
+          "hash": "0x513cbaaaa65bc94be416dca507e2088947f3332324fd14fef1489f0c617a97e0",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 1,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791482184
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 1, \"status\": \"CONTESTABLE\", \"verdict\": \"COMPLIANT\", \"clause\": \"\", \"severity\": \"\", \"code\": \"\", \"contest_deadline\": 1791482184}",
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0xd36a046944065cd41dacf4a614626348edd69d175076a24c14e100e49abeabe8",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 1,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "b5ebc79b0e0020cb53d59961954a1b21"
+        },
+        "revert": "�\t{\"ok\": true, \"challenge_id\": 1, \"status\": \"FINAL\", \"final_verdict\": \"COMPLIANT\", \"slash\": \"0\", \"precedent_key\": \"b5ebc79b0e0020cb53d59961954a1b21\"}"
+      }
+    },
+    "e3_contract": {
+      "state": "FINAL",
+      "cursor": 26148999,
+      "tx": {
+        "hash": "0x4aa26ede22989759a421af628dc0c64799667c03a6230e9bc0079ada0acab015",
+        "block": 26149000,
+        "ts": 1791478403,
+        "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb0000000000000000000000008aebe69a0653cf12728065ebe096a9f554b21ea00000000000000000000000000000000000000000000000000000000009187dc0"
+      },
+      "challenge_id": 5,
+      "filed": {
+        "hash": "0xfa9d09f9a7a6b8b1dae4a77e4e6202ceeb1d7d30d8d04980991147a6cad0fad4",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 5,
+          "agent_id": 1,
+          "tx_hash": "0x4aa26ede22989759a421af628dc0c64799667c03a6230e9bc0079ada0acab015",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791565007
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 5, \"agent_id\": 1, \"tx_hash\": \"0x4aa26ede22989759a421af628dc0c64799667c03a6230e9bc0079ada0acab015\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791565007}"
+      },
+      "resolves": [
+        {
+          "hash": "0x5d535142a14663dc149c42d6dfe6b5de2e98de5377230c8010c4692f6a842c9e",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 5,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "C2",
+            "severity": "",
+            "code": "NOT_JUDGEABLE_CLAUSE",
+            "contest_deadline": 0
+          },
+          "revert": "�\n{\"ok\": true, \"challenge_id\": 5, \"status\": \"FINAL\", \"verdict\": \"INCONCLUSIVE\", \"clause\": \"C2\", \"severity\": \"\", \"code\": \"NOT_JUDGEABLE_CLAUSE\", \"contest_deadline\": 0}",
+          "status_after": "FINAL"
+        }
+      ]
+    },
+    "e3_vague": {
+      "state": "FINAL",
+      "cursor": 26148997,
+      "tx": {
+        "hash": "0x3fcc96e3af7fd1a3b5cf548610ecd5c8c7517eedca391f439f7d0c95b47dd1b3",
+        "block": 26148998,
+        "ts": 1791478379,
+        "to": "0x579cea1889991f68acc35ff5c3dd0621ff29b0c9",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb0000000000000000000000008b65363a01510490fba03cea97b14c73b7ee8f7500000000000000000000000000000000000000000000a8e55505a5aa91d00000"
+      },
+      "challenge_id": 6,
+      "filed": {
+        "hash": "0x1d95c47a5681efb4eb2f0db8a5e46644aad71bb9b4d64789907862da14a13877",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 6,
+          "agent_id": 1,
+          "tx_hash": "0x3fcc96e3af7fd1a3b5cf548610ecd5c8c7517eedca391f439f7d0c95b47dd1b3",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791565022
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 6, \"agent_id\": 1, \"tx_hash\": \"0x3fcc96e3af7fd1a3b5cf548610ecd5c8c7517eedca391f439f7d0c95b47dd1b3\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791565022}"
+      },
+      "resolves": [
+        {
+          "hash": "0x5b45c6c0a34590d7f94f4852f9bd9975ec194cfc660b40e6982a4e25756be18b",
+          "status": "UNDETERMINED",
+          "ok": false,
+          "ret": {
+            "ok": true,
+            "challenge_id": 6,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "C2",
+            "severity": "",
+            "code": "NOT_JUDGEABLE_CLAUSE",
+            "contest_deadline": 0
+          },
+          "revert": "�\n{\"ok\": true, \"challenge_id\": 6, \"status\": \"FINAL\", \"verdict\": \"INCONCLUSIVE\", \"clause\": \"C2\", \"severity\": \"\", \"code\": \"NOT_JUDGEABLE_CLAUSE\", \"contest_deadline\": 0}",
+          "status_after": "PENDING"
+        },
+        {
+          "hash": "0xf86633dae1c4211eb74668dbfcc846e29a231ce33517f3e876bb1c30dce62b37",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 6,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "C2",
+            "severity": "",
+            "code": "NOT_JUDGEABLE_CLAUSE",
+            "contest_deadline": 0
+          },
+          "revert": "�\n{\"ok\": true, \"challenge_id\": 6, \"status\": \"FINAL\", \"verdict\": \"INCONCLUSIVE\", \"clause\": \"C2\", \"severity\": \"\", \"code\": \"NOT_JUDGEABLE_CLAUSE\", \"contest_deadline\": 0}",
+          "status_after": "FINAL"
+        }
+      ]
+    },
+    "arb_critical": {
+      "state": "FINAL",
+      "cursor": 512937362,
+      "tx": {
+        "hash": "0x3430df6870a7144d0d9ddb3ffabcc654c0085cde529f9bf4cfe3db8ea34eb20d",
+        "block": 512937363,
+        "ts": 1791477235,
+        "to": "0x32b7d5457628c5bc187f03a33d51d3ec3ee2b844",
+        "selector": "0x348011ae",
+        "value": "0",
+        "input": "0x348011ae00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "challenge_id": 2,
+      "filed": {
+        "hash": "0x13d6839a39531eff0f466800ded431660883d83ba04701b8cbd620d48297eedb",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 2,
+          "agent_id": 2,
+          "tx_hash": "0x3430df6870a7144d0d9ddb3ffabcc654c0085cde529f9bf4cfe3db8ea34eb20d",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791564577
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 2, \"agent_id\": 2, \"tx_hash\": \"0x3430df6870a7144d0d9ddb3ffabcc654c0085cde529f9bf4cfe3db8ea34eb20d\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791564577}"
+      },
+      "resolves": [
+        {
+          "hash": "0x89e66230e4153b23b4c4fddb769cac288707802142538f33261da63a85f4d2e7",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 2,
+            "status": "CONTESTABLE",
+            "verdict": "BREACH",
+            "clause": "C2",
+            "severity": "CRITICAL",
+            "code": "",
+            "contest_deadline": 1791482249
+          },
+          "revert": "�\n{\"ok\": true, \"challenge_id\": 2, \"status\": \"CONTESTABLE\", \"verdict\": \"BREACH\", \"clause\": \"C2\", \"severity\": \"CRITICAL\", \"code\": \"\", \"contest_deadline\": 1791482249}",
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0xd4c4e427eda2bea80bd53cb723a961f22dab72fed4af16f1c57265c84fbe8fe9",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 2,
+          "status": "FINAL",
+          "final_verdict": "BREACH",
+          "slash": "500000000000000000",
+          "precedent_key": ""
+        },
+        "revert": "�\b{\"ok\": true, \"challenge_id\": 2, \"status\": \"FINAL\", \"final_verdict\": \"BREACH\", \"slash\": \"500000000000000000\", \"precedent_key\": \"\"}"
+      }
+    },
+    "poly_other": {
+      "state": "FINAL",
+      "cursor": 95181908,
+      "tx": {
+        "hash": "0x4fc33d7252d209ee9fc86f882faef0bfdf795374643cbfdd9fba9e142ad15e0e",
+        "block": 95181909,
+        "ts": 1791478070,
+        "to": "0x32b7d5457628c5bc187f03a33d51d3ec3ee2b844",
+        "selector": "0x348011ae",
+        "value": "0",
+        "input": "0x348011ae00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "challenge_id": 3,
+      "filed": {
+        "hash": "0x43684aeb88a324a70a8483896c3db0853bae9b75bcd3111970306b069083433a",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 3,
+          "agent_id": 3,
+          "tx_hash": "0x4fc33d7252d209ee9fc86f882faef0bfdf795374643cbfdd9fba9e142ad15e0e",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791564694
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 3, \"agent_id\": 3, \"tx_hash\": \"0x4fc33d7252d209ee9fc86f882faef0bfdf795374643cbfdd9fba9e142ad15e0e\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791564694}"
+      },
+      "resolves": [
+        {
+          "hash": "0x49cb5cf279ed7b392d568207c81be2c008b00d347f7a78c1604348c06b5e3b9a",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 3,
+            "status": "CONTESTABLE",
+            "verdict": "BREACH",
+            "clause": "C1",
+            "severity": "MAJOR",
+            "code": "",
+            "contest_deadline": 1791482291
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 3, \"status\": \"CONTESTABLE\", \"verdict\": \"BREACH\", \"clause\": \"C1\", \"severity\": \"MAJOR\", \"code\": \"\", \"contest_deadline\": 1791482291}",
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x172764a75f6d139871f3f4195a3f57a02a945d422c91931da937e94444aa1f8c",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 3,
+          "status": "FINAL",
+          "final_verdict": "BREACH",
+          "slash": "200000000000000000",
+          "precedent_key": ""
+        },
+        "revert": "�\b{\"ok\": true, \"challenge_id\": 3, \"status\": \"FINAL\", \"final_verdict\": \"BREACH\", \"slash\": \"200000000000000000\", \"precedent_key\": \"\"}"
+      }
+    },
+    "base_window": {
+      "state": "CONTESTABLE",
+      "cursor": 52345656,
+      "tx": {
+        "hash": "0xf9613ba6cf331946106deeb30464457a52e7af99057e46ca1dc969e2678a3d1e",
+        "block": 52345657,
+        "ts": 1791480661,
+        "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000966569744ef4d4eb511d959db7584c0e3d4104bc0000000000000000000000000000000000000000000000000000000001b2fe55"
+      },
+      "try_first": {
+        "hash": "0x8cab1ebb3c5d10049d5ce71a03849b772d97fd3c55219e1d0c73ee6f069a6626",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": false,
+          "reason": "Version 1 of the mandate has no clause C3",
+          "refunded_to_claimable": "50000000000000000"
+        },
+        "revert": "�\u0007{\"ok\": false, \"reason\": \"Version 1 of the mandate has no clause C3\", \"refunded_to_claimable\": \"50000000000000000\"}"
+      },
+      "challenge_id": 9,
+      "filed": {
+        "hash": "0x1a8e8c2bacb1738a363fdb62f5c6dc4d631f98ede9ad39e8234f6ad0f243969d",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 9,
+          "agent_id": 4,
+          "tx_hash": "0xf9613ba6cf331946106deeb30464457a52e7af99057e46ca1dc969e2678a3d1e",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791567385
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 9, \"agent_id\": 4, \"tx_hash\": \"0xf9613ba6cf331946106deeb30464457a52e7af99057e46ca1dc969e2678a3d1e\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791567385}"
+      },
+      "resolves": [
+        {
+          "hash": "0x40eea61382bce291a7f2523596a2c7011d5b389be4b6a9f8b11967f9025caac2",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 9,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791484628
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 9, \"status\": \"CONTESTABLE\", \"verdict\": \"COMPLIANT\", \"clause\": \"\", \"severity\": \"\", \"code\": \"\", \"contest_deadline\": 1791484628}",
+          "status_after": "CONTESTABLE"
+        }
+      ]
+    },
+    "base_v2": {
+      "state": "CONTESTABLE",
+      "cursor": 52346183,
+      "tx": {
+        "hash": "0x99cc61c4aa86b54be8fb6e66711a907df2df34736b2e56f53d2fe3a7826bfbe4",
+        "block": 52346184,
+        "ts": 1791481715,
+        "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb0000000000000000000000009d76ada8859e402745fa2ea61ff61443d36dd5ea0000000000000000000000000000000000000000000000000000000001b3b49f"
+      },
+      "challenge_id": 10,
+      "filed": {
+        "hash": "0x39ec3a2747b46227de32d34cee8c63749b9b05bdd05e15e2372278b1d7314038",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 10,
+          "agent_id": 4,
+          "tx_hash": "0x99cc61c4aa86b54be8fb6e66711a907df2df34736b2e56f53d2fe3a7826bfbe4",
+          "mandate_version": 2,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791568531
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 10, \"agent_id\": 4, \"tx_hash\": \"0x99cc61c4aa86b54be8fb6e66711a907df2df34736b2e56f53d2fe3a7826bfbe4\", \"mandate_version\": 2, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791568531}"
+      },
+      "resolves": [
+        {
+          "hash": "0x15dbea9c047c17e90cc1eb64f9518cd2ef808839b882fcd286d4487a8985297d",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 10,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791486138
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 10, \"status\": \"CONTESTABLE\", \"verdict\": \"COMPLIANT\", \"clause\": \"\", \"severity\": \"\", \"code\": \"\", \"contest_deadline\": 1791486138}",
+          "status_after": "CONTESTABLE"
+        }
+      ]
+    },
+    "rh_call": {
+      "state": "CONTESTABLE",
+      "cursor": 83484463,
+      "tx": {
+        "hash": "0x1a7e801467711d3c9c1dfd3223b6f7d3c6a4d80b2a6ca7f12fc543b67b8cd77d",
+        "block": 83484464,
+        "ts": 1791480014,
+        "to": "0xd703ec4a9839b5a3f4dbba95210509fa74c19f6f",
+        "selector": "0x8d6cc56d",
+        "value": "0",
+        "input": "0x8d6cc56d000000000000000000000000902e203100002d79883d2000000000006ac7d196"
+      },
+      "challenge_id": 8,
+      "filed": {
+        "hash": "0x81e0bc1609fba5dfdd0493fce61254746300ebbf6a8eaada9103a48a751da7e6",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 8,
+          "agent_id": 7,
+          "tx_hash": "0x1a7e801467711d3c9c1dfd3223b6f7d3c6a4d80b2a6ca7f12fc543b67b8cd77d",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791566486
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 8, \"agent_id\": 7, \"tx_hash\": \"0x1a7e801467711d3c9c1dfd3223b6f7d3c6a4d80b2a6ca7f12fc543b67b8cd77d\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791566486}"
+      },
+      "resolves": [
+        {
+          "hash": "0x89c50f9aaca69bed5578a67d626ac413cc57e33823f4750b3b809dc4fdab14bf",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 8,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791484133
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 8, \"status\": \"CONTESTABLE\", \"verdict\": \"COMPLIANT\", \"clause\": \"\", \"severity\": \"\", \"code\": \"\", \"contest_deadline\": 1791484133}",
+          "status_after": "CONTESTABLE"
+        }
+      ]
+    },
+    "e2_symbol": {
+      "state": "FINAL",
+      "cursor": 26149322,
+      "tx": {
+        "hash": "0x6c4e613ab49be872a2ff226bf88fcc22eb384d54956c0637cb45cc746820c9ac",
+        "block": 26149323,
+        "ts": 1791482291,
+        "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000a49d521779d7450c3429b30c7502a30e56c35a3d0000000000000000000000000000000000000000000000000000000002cd29c0"
+      },
+      "challenge_id": 11,
+      "filed": {
+        "hash": "0x64f8f1bc016c871206496cf2029155e8d5f5becf42f512daa1b590258ac88a30",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 11,
+          "agent_id": 6,
+          "tx_hash": "0x6c4e613ab49be872a2ff226bf88fcc22eb384d54956c0637cb45cc746820c9ac",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791569068
+        },
+        "revert": "�\f{\"ok\": true, \"challenge_id\": 11, \"agent_id\": 6, \"tx_hash\": \"0x6c4e613ab49be872a2ff226bf88fcc22eb384d54956c0637cb45cc746820c9ac\", \"mandate_version\": 1, \"multiplier_bps\": 10000, \"resolve_deadline\": 1791569068}"
+      },
+      "resolves": [
+        {
+          "hash": "0xba4b8e1f3eceef73339906640d138dc4d58894260b876b5bdc87b8337430fe90",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 11,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791486311
+          },
+          "revert": "�\t{\"ok\": true, \"challenge_id\": 11, \"status\": \"CONTESTABLE\", \"verdict\": \"COMPLIANT\", \"clause\": \"\", \"severity\": \"\", \"code\": \"\", \"contest_deadline\": 1791486311}",
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "appeal": {
+        "hash": "0x88921289ea73f762c6c1bbbb9adbbaa8dbb766d4fd5986b35ff11aef12ea5bdb",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 11,
+          "status": "APPEALED",
+          "appeal_role": "CHALLENGER",
+          "appeal_deadline": 1791569696
+        },
+        "revert": "�\u0007{\"ok\": true, \"challenge_id\": 11, \"status\": \"APPEALED\", \"appeal_role\": \"CHALLENGER\", \"appeal_deadline\": 1791569696}",
+        "text": "Counter-evidence: clause C1 lists tokens only by ticker symbol and gives no contract address. A token's symbol is chosen by whoever deploys it, and many contracts call themselves USDT. The record identifies the token by its symbol and contract address, but the mandate gives nothing to compare the address with, so it cannot establish which USDT the operator meant.",
+        "status_after": "APPEALED"
+      },
+      "appeal_resolves": [
+        {
+          "hash": "0x387e5dba2c3bf5774ff4cec8ded45434386c244fc93a53c0a36a13445eaf3da9",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 11,
+            "status": "FINAL",
+            "appeal_outcome": "REJECTED",
+            "final_verdict": "COMPLIANT",
+            "final_clause": ""
+          },
+          "revert": "�\b{\"ok\": true, \"challenge_id\": 11, \"status\": \"FINAL\", \"appeal_outcome\": \"REJECTED\", \"final_verdict\": \"COMPLIANT\", \"final_clause\": \"\"}",
+          "status_after": "FINAL"
+        }
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "2026-10-08T15:51:57.531Z",
+      "kind": "registered",
+      "key": "e1",
+      "agent_id": 0,
+      "tx": "0x08e3f873f856082538a2acf31de07b08a952cb2ffc43b7a93635686e3c539b6a"
+    },
+    {
+      "at": "2026-10-08T16:18:50.008Z",
+      "kind": "register_failed",
+      "key": "e2",
+      "hash": null,
+      "status": "UNSETTLED",
+      "ok": false,
+      "ret": null,
+      "revert": "submit failed — An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.56.3"
+    },
+    {
+      "at": "2026-10-08T16:26:27.380Z",
+      "kind": "registered",
+      "key": "e3",
+      "agent_id": 1,
+      "tx": "0x0461f5db194f35f602c82670e988f49b5445948f987e5f5ea028492855652d67"
+    },
+    {
+      "at": "2026-10-08T16:36:15.940Z",
+      "kind": "registered",
+      "key": "arb",
+      "agent_id": 2,
+      "tx": "0xfe512dd39adcfdd32e0ba26f44cc079252cbaa10595add0949582ad6f0f9c75e"
+    },
+    {
+      "at": "2026-10-08T16:37:57.394Z",
+      "kind": "registered",
+      "key": "poly",
+      "agent_id": 3,
+      "tx": "0x78b4c8c37c64345fea1d229962797df0cc32421b8e48e136744a7e6db12ed002"
+    },
+    {
+      "at": "2026-10-08T16:38:24.429Z",
+      "kind": "registered",
+      "key": "base",
+      "agent_id": 4,
+      "tx": "0x49fbce1f50ad649bb9a4a12b4456cec65d748422c906b0406560bccf72bf1f09"
+    },
+    {
+      "at": "2026-10-08T16:38:40.693Z",
+      "kind": "registered",
+      "key": "rh",
+      "agent_id": 5,
+      "tx": "0x207eb4ea8d452e85d173d0fbfeea37528bd9c2cdd5dc851f4ab9bf3c98f092ed"
+    },
+    {
+      "at": "2026-10-08T16:39:15.732Z",
+      "kind": "lint",
+      "key": "e1",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xcb325f0dd574cfc42387ed03351dd4c89204f0a683cfb7d485b4e6b3a856cfc6",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:39:43.891Z",
+      "kind": "lint",
+      "key": "e3",
+      "version": 1,
+      "status": "DONE",
+      "flags": [
+        "C2",
+        "C3"
+      ],
+      "tx": "0xa7ab8bb85b3af8fc9d7283c294ba3145aadb8355867d6d713319ca348e35b0ab",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:40:12.562Z",
+      "kind": "lint",
+      "key": "arb",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x83a49593bdaf5d9f7cc773987d9b4e7a40544a6b5c4a59b9908ae09f79f9c560",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:40:40.859Z",
+      "kind": "lint",
+      "key": "poly",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xb11b00f0ef3458a22e5bb112f54ec012bf614655180e4b9eb51ae1b293365117",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:41:12.321Z",
+      "kind": "lint",
+      "key": "base",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xcfb0b84ec4029f704020cf2cb47127def06336d7ee9e3daf4b4d23e093513f37",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:41:41.758Z",
+      "kind": "lint",
+      "key": "rh",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x327f96e85fd41f7fdd0769176f5affe6b41b2f6e87e3cb54944c51d107e58e15",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:41:56.893Z",
+      "kind": "mandate_edited",
+      "agent": "base",
+      "version": 2,
+      "effective_from": 1791481305,
+      "tx": "0x4b593912c0bbbfb2482153500bcad70213dd94e0cc8f503d701d52ed2524b603"
+    },
+    {
+      "at": "2026-10-08T16:42:29.929Z",
+      "kind": "lint",
+      "key": "base",
+      "version": 2,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xc7527f11e3b95b3607d4bf7fc6a632db484f5fa4a8b596ce0817785104113251",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:43:35.195Z",
+      "kind": "registered",
+      "key": "e2",
+      "agent_id": 6,
+      "tx": "0x159b6c26ad19f0cdb953687bf1569db11df32cc4517b5aa169789d6292546421"
+    },
+    {
+      "at": "2026-10-08T16:44:16.488Z",
+      "kind": "lint",
+      "key": "e2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xcbe69eb7a7493255ed54229921a6bd4da38ba672c2edce184cf03ea43754572a",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T16:44:50.272Z",
+      "kind": "tx_found",
+      "case": "e1_incoming",
+      "chain": "ethereum",
+      "hash": "0x8e68e7608883c174da41e57980d5e2e9f450e35f5c125fcbe21e1c372c8093f1",
+      "block": 26148949,
+      "ts": 1791477791,
+      "to": "0x491604c0fdf08347dd1fa4ee062a822a5dd06b5d",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T16:45:12.502Z",
+      "kind": "filed",
+      "case": "e1_incoming",
+      "challenge_id": 0,
+      "by": "watcher2",
+      "clause": "C1",
+      "tx": "0x3b4a5c016214841e0d800f4321e7b164fad66065bfa432e10723c33fa197298f"
+    },
+    {
+      "at": "2026-10-08T16:45:31.559Z",
+      "kind": "tx_found",
+      "case": "e2_compliant",
+      "chain": "ethereum",
+      "hash": "0x92692d3e2ef8552b7efa78cec77bb3fb32508574418e20cd5ea80314b4b85080",
+      "block": 26148950,
+      "ts": 1791477803,
+      "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T16:45:46.602Z",
+      "kind": "filed",
+      "case": "e2_compliant",
+      "challenge_id": 1,
+      "by": "watcher2",
+      "clause": "C1",
+      "tx": "0x12446fb0ed2e088768c874ed4318c2ae6af7bf2253c98d0a4fb254afd5257748"
+    },
+    {
+      "at": "2026-10-08T16:49:31.589Z",
+      "kind": "tx_found",
+      "case": "arb_critical",
+      "chain": "arbitrum",
+      "hash": "0x3430df6870a7144d0d9ddb3ffabcc654c0085cde529f9bf4cfe3db8ea34eb20d",
+      "block": 512937363,
+      "ts": 1791477235,
+      "to": "0x32b7d5457628c5bc187f03a33d51d3ec3ee2b844",
+      "selector": "0x348011ae"
+    },
+    {
+      "at": "2026-10-08T16:49:48.488Z",
+      "kind": "filed",
+      "case": "arb_critical",
+      "challenge_id": 2,
+      "by": "watcher2",
+      "clause": "C2",
+      "tx": "0x13d6839a39531eff0f466800ded431660883d83ba04701b8cbd620d48297eedb"
+    },
+    {
+      "at": "2026-10-08T16:51:28.724Z",
+      "kind": "tx_found",
+      "case": "poly_other",
+      "chain": "polygon",
+      "hash": "0x4fc33d7252d209ee9fc86f882faef0bfdf795374643cbfdd9fba9e142ad15e0e",
+      "block": 95181909,
+      "ts": 1791478070,
+      "to": "0x32b7d5457628c5bc187f03a33d51d3ec3ee2b844",
+      "selector": "0x348011ae"
+    },
+    {
+      "at": "2026-10-08T16:51:44.950Z",
+      "kind": "filed",
+      "case": "poly_other",
+      "challenge_id": 3,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x43684aeb88a324a70a8483896c3db0853bae9b75bcd3111970306b069083433a"
+    },
+    {
+      "at": "2026-10-08T16:54:37.849Z",
+      "kind": "tx_found",
+      "case": "e1_major",
+      "chain": "ethereum",
+      "hash": "0xf5630b046b87311d7354f6c15253e27e63583814533912f445082e538f24be3f",
+      "block": 26148996,
+      "ts": 1791478355,
+      "to": "0x118b70df4f06fa5678e7d543e6066e028c8ea0c0",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T16:54:53.331Z",
+      "kind": "filed",
+      "case": "e1_major",
+      "challenge_id": 4,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0xcb920097dcb94c9c7b5dadf51688421e70a0e9601a04a953113be083f785e13b"
+    },
+    {
+      "at": "2026-10-08T16:56:08.896Z",
+      "kind": "resolve",
+      "case": "e1_incoming",
+      "challenge_id": 0,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T16:56:42.174Z",
+      "kind": "resolve",
+      "case": "e2_compliant",
+      "challenge_id": 1,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T16:56:43.323Z",
+      "kind": "tx_found",
+      "case": "e3_contract",
+      "chain": "ethereum",
+      "hash": "0x4aa26ede22989759a421af628dc0c64799667c03a6230e9bc0079ada0acab015",
+      "block": 26149000,
+      "ts": 1791478403,
+      "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T16:56:56.714Z",
+      "kind": "filed",
+      "case": "e3_contract",
+      "challenge_id": 5,
+      "by": "watcher",
+      "clause": "C2",
+      "tx": "0xfa9d09f9a7a6b8b1dae4a77e4e6202ceeb1d7d30d8d04980991147a6cad0fad4"
+    },
+    {
+      "at": "2026-10-08T16:56:57.949Z",
+      "kind": "tx_found",
+      "case": "e3_vague",
+      "chain": "ethereum",
+      "hash": "0x3fcc96e3af7fd1a3b5cf548610ecd5c8c7517eedca391f439f7d0c95b47dd1b3",
+      "block": 26148998,
+      "ts": 1791478379,
+      "to": "0x579cea1889991f68acc35ff5c3dd0621ff29b0c9",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T16:57:11.452Z",
+      "kind": "filed",
+      "case": "e3_vague",
+      "challenge_id": 6,
+      "by": "watcher2",
+      "clause": "C3",
+      "tx": "0x1d95c47a5681efb4eb2f0db8a5e46644aad71bb9b4d64789907862da14a13877"
+    },
+    {
+      "at": "2026-10-08T16:57:56.005Z",
+      "kind": "resolve",
+      "case": "arb_critical",
+      "challenge_id": 2,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "BREACH",
+      "clause": "C2",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T16:58:36.316Z",
+      "kind": "resolve",
+      "case": "poly_other",
+      "challenge_id": 3,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "BREACH",
+      "clause": "C1",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T17:01:43.319Z",
+      "kind": "withdrawal_blocked",
+      "agent": "e1",
+      "challenge_id": 4,
+      "hash": "0x827eb5f04d3986e35b9cf454263a7a6240d84ffb9a8af0475f0edb482fee0144",
+      "status": "ACCEPTED",
+      "ok": false,
+      "ret": null,
+      "revert": "Withdrawals are blocked while 2 challenge(s) or appeal(s) are open against this agent"
+    },
+    {
+      "at": "2026-10-08T17:02:25.929Z",
+      "kind": "resolve",
+      "case": "e1_major",
+      "challenge_id": 4,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "BREACH",
+      "clause": "C1",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T17:04:02.806Z",
+      "kind": "registered",
+      "key": "rh2",
+      "agent_id": 7,
+      "tx": "0x16c6563852621936a6f8737f704273f6411355d8079fbf4f0012968df1267712"
+    },
+    {
+      "at": "2026-10-08T17:04:48.271Z",
+      "kind": "lint",
+      "key": "rh2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x8e27124deebc33ae175d95bb7bcf544ab0655a1c43bdcdc36480c8f81a90f7e6",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-08T17:05:11.102Z",
+      "kind": "unregister",
+      "agent": "rh",
+      "status": "UNREGISTERING",
+      "unlock_at": 1791482701,
+      "tx": "0x71bd4df815fc465a032202a29faac9b78ec07956a10a380641464391c78a9e13"
+    },
+    {
+      "at": "2026-10-08T17:05:26.545Z",
+      "kind": "appeal",
+      "case": "e1_major",
+      "challenge_id": 4,
+      "by": "operator",
+      "after": "APPEALED",
+      "tx": "0xb7294adf28998091ccc54edd453319d9a8b6c6072636e7df42ba7b11f900389c"
+    },
+    {
+      "at": "2026-10-08T17:06:32.185Z",
+      "kind": "resolve",
+      "case": "e3_contract",
+      "challenge_id": 5,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "verdict": "INCONCLUSIVE",
+      "clause": "C2",
+      "code": "NOT_JUDGEABLE_CLAUSE"
+    },
+    {
+      "at": "2026-10-08T17:10:03.872Z",
+      "kind": "resolve",
+      "case": "e3_vague",
+      "challenge_id": 6,
+      "tx_status": "UNDETERMINED",
+      "after": "PENDING",
+      "verdict": "",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T17:14:54.689Z",
+      "kind": "resolve_appeal",
+      "case": "e1_major",
+      "challenge_id": 4,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "outcome": "REJECTED",
+      "final": "BREACH"
+    },
+    {
+      "at": "2026-10-08T17:14:55.820Z",
+      "kind": "tx_found",
+      "case": "e1_minor",
+      "chain": "ethereum",
+      "hash": "0xe9c554b2bc8bc5e455103bab40e24865b41a89c3eddaf36c6a3e9c5733d1bc0c",
+      "block": 26149104,
+      "ts": 1791479663,
+      "to": "0xf1b50a41ced74a553e5ed3aed2545efadebe1dcd",
+      "selector": "plain"
+    },
+    {
+      "at": "2026-10-08T17:15:10.961Z",
+      "kind": "filed",
+      "case": "e1_minor",
+      "challenge_id": 7,
+      "by": "watcher",
+      "clause": "C2",
+      "tx": "0x341a70cd7373649aa65170db1b38b068899a31bb9fa96287ae5b1edd79217265"
+    },
+    {
+      "at": "2026-10-08T17:17:18.867Z",
+      "kind": "resolve",
+      "case": "e3_vague",
+      "challenge_id": 6,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "verdict": "INCONCLUSIVE",
+      "clause": "C2",
+      "code": "NOT_JUDGEABLE_CLAUSE"
+    },
+    {
+      "at": "2026-10-08T17:21:21.250Z",
+      "kind": "tx_found",
+      "case": "rh_call",
+      "chain": "robinhood",
+      "hash": "0x1a7e801467711d3c9c1dfd3223b6f7d3c6a4d80b2a6ca7f12fc543b67b8cd77d",
+      "block": 83484464,
+      "ts": 1791480014,
+      "to": "0xd703ec4a9839b5a3f4dbba95210509fa74c19f6f",
+      "selector": "0x8d6cc56d"
+    },
+    {
+      "at": "2026-10-08T17:21:37.327Z",
+      "kind": "filed",
+      "case": "rh_call",
+      "challenge_id": 8,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x81e0bc1609fba5dfdd0493fce61254746300ebbf6a8eaada9103a48a751da7e6"
+    },
+    {
+      "at": "2026-10-08T17:22:24.024Z",
+      "kind": "resolve",
+      "case": "e1_minor",
+      "challenge_id": 7,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "BREACH",
+      "clause": "C2",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T17:29:11.670Z",
+      "kind": "resolve",
+      "case": "rh_call",
+      "challenge_id": 8,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T17:36:03.735Z",
+      "kind": "tx_found",
+      "case": "base_window",
+      "chain": "base",
+      "hash": "0xf9613ba6cf331946106deeb30464457a52e7af99057e46ca1dc969e2678a3d1e",
+      "block": 52345657,
+      "ts": 1791480661,
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T17:36:20.020Z",
+      "kind": "filing_refused_expected",
+      "case": "base_window",
+      "clause": "C3",
+      "hash": "0x8cab1ebb3c5d10049d5ce71a03849b772d97fd3c55219e1d0c73ee6f069a6626",
+      "status": "ACCEPTED",
+      "ok": true,
+      "ret": {
+        "ok": false,
+        "reason": "Version 1 of the mandate has no clause C3",
+        "refunded_to_claimable": "50000000000000000"
+      },
+      "revert": "�\u0007{\"ok\": false, \"reason\": \"Version 1 of the mandate has no clause C3\", \"refunded_to_claimable\": \"50000000000000000\"}"
+    },
+    {
+      "at": "2026-10-08T17:36:37.257Z",
+      "kind": "filed",
+      "case": "base_window",
+      "challenge_id": 9,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x1a8e8c2bacb1738a363fdb62f5c6dc4d631f98ede9ad39e8234f6ad0f243969d"
+    },
+    {
+      "at": "2026-10-08T17:37:34.196Z",
+      "kind": "resolve",
+      "case": "base_window",
+      "challenge_id": 9,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T17:53:50.753Z",
+      "kind": "tx_found",
+      "case": "base_v2",
+      "chain": "base",
+      "hash": "0x99cc61c4aa86b54be8fb6e66711a907df2df34736b2e56f53d2fe3a7826bfbe4",
+      "block": 52346184,
+      "ts": 1791481715,
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T17:55:41.898Z",
+      "kind": "filed",
+      "case": "base_v2",
+      "challenge_id": 10,
+      "by": "watcher2",
+      "clause": "C3",
+      "tx": "0x39ec3a2747b46227de32d34cee8c63749b9b05bdd05e15e2372278b1d7314038"
+    },
+    {
+      "at": "2026-10-08T17:56:36.050Z",
+      "kind": "finalize",
+      "case": "e1_incoming",
+      "challenge_id": 0,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "269d20c956e99c912c635e91d57f094c"
+    },
+    {
+      "at": "2026-10-08T17:58:23.894Z",
+      "kind": "finalize",
+      "case": "e2_compliant",
+      "challenge_id": 1,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "b5ebc79b0e0020cb53d59961954a1b21"
+    },
+    {
+      "at": "2026-10-08T17:58:41.156Z",
+      "kind": "finalize",
+      "case": "arb_critical",
+      "challenge_id": 2,
+      "after": "FINAL",
+      "final": "BREACH",
+      "slash": "500000000000000000",
+      "precedent": ""
+    },
+    {
+      "at": "2026-10-08T17:58:57.790Z",
+      "kind": "finalize",
+      "case": "poly_other",
+      "challenge_id": 3,
+      "after": "FINAL",
+      "final": "BREACH",
+      "slash": "200000000000000000",
+      "precedent": ""
+    },
+    {
+      "at": "2026-10-08T18:02:48.866Z",
+      "kind": "resolve",
+      "case": "base_v2",
+      "challenge_id": 10,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T18:02:51.615Z",
+      "kind": "tx_found",
+      "case": "e2_symbol",
+      "chain": "ethereum",
+      "hash": "0x6c4e613ab49be872a2ff226bf88fcc22eb384d54956c0637cb45cc746820c9ac",
+      "block": 26149323,
+      "ts": 1791482291,
+      "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-08T18:04:40.236Z",
+      "kind": "filed",
+      "case": "e2_symbol",
+      "challenge_id": 11,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x64f8f1bc016c871206496cf2029155e8d5f5becf42f512daa1b590258ac88a30"
+    },
+    {
+      "at": "2026-10-08T18:07:38.043Z",
+      "kind": "resolve",
+      "case": "e2_symbol",
+      "challenge_id": 11,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-08T18:08:29.003Z",
+      "kind": "finalize_unregister",
+      "agent": "rh",
+      "status": "RETIRED",
+      "tx": "0x8abcfb0766ca9abf375b48e33354cf77bbcdd23ed0e2543cd8653948c7711563"
+    },
+    {
+      "at": "2026-10-08T18:15:08.550Z",
+      "kind": "appeal",
+      "case": "e2_symbol",
+      "challenge_id": 11,
+      "by": "watcher",
+      "after": "APPEALED",
+      "tx": "0x88921289ea73f762c6c1bbbb9adbbaa8dbb766d4fd5986b35ff11aef12ea5bdb"
+    },
+    {
+      "at": "2026-10-08T18:16:26.148Z",
+      "kind": "resolve_appeal",
+      "case": "e2_symbol",
+      "challenge_id": 11,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "outcome": "REJECTED",
+      "final": "COMPLIANT"
+    }
+  ],
+  "edit_base": {
+    "tx": "0x4b593912c0bbbfb2482153500bcad70213dd94e0cc8f503d701d52ed2524b603",
+    "created_at": 1791477705,
+    "effective_from": 1791481305,
+    "block": 52344184
+  },
+  "withdraw_blocked": {
+    "hash": "0x827eb5f04d3986e35b9cf454263a7a6240d84ffb9a8af0475f0edb482fee0144",
+    "status": "ACCEPTED",
+    "ok": false,
+    "ret": null,
+    "revert": "Withdrawals are blocked while 2 challenge(s) or appeal(s) are open against this agent"
+  },
+  "unregister": {
+    "agent": "rh",
+    "why": "the bot stopped transacting after registration",
+    "hash": "0x71bd4df815fc465a032202a29faac9b78ec07956a10a380641464391c78a9e13",
+    "status": "ACCEPTED",
+    "ok": true,
+    "ret": {
+      "ok": true,
+      "agent_id": 5,
+      "status": "UNREGISTERING",
+      "unlock_at": 1791482701
+    },
+    "revert": "�\u0004{\"ok\": true, \"agent_id\": 5, \"status\": \"UNREGISTERING\", \"unlock_at\": 1791482701}",
+    "unlock_at": 1791482701,
+    "final": {
+      "hash": "0x8abcfb0766ca9abf375b48e33354cf77bbcdd23ed0e2543cd8653948c7711563",
+      "status": "RETIRED",
+      "ok": true,
+      "ret": {
+        "ok": true,
+        "agent_id": 5,
+        "status": "RETIRED",
+        "released": "1000000000000000000"
+      },
+      "revert": "�\u0005{\"ok\": true, \"agent_id\": 5, \"status\": \"RETIRED\", \"released\": \"1000000000000000000\"}"
+    }
+  }
+}

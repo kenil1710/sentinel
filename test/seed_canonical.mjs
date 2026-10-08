@@ -75,7 +75,7 @@ const AGENTS = {
     description: "Moves USDC on Base for an exchange, many times a minute.",
     mandate: [`C1 [MAJOR] Only call the USDC token contract ${BASE_USDC}.`, "C2 [MINOR] Never send native ETH."],
     v2: [`C1 [MAJOR] Only call the USDC token contract ${BASE_USDC}.`, "C2 [MINOR] Never send native ETH.",
-      "C3 [MAJOR] Never move more than 1,000 USDC in one transaction."] },
+      "C3 [MAJOR] Never move more than 10 USDC in one transaction."] },
   rh: { role: "operator", chain: "robinhood", wallet: "0x119a94d53df9cc78b4167f30756b64aa62505baf", bond: GEN,
     name: "Robinhood Chain keeper", type: "DEFI",
     description: "Calls one contract on Robinhood Chain every few seconds.",
@@ -135,12 +135,12 @@ const CASES = {
     pick: (t) => t.selector !== "plain" && t.to !== POLY_MAIN,
     reason: (t) => `The keeper called ${t.to}, which is not its keeper contract on Polygon.` },
   base_window: { agent: "base", clause: "C1", by: "watcher", after: "edit_base", window: true,
-    pick: (t) => t.to === BASE_USDC && t.selector === "0xa9059cbb" && amountOf(t) > 1000n * 10n ** 6n,
+    pick: (t) => t.to === BASE_USDC && t.selector === "0xa9059cbb" && amountOf(t) > 10n * 10n ** 6n,
     tryFirst: "C3",
-    reason: (t) => `Moves ${Number(amountOf(t)) / 1e6} USDC in one transaction, more than 1,000 USDC.` },
+    reason: (t) => `Moves ${Number(amountOf(t)) / 1e6} USDC in one transaction, more than 10 USDC.` },
   base_v2: { agent: "base", clause: "C3", by: "watcher2", after: "edit_base", effective: true,
-    pick: (t) => t.to === BASE_USDC && t.selector === "0xa9059cbb" && amountOf(t) > 1000n * 10n ** 6n,
-    reason: (t) => `Moves ${Number(amountOf(t)) / 1e6} USDC in one transaction, more than 1,000 USDC.` },
+    pick: (t) => t.to === BASE_USDC && t.selector === "0xa9059cbb" && amountOf(t) > 10n * 10n ** 6n,
+    reason: (t) => `Moves ${Number(amountOf(t)) / 1e6} USDC in one transaction, more than 10 USDC.` },
   rh_call: { agent: "rh2", clause: "C1", by: "watcher", after: null,
     pick: (t) => t.selector !== "plain",
     reason: (t) => `Checking that the keeper only called ${RH2_TARGET}; this transaction called ${t.to}.` },
@@ -163,7 +163,7 @@ function event(kind, data) {
   save();
   console.log(`• ${kind} ${JSON.stringify(data).slice(0, 300)}`);
 }
-const rec = (out) => ({ hash: out.hash, status: out.status, ok: out.ok, ret: out.ret ?? null, revert: out.revertReason || null });
+const rec = (out) => ({ hash: out.hash, status: out.status, ok: out.ok, ret: out.ret ?? null, revert: out.reverted ? out.revertReason || null : null });
 
 if (process.argv.includes("--status")) {
   console.log(JSON.stringify({ agents: st.agents, cases: Object.fromEntries(Object.entries(st.cases).map(([k, v]) => [k, { state: v.state, cid: v.challenge_id, tx: v.tx?.hash }])) }, null, 1));

@@ -11,7 +11,7 @@ export function sentinel(address, role) {
     const out = await c.send(fn, args, value);
     const ret = returnedJson(out);
     const line = `  ${role.padEnd(11)} ${fn.padEnd(20)} ${String(out.status).padEnd(12)} ${out.hash ?? ""} ${out.seconds?.toFixed?.(0) ?? "?"}s` +
-      (out.revertReason ? `  REVERT: ${String(out.revertReason).slice(0, 160)}` : "") +
+      (out.reverted && out.revertReason ? `  REVERT: ${String(out.revertReason).slice(0, 160)}` : "") +
       (ret ? `  ${JSON.stringify(ret).slice(0, 220)}` : "");
     console.log(line);
     return { ...out, ret };
