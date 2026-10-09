@@ -11,7 +11,7 @@ const root = new URL("..", import.meta.url).pathname;
 const git = (...a) => execFileSync("git", ["-C", root, ...a]).toString().trim();
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 const dep = JSON.parse(readFileSync(root + "deployments.json", "utf8"));
-const RPC = dep.rpc ?? "https://studio-dev.genlayer.com/api";
+const RPC = process.env.STUDIO_RPC ?? dep.rpc ?? "https://studio-dev.genlayer.com/api";
 async function code(address) {
   for (let i = 0; i < 6; i++) {
     try {

@@ -13,7 +13,8 @@ const SITE = (process.argv.find((a) => a.startsWith("--site=")) ?? "--site=https
 const require = createRequire(root + "test/package.json");
 const { createClient } = require("genlayer-js");
 const { studioDevnet } = require("genlayer-js/chains");
-const client = createClient({ chain: studioDevnet });
+const relay = process.env.STUDIO_RPC;
+const client = createClient({ chain: relay ? { ...studioDevnet, rpcUrls: { ...studioDevnet.rpcUrls, default: { ...studioDevnet.rpcUrls.default, http: [relay] } } } : studioDevnet });
 const sh = (cmd, args, opts = {}) => spawnSync(cmd, args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20, ...opts });
 const git = (...a) => execFileSync("git", ["-C", root, ...a]).toString().trim();
 const dep = JSON.parse(readFileSync(root + "deployments.json", "utf8"));
