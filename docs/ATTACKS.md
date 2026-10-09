@@ -52,3 +52,24 @@ Left as limitations after round 2 (README → Known limitations):
   challenge blocks its withdrawals, as the design requires. A challenge whose panel never agrees stalls after 24 h and
   its transaction is released, so a challenger who can split panels can block withdrawals again, a day at a time, for a
   refundable stake. Any wallet, the operator included, can put the challenge to the validators earlier.
+
+## After round 2: fixed in v2.1.0
+
+Every item above that could be fixed cheaply and safely was fixed in v2.1.0, with tests that fail on v2.0.2
+(`test_sentinel.OneInconclusive`, `test_sentinel.BoundedViews`, the `Bond` withdrawal and paused-agent tests):
+
+- **Two spellings of INCONCLUSIVE:** the clause is on the consensus axis only for a BREACH.
+- **Withdrawal griefing:** an open challenge holds back only what it could slash (the CRITICAL rate of its snapshot,
+  times its frozen multiplier); the rest of the bond can be withdrawn, and unregistering can start while challenges
+  are open (the bond is released once nothing is open).
+- **Views scan whole lists:** `get_stats` counts open challenges from the final counters and agents from the live
+  set; `get_ledger` leaves a recomputation over more than 2,000 records to the new `get_ledger_page`; precedents and
+  open challenges have paged views.
+- **A zero bond froze an agent's record** (found while answering "what does paused mean"): a filing against a bond of
+  exactly 0 was refused. A paused agent is now challengeable at any bond.
+
+Porting the hackathon suite to v2 found three patrol-bot gaps, fixed in the same release: it could stake on a failed
+transaction, it compared amount caps as floating-point numbers (one wei over a cap with 18 decimals passed), and under
+a clause about trading it ignored tokens the agent received. Still open: friendly-challenger farming and front-running,
+cross-operator laundering, and the lexical novelty gate (README, Known limitations, each with its planned fix).
+

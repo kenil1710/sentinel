@@ -28,6 +28,8 @@ it byte for byte with `contracts/` at HEAD. The hackathon contracts are untouche
 - The final check, item by item with proof: [docs/FINAL_CHECK.md](docs/FINAL_CHECK.md)
 - Attack rounds: [docs/ATTACKS.md](docs/ATTACKS.md)
 - What validators can actually reach (measured): [docs/PROBE.md](docs/PROBE.md)
+- Demo video: [docs/demo/sentinel-v2.mp4](docs/demo/sentinel-v2.mp4) (vertical cut: [docs/demo/sentinel-v2-vertical.mp4](docs/demo/sentinel-v2-vertical.mp4))
+  Recorded on the previous deployment (addresses in docs/superseded/README.md); the flow is unchanged.
 
 ---
 
@@ -39,7 +41,7 @@ it byte for byte with `contracts/` at HEAD. The hackathon contracts are untouche
 | Mandate | free text, editable when nothing was pending | **numbered clauses, each with a severity**, stored as **versions with a hash and an effective time**; edits take effect after 1 h; a challenge is judged against the version in force at its transaction's block time, snapshotted at filing |
 | Challengers | anyone, fixed stake | anyone except the operator; a loser's stake goes **to the operator**; one challenge per (chain, transaction, agent) once decided; the bounty goes to the challenger who proved the breach |
 | Slashing | 20% of the bond, whatever the breach | **severity table frozen in the mandate version** (MINOR / MAJOR / CRITICAL as a share of the bond at filing) × a **capped repeat multiplier**; code computes it; the model only returns BREACH / COMPLIANT and a severity label quoted from the mandate |
-| Bond | instant withdrawal | top-up; **timelocked withdrawal** and **unregister**, blocked while anything is open; **auto-pause** below the minimum; **pull payouts** only; a ledger invariant checked in tests and on chain |
+| Bond | instant withdrawal | top-up; **timelocked withdrawal** of what open challenges could never slash, and **unregister**, whose release waits until nothing is open; **auto-pause** below the minimum; **pull payouts** only; a ledger invariant checked in tests and on chain |
 | Mandate quality | — | a **linter**: validators mark clauses that cannot be judged from on-chain data, quoted verbatim, strict equality on clause ids; a breach can never rest on a flagged clause |
 | Learning | the bot parsed its own past accusations | **precedents**: only FINAL COMPLIANT rulings whose first ruling was already COMPLIANT; keyed by agent, clause text and transaction kind; the patrol skips matching transactions; a single FINAL BREACH vetoes one for good |
 | Reputation | a compliance score | a **track record** computed by the contract: breaches by severity, overrulings, appeals won/lost, last breach, total slashed — and recomputed from the records to prove the counters agree |
@@ -78,6 +80,23 @@ still there. `multiplier = min(1 + step × prior final breaches, cap)`, both fro
 bond goes to the other party; a won or expired appeal's bond goes back to the appellant. The treasury is the
 deploying address, fixed at construction; its share is an ordinary pull balance.
 
+### What a paused agent means
+
+An agent whose bond falls below the 0.5 GEN minimum (slashed, or withdrawn) is **PAUSED** automatically, and is ACTIVE
+again as soon as a top-up brings it back to the minimum.
+
+- **It can still be challenged, at any bond, zero included.** Pausing is not an exit: an agent keeps answering for
+  what it does. (Up to v2.0.2 a filing against a bond of exactly 0 was refused, which let an operator freeze an agent's
+  record by letting the bond run out; v2.1.0 removed that refusal.)
+- **Every ruling counts against its record.** A final BREACH adds to the agent's breach counts and to the repeat
+  multiplier of later filings, even when there is nothing left to slash; the slash is whatever the bond can still
+  cover, and the challenger then gets their stake back and a bounty of that size (possibly 0).
+- **It is not in good standing.** `get_standing`, `/api/check`, the badge and `SentinelConsumer` all answer no, with
+  the reasons ("status is PAUSED", "bond below the 0.5 GEN minimum", and any final CRITICAL breach). SentinelConsumer
+  refuses to act for it.
+- **The patrol bot does not stake on an agent with nothing to slash** (it is left out of `get_patrol_queue`); anyone
+  else can still challenge it.
+
 ## What the model is never allowed to decide
 
 The model answers exactly two questions:
@@ -101,7 +120,8 @@ Code decides everything else, and checks the model's answer before it counts:
 | Every deadline, who may act, precedents, track records, standing | code |
 
 **Model disagreement, exactly as it behaves on chain.** Validators compare one string by strict equality:
-`verdict | clause | digest of the immutable transaction facts | transaction kind` (the linter compares
+`verdict | clause | digest of the immutable transaction facts | transaction kind`, where the clause is filled in only
+for a BREACH, so every INCONCLUSIVE compares the same however it was reached (the linter compares
 `status | flagged clause ids`). If they do not agree, the transaction ends **UNDETERMINED and nothing is written** —
 measured on studio-dev: a counter bumped before a disagreeing round was still 0 afterwards. The challenge stays
 PENDING (or the appeal APPEALED, or the lint PENDING) and anyone may call the method again. A disagreement is never
@@ -164,6 +184,28 @@ Every one of the bot's filings, with its ruling: [docs/SEEDS.md](docs/SEEDS.md#e
 
 <!--/SEED-->
 
+## Why most results are INCONCLUSIVE
+
+On the v2.0 deployment that ran from 8 to 9 October ([docs/superseded/README.md](docs/superseded/README.md)), 75 of
+the 120 challenges ended INCONCLUSIVE. The same pattern will show on any register a bot patrols, for three plain
+reasons:
+
+1. **Most were filed by the patrol bot against a clause the linter had flagged.** 73 of its filings accused payout
+   bot B under "Only send stablecoins", a clause the validators had marked as not judgeable from on-chain data
+   (which tokens count as stablecoins is decided off chain). A breach on a flagged clause can never be slashed, so
+   each came back INCONCLUSIVE and the stake was refunded. That was a bug in the bot, not in the contract; the bot now
+   never stakes on a flagged clause.
+2. **Clauses that name tokens by symbol are deliberately undecidable.** "Only move USDT and USDC" does not say which
+   contracts are meant, and a token called USDT at another address is the oldest spoof there is. The bot flags every
+   token under such a clause, and the validators say they cannot decide.
+3. **Missing or partial data is never decided either way.** A transaction the explorer has not fully indexed, or a
+   record that does not show the agent's wallet, ends INCONCLUSIVE before the model is asked anything.
+
+That is the safe outcome. INCONCLUSIVE costs the challenger nothing (the stake comes back), costs the operator
+nothing, adds nothing to the agent's breaches, and creates no precedent. The alternative, a judge that must answer
+BREACH or COMPLIANT every time, would slash bonds and clear transactions on guesses. An INCONCLUSIVE also holds the
+transaction, so nobody can file the same accusation again and again until a panel says BREACH.
+
 ## How a reviewer can test
 
 No wallet needed to look; a funded Studio Dev wallet to act (the Studio faucet funds any address).
@@ -194,50 +236,70 @@ No wallet needed to look; a funded Studio Dev wallet to act (the Studio faucet f
 
 ## Known limitations
 
-- **Studio Dev does not deliver value transfers.** `claim()` zeroes the balance and posts an `emit_transfer`; studio-dev
+Fixed in v2.1.0, from the list as it stood at v2.0.2: the two spellings of INCONCLUSIVE on the consensus axis (now
+one); withdrawal griefing (an open challenge now holds back only what it could slash, and unregistering can start
+while challenges are open); views that walked whole lists (now bounded, with paged `get_ledger_page`,
+`get_open_challenge_page` and `get_precedent_page`); a zero bond that froze an agent's record; and, in the patrol bot,
+staking on failed transactions, comparing amount caps as floating-point numbers, and missing tokens received in a
+trade.
+
+### Still open, and how each would be fixed
+
+- **A friendly challenger can pad a track record or take the bounty.** An operator's confederate can file challenges
+  it expects to lose (the stake returns to the operator and "cleared" rises), or file first on the operator's own
+  breach and take the 50% bounty back to the operator's side. Nothing on chain tells a friend from a stranger. What
+  limits it today: standing never uses the cleared count, and a breach always costs at least the treasury's 50% of
+  the slash. Planned fix: send the bounty to the treasury when the challenger has funded or been funded by the
+  operator's address in the same window (checkable from the chain's own transfer history), and show cleared counts
+  only for challenges whose challenger has also won against other agents.
+- **A different operator address can launder a record.** Earlier registrations of a wallet count against it only when
+  made by the same operator, because registering does not prove control of a wallet and a stranger could otherwise
+  frame a bot it does not run (attack round 2). An operator who re-registers its own bot from a new address starts
+  clean; the earlier records are still listed on the agent and in `/api/check` with `same_operator: false`. Planned
+  fix: an optional proof of control (the agent wallet signs the registration); a proven registration then inherits
+  every earlier record of that wallet, whoever filed it.
+- **The novelty gate for appeals is lexical.** It compares word 3-grams (Jaccard at least 60% or containment at least
+  80%) against the accusation, the ruling and its quote, so it stops resends, not rewordings. Planned fix: ask the
+  validators, as a second consensus question, whether the counter-evidence states a fact that is not already on
+  record, and refuse the appeal unless they agree it does.
+
+### What Studio Dev imposes
+
+- **Value transfers are queued, not delivered.** `claim()` zeroes the balance and posts an `emit_transfer`; studio-dev
   accepts it and never credits the recipient (measured, [PROBE §12](docs/PROBE.md)). The books are right and
   `get_ledger` reports the on-chain balance next to them; the gap equals the claimed total. GEN here is test money.
-- **Four of the five explorers sit behind Cloudflare.** Validators read base, arbitrum, polygon and robinhood
-  through `gl.nondet.web.render` (a real browser), which cleared the check when measured; a validator that is
-  challenged waits (RETRY) rather than ruling. The patrol bot runs on Vercel, cannot run a browser, and therefore lists
+- **Four of the five explorers sit behind Cloudflare.** Validators read base, arbitrum, polygon and robinhood through
+  `gl.nondet.web.render` (a real browser), which cleared the check when measured; a validator that is challenged
+  waits (RETRY) rather than ruling. The patrol bot runs on Vercel, cannot run a browser, and therefore lists
   transactions on **Ethereum only**; other chains are covered by open challengers, and the patrol reports those agents
   as "skipped, not cleared".
+- **It is a development network.** During this milestone its RPC returned Cloudflare 520s and HTML error pages for
+  long stretches, and it rate-limits each IP (30 a minute, 500 an hour, 5000 a day); every script retries with bounded
+  requests, and some seeded steps took several attempts.
+
+### By design
+
 - **Registering does not prove control of the wallet.** The seeded agents are live bots we do not operate, registered
-  under mandates we wrote for their observable behaviour. The bond is the registrant's own money; the API and the badge
-  say "bonded by", never "owned by".
-- **A mandate binds only transactions mined after registration.** There is no backfill, by design.
-- **One challenge per (chain, transaction, agent), for good, once anything is decided.** Only a VOID filing or a stall
-  (no panel agreed within 24 h) releases the transaction; re-filing a decided one would let anyone re-roll a
-  probabilistic judge until it said BREACH.
-- **A different operator address can launder a record.** Earlier registrations of a wallet count against it only when
-  made by the same operator (otherwise a stranger could frame a wallet it does not run, attack round 2). They are always
-  listed on the agent and in `/api/check`, with `same_operator`.
-- **Withdrawal griefing.** An open challenge blocks withdrawals and unregistering, by design. A challenger who can make
-  panels disagree can keep one open for 24 h at a time for a refundable stake; anyone can put it to the validators sooner.
-- **Track records can be padded.** An operator's friend can file challenges it expects to lose; the stake returns to the
-  operator and "cleared" rises. Standing does not use that count.
+  under mandates we wrote for their observable behaviour. The bond is the registrant's own money; the API and the
+  badge say "bonded by", never "owned by".
+- **A mandate binds only transactions mined after registration.** There is no backfill.
+- **One challenge per (chain, transaction, agent) once anything is decided, INCONCLUSIVE included.** Only a VOID
+  filing or a stall (no panel agreed within 24 h) releases the transaction; re-filing a decided one would let anyone
+  re-roll a probabilistic judge until it said BREACH.
+- **Precedents cover a transaction kind, not an amount.** A kind is counterparty, selector, tokens moved with their
+  direction, and a coarse native-value bucket. The patrol never defers to a precedent on an amount rule, and anyone
+  can still challenge.
 - **The stored labels are the leader's.** A ruling stores the on-chain facts, which every validator must reproduce
-  exactly, and separately the explorer labels as the leader read them; the app shows the second as unverified.
-- **An operator can front-run with a friendly challenger.** A confederate who files first on the operator's own breach
-  gets the bounty (50% of the slash) back to the operator's side; the other 50% still goes to the treasury, so a
-  breach always costs at least half its slash.
-- **Precedents cover a transaction kind, not an amount.** A kind is counterparty, selector, tokens moved and a coarse
-  native-value bucket. The patrol never defers to a precedent on an amount rule, and anyone can still challenge.
-- **The appeal judges with the same explorer document.** If the immutable facts read at appeal differ from the first
-  ruling's (a lagging explorer replica), the appeal waits; after its 24 h deadline the first ruling stands.
+  exactly, and separately the explorer labels as the leader read them; the app shows the second as unverified, and
+  they never decide anything.
+- **An appeal reads the same immutable facts.** If the facts read at appeal differ from the first ruling's (a lagging
+  explorer replica), the appeal waits; after its 24 h deadline the first ruling stands.
 - **A fresh panel can find a different clause.** An operator's appeal of a MINOR breach can come back as a MAJOR one;
-  the fresh judgment is final.
-- **The novelty gate is lexical.** Word 3-gram overlap (Jaccard ≥ 60% or containment ≥ 80%) against the accusation, the
-  ruling and its quote. A paraphrase passes it; it stops resends, not rewordings.
-- **Two kinds of INCONCLUSIVE can split a panel.** When a breach lands on a linter-flagged clause, code records
-  INCONCLUSIVE with that clause id; a model that answers INCONCLUSIVE directly carries none. Both refund the stake, but
-  they differ on the consensus axis, so one validator of each kind makes the round UNDETERMINED (nothing written; anyone
-  can resolve again). Observed once on v2.0.0 (challenge #6, settled on the second attempt). Liveness, not safety.
-- **The linter is advisory where it disagrees.** If validators do not agree on which clauses to flag, nothing is written;
-  after 24 h `close_lint` records INCONCLUSIVE and no clause is excluded from slashing.
+  the fresh judgment is final. (This is also why an open challenge holds back the CRITICAL rate of the bond, not the
+  rate of the clause it named.)
+- **The linter only advises where validators disagree.** If they do not agree on which clauses to flag, nothing is
+  written; after 24 h `close_lint` records INCONCLUSIVE and no clause is excluded from slashing.
 - **Views carry no clock.** Deadlines are returned as unix times; the app and the API compare them with the wall clock.
-- **Studio Dev is a development network.** During this milestone its RPC returned Cloudflare 520s and HTML error pages
-  for long stretches; every script retries with bounded requests, and some seeded steps took several attempts.
 
 ## Repository
 

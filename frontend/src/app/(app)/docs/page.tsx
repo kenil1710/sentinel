@@ -61,7 +61,7 @@ export default function DocsPage() {
         <Panel className="p-4"><div className="text-sm font-semibold">The model</div><p className="mt-1 text-[13px] text-ink-2">BREACH, COMPLIANT or INCONCLUSIVE for one transaction against one mandate version; the clause it rests on, quoted, with the severity label written next to it. For the linter: which clauses cannot be judged from on-chain data, each quoted.</p></Panel>
         <Panel className="p-4"><div className="text-sm font-semibold">Code, always</div><p className="mt-1 text-[13px] text-ink-2">Which explorer is read (fixed table), whether the transaction is the agent&apos;s, whether its block time matches, whether the record is complete, which version applies, whether a quote is verbatim and the label matches, every amount, every deadline, who may act, precedents, track records, standing.</p></Panel>
       </div>
-      <p className="mt-3 text-ink-2">Validators compare one string: verdict | clause | digest of the immutable facts | transaction kind. If they do not agree the transaction ends UNDETERMINED and nothing is written; the challenge simply stays where it was and can be judged again.</p>
+      <p className="mt-3 text-ink-2">Validators compare one string: verdict | clause | digest of the immutable facts | transaction kind, with the clause filled in only for a BREACH, so every INCONCLUSIVE compares the same. If they do not agree the transaction ends UNDETERMINED and nothing is written; the challenge simply stays where it was and can be judged again.</p>
 
       <H id="api">The public API and the badge</H>
       <pre className="mono mt-3 overflow-x-auto rounded-md bg-panel-2 p-3 text-[12px]">{`GET /api/check?agent=0x28c6c06298d514db089934071355e5743bf21d60&chain=ethereum

@@ -200,7 +200,7 @@ export default function Home() {
               <div className="mt-3 text-ink-3"># what validators compare</div>
               <div className="mt-2 text-compliant-ink">+ BREACH|C1|c94ffd7f…|call:0xee7a…:0x34fcd5be…</div>
               <div className="text-compliant-ink">+ BREACH|C1|c94ffd7f…|call:0xee7a…:0x34fcd5be…</div>
-              <div className="mt-3 text-ink-3"># verdict | clause | digest of immutable facts | kind</div>
+              <div className="mt-3 text-ink-3"># verdict | clause (BREACH only) | digest of immutable facts | kind</div>
             </div>
           </div>
         </Panel>
