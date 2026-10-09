@@ -227,6 +227,9 @@ async function findTx(name, c) {
   let hi = Infinity;
   if (c.window) { lo = st.edit_base.created_at; hi = st.edit_base.effective_from; from = Math.max(from, st.edit_base.block - 5); }
   if (c.effective) { lo = st.edit_base.effective_from; if (nowS() < lo + 15) return null; }
+  // A transaction caught by catch_tx.mjs (nonce watcher, for chains whose public RPC refuses history).
+  const side = process.env.FOUND_FILE && existsSync(process.env.FOUND_FILE) ? JSON.parse(readFileSync(process.env.FOUND_FILE, "utf8")) : {};
+  if (side[name] && !Object.values(st.cases).some((o) => o.tx?.hash === side[name].hash)) return { ...side[name], value: BigInt(side[name].value ?? "0") };
   if (c.find) {
     const t = await c.find(lo);
     if (t && !Object.values(st.cases).some((o) => o.tx?.hash === t.hash)) return t;
