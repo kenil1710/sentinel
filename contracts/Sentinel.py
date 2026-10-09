@@ -1831,8 +1831,9 @@ class Sentinel(gl.contract.Contract):
 	def settle_stalled(self, challenge_id: int) -> str:
 		"""The exit for a challenge no panel could settle in time (explorer down
 		or validators never agreeing): anyone, after resolve_deadline. The stake
-		goes back and the agent's record is untouched; recorded as INCONCLUSIVE
-		with code STALLED."""
+		goes back and nothing counts for or against the agent: no breach, no
+		clearance, no slash; it is listed among its inconclusive results with
+		code STALLED, and the transaction is released for a new filing."""
 		now = self._now()
 		ch = self._challenge(challenge_id)
 		if str(ch.status) != ST_PENDING:
@@ -2396,11 +2397,15 @@ class Sentinel(gl.contract.Contract):
 
 	@gl.public.view
 	def get_stats(self) -> str:
+		# Counted over the live set, not a window of the append-only id list:
+		# retired agents leave live_ids, so no number of register-and-retire
+		# cycles can push a live agent out of the count.
 		statuses = {AG_ACTIVE: 0, AG_PAUSED: 0, AG_UNREGISTERING: 0, AG_RETIRED: 0}
-		for raw in [int(x) for x in self.agent_ids][-SCAN_CAP:]:
+		for raw in [int(x) for x in self.live_ids][-SCAN_CAP:]:
 			a = self.agents.get(u32(raw))
 			if a is not None:
 				statuses[str(a.status)] = statuses.get(str(a.status), 0) + 1
+		statuses[AG_RETIRED] = len(self.agent_ids) - len(self.live_ids)
 		# Every challenge ends in exactly one of the four final counters (a stall
 		# and an expired appeal included), so what is open is the difference:
 		# exact at any size, no scan.

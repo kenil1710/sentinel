@@ -78,7 +78,7 @@ add("Views consistent with storage (ledger and every track record recomputed fro
   lc.views_match_storage && tracks.every(([, ok]) => ok), fence(`get_ledger.views_match_storage = ${lc.views_match_storage}\n` + tracks.map(([id, ok]) => `agent #${id} get_track_record.views_match_storage = ${ok}`).join("\n")));
 
 // tests, run once and reused below
-const py = sh("python3", ["-m", "unittest", "test_sentinel", "test_consumer", "test_attacks", "test_attacks_r2"], { cwd: root + "test" });
+const py = sh("python3", ["-m", "unittest", "discover", "-s", ".", "-p", "test_*.py"], { cwd: root + "test" });
 const pyRan = (py.stderr.match(/Ran (\d+) tests/) || [])[1];
 const tsT = sh("node", ["--experimental-strip-types", "--no-warnings", "test/test_patrol.mjs"]);
 const tsRan = (tsT.stdout.match(/(\d+) patrol tests passed/) || [])[1];
@@ -160,7 +160,7 @@ add("Git history clean (no attribution or AI mentions, no secrets tracked, tree 
   `commits since BASE: ${git("rev-list", "--count", "b5145fa..HEAD")}; banned words in messages: ${bad.join(", ") || "none"}; tracked secret-like files: ${secrets.join(", ") || "none"}; working tree: ${dirty ? "has uncommitted FINAL_CHECK output only" : "clean"}; HEAD == origin/main: ${pushed}; history is linear on top of BASE (fast-forward pushes only).`);
 
 // 20. tests
-add("Tests pass", py.status === 0 && tsT.status === 0, fence(`python3 -m unittest test_sentinel test_consumer test_attacks test_attacks_r2  → Ran ${pyRan} tests, ${py.status === 0 ? "OK" : "FAILED"}\nnode test/test_patrol.mjs → ${tsRan} passed\n${py.status ? py.stderr.slice(-1500) : ""}`));
+add("Tests pass", py.status === 0 && tsT.status === 0, fence(`python3 -m unittest discover -s . -p "test_*.py"  → Ran ${pyRan} tests, ${py.status === 0 ? "OK" : "FAILED"}\nnode test/test_patrol.mjs → ${tsRan} passed\n${py.status ? py.stderr.slice(-1500) : ""}`));
 
 const pass = rows.filter((r) => r.pass).length;
 const md = `# Final check

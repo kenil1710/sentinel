@@ -35,6 +35,7 @@ import type { TransactionHash } from "genlayer-js/types";
 import { oneTransaction, recentTransactions, TransientBlockscout } from "@/lib/blockscout";
 import { flagsFor } from "@/lib/heuristics";
 import { kindOfDoc } from "@/lib/kind";
+import { judgeableClauses, screenFlags, versionAt, type PrecedentAnswer } from "@/lib/patrolPlan";
 import { DEPLOYMENTS } from "@/lib/deployments";
 import type { Challenge, Clause, PatrolReport, PatrolRow } from "@/types";
 
@@ -199,9 +200,9 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
     scanned += fresh.length;
     let enriched = 0;
     for (let t of fresh) {
-      const version = [...agent.versions_list].sort((a, b) => b.version - a.version).find((v) => v.effective_from <= t.epoch);
+      const version = versionAt(agent.versions_list, t.epoch);
       if (!version) continue;
-      const judgeable = version.clauses.filter((cl) => !lintFlags.get(version.version)?.has(cl.id));
+      const judgeable = judgeableClauses(version, lintFlags.get(version.version));
       const first = flagsFor(t, agent.wallet, judgeable);
       let flags = first.flags;
       const needsTransfers = first.needsTransfers;
@@ -216,21 +217,13 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
       if (known.challenged) { row.skipped_already_challenged++; continue; }
       // C. precedents, for every flag that may defer to one.
       const kind = doc ? kindOfDoc(doc, agent.wallet) : "";
-      const live: typeof flags = [];
-      let unreadable = false;
-      for (const f of flags) {
-        if (f.precedentEligible && kind) {
-          const p = await view<{ match: boolean; key: string; precedent?: { challenge_id: number } }>(
-            "precedent_for", [agent.agent_id, f.clause, kind, t.epoch]).catch(() => null);
-          if (p === null) { unreadable = true; continue; }
-          if (p.match) {
-            row.skipped_precedent.push({ tx_hash: t.hash, clause: f.clause, tx_kind: kind, precedent_key: p.key, challenge_id: p.precedent?.challenge_id ?? -1 });
-            skippedByPrecedent++;
-            console.log(`[patrol] precedent skip agent #${agent.agent_id} ${f.clause} ${t.hash.slice(0, 12)} key ${p.key.slice(0, 10)}`);
-            continue;
-          }
-        }
-        live.push(f);
+      const epoch = t.epoch;
+      const { live, withheld, unreadable } = await screenFlags(flags, kind, (clause) =>
+        view<PrecedentAnswer>("precedent_for", [agent.agent_id, clause, kind, epoch]).catch(() => null));
+      for (const w of withheld) {
+        row.skipped_precedent.push({ tx_hash: t.hash, clause: w.clause, tx_kind: kind, precedent_key: w.key, challenge_id: w.challenge_id });
+        skippedByPrecedent++;
+        console.log(`[patrol] precedent skip agent #${agent.agent_id} ${w.clause} ${t.hash.slice(0, 12)} key ${w.key.slice(0, 10)}`);
       }
       if (unreadable) {
         row.flagged.push({ tx_hash: t.hash, reason: "precedent check unreadable", clause: flags[0].clause, filed: false,

@@ -73,7 +73,7 @@ const features = [
     [], ["frontend/src/app/api/patrol/route.ts", "frontend/src/lib/heuristics.ts", "frontend/src/lib/blockscout.ts"]],
 ];
 
-const py = spawnSync("python3", ["-m", "unittest", "test_sentinel", "test_consumer", "test_attacks", "test_attacks_r2"], { cwd: root + "test", encoding: "utf8" });
+const py = spawnSync("python3", ["-m", "unittest", "discover", "-s", ".", "-p", "test_*.py"], { cwd: root + "test", encoding: "utf8" });
 const pyRan = (py.stderr.match(/Ran (\d+) tests/) || [])[1];
 const ts = spawnSync("node", ["--experimental-strip-types", "--no-warnings", "test/test_patrol.mjs"], { cwd: root, encoding: "utf8" });
 const tsRan = (ts.stdout.match(/(\d+) patrol tests passed/) || [])[1];

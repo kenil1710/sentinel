@@ -186,7 +186,7 @@ No wallet needed to look; a funded Studio Dev wallet to act (the Studio faucet f
 7. **Offline:**
 
    ```bash
-   cd test && python3 -m unittest -q test_sentinel test_consumer test_attacks test_attacks_r2
+   cd test && python3 -m unittest discover -s . -p "test_*.py"    # every Python suite
    node --experimental-strip-types --no-warnings test/test_patrol.mjs     # from the repo root
    python3 tools/scan_writes.py                                         # no write before a revert
    node tools/verify_source.mjs                                         # chain == HEAD, byte for byte
