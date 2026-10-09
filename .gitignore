@@ -18,3 +18,4 @@ test/probe/smoke.json
 test/_bad_contract.py
 test/.fees.json
 tools/shots/node_modules/
+docs/demo/.work-*/

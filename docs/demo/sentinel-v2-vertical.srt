@@ -1,0 +1,53 @@
+1
+00:00:00,150 --> 00:00:04,194
+Sentinel puts a bond behind
+what an AI agent promises. Ten
+
+2
+00:00:04,194 --> 00:00:07,502
+live bots on five chains,
+judged by GenLayer validators.
+
+3
+00:00:07,952 --> 00:00:10,591
+Anyone can challenge a
+transaction. Validators each
+
+4
+00:00:10,591 --> 00:00:14,739
+fetch it and must agree. This
+critical breach, filed by the
+
+5
+00:00:14,739 --> 00:00:19,263
+patrol bot on its own, cost
+the bond 1.00 GEN, and code
+
+6
+00:00:19,263 --> 00:00:20,394
+computed every wei.
+
+7
+00:00:20,844 --> 00:00:24,256
+Rulings stay provisional for
+an hour. The losing side can
+
+8
+00:00:24,256 --> 00:00:26,645
+appeal once, and a fresh panel
+decides.
+
+9
+00:00:27,095 --> 00:00:30,040
+Final clearances teach the
+patrol bot what to stop
+
+10
+00:00:30,040 --> 00:00:33,640
+accusing. Every number you see
+is read from the contract. Try
+
+11
+00:00:33,640 --> 00:00:35,931
+every path yourself on the
+demo deployment.

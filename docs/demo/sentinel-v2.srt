@@ -1,0 +1,165 @@
+1
+00:00:00,150 --> 00:00:07,161
+This is Sentinel version two, a watchdog for autonomous agents,
+running on GenLayer. An operator bonds an agent's wallet under a
+
+2
+00:00:07,161 --> 00:00:13,170
+mandate of numbered clauses. Anyone can challenge one of its
+transactions, and GenLayer validators judge it. The canonical
+
+3
+00:00:13,170 --> 00:00:19,179
+register holds ten agents on five chains, and every figure on
+this page is read from the contract.
+
+4
+00:00:19,629 --> 00:00:26,194
+Every agent here is a live bot on Ethereum, Base, Arbitrum,
+Polygon or Robinhood Chain. We do not run them; we registered
+
+5
+00:00:26,194 --> 00:00:31,863
+them under mandates written for what they actually do, so each
+one makes a claim the chain can test.
+
+6
+00:00:32,313 --> 00:00:38,876
+Before a mandate is used, validators lint it. On Exchange payout
+bot B, they agreed that two clauses cannot be judged from
+
+7
+00:00:38,876 --> 00:00:42,455
+on-chain data. A breach can never be slashed on a flagged
+clause.
+
+8
+00:00:42,905 --> 00:00:50,554
+Here the patrol bot, on its own, accused an exchange payout bot
+of calling a contract its mandate bans. Each validator fetched
+
+9
+00:00:50,554 --> 00:00:57,854
+the transaction itself, checked it belonged to the agent and
+matched the filed block time, and agreed: breach of clause C3,
+
+10
+00:00:57,854 --> 00:01:02,373
+critical. Code computed the slash: 1.00 GEN, half of it to the
+challenger.
+
+11
+00:01:02,823 --> 00:01:09,408
+Every breach or clearance is provisional for an hour. The party
+it went against can appeal once, with a bond and new
+
+12
+00:01:09,408 --> 00:01:15,693
+counter-evidence; a resend of what is already on record is
+refused. Here the operator appealed, a fresh panel read the same
+
+13
+00:01:15,693 --> 00:01:19,284
+immutable facts, and rejected the appeal. The bond went to the
+challenger.
+
+14
+00:01:19,734 --> 00:01:26,103
+And here an appeal was upheld. The first panel cleared a payout
+under a clause that names tokens only by symbol. The challenger
+
+15
+00:01:26,103 --> 00:01:32,471
+appealed that a symbol cannot say which token is meant, and the
+fresh panel ruled inconclusive, so the stake and the appeal bond
+
+16
+00:01:32,471 --> 00:01:33,324
+went back.
+
+17
+00:01:33,474 --> 00:01:40,303
+Slashing is graduated. Each mandate version freezes a severity
+table, and repeat breaches raise a capped multiplier. This minor
+
+18
+00:01:40,303 --> 00:01:47,851
+breach was filed after one earlier breach had become final, so
+the snapshot taken at filing carries a multiplier of 1.5.
+
+19
+00:01:48,301 --> 00:01:54,585
+Mandates are versioned. An edit waits an hour before it binds,
+and a challenge is judged against the version in force when its
+
+20
+00:01:54,585 --> 00:02:00,596
+transaction was mined. This Base bot's new ten-USDC limit could
+not reach back to a transfer made while the edit was still
+
+21
+00:02:00,596 --> 00:02:01,169
+queued.
+
+22
+00:02:01,319 --> 00:02:07,681
+Final clearances teach the patrol bot. Only a ruling that was
+compliant from the start and became final counts. Provisional
+
+23
+00:02:07,681 --> 00:02:14,360
+rulings, and clearances an operator won on appeal, never teach
+it anything, and one proven breach ends a precedent for good.
+
+24
+00:02:14,810 --> 00:02:21,644
+Every agent has a track record computed by the contract: fifteen
+final breaches here, by severity, with appeals won and lost, and
+
+25
+00:02:21,644 --> 00:02:27,857
+the contract recomputes it from the challenge records to show
+the numbers agree. This agent is not in good standing.
+
+26
+00:02:28,307 --> 00:02:34,650
+Other contracts can ask. SentinelConsumer calls is in good
+standing across contracts, and refuses to act for an agent that
+
+27
+00:02:34,650 --> 00:02:38,138
+is not in good standing, or for anyone but its operator.
+
+28
+00:02:38,588 --> 00:02:43,014
+The same answer is a public API and a badge, read from the chain
+on every request.
+
+29
+00:02:43,464 --> 00:02:50,176
+Everything you saw is on GenLayer's Studio network. This is the
+canonical contract on the explorer. Its code, read back from the
+
+30
+00:02:50,176 --> 00:02:53,226
+chain, is byte for byte the source in the repository.
+
+31
+00:02:53,676 --> 00:03:00,700
+Payouts are pull balances, and the contract checks its own
+books: received equals bonds, plus open stakes, plus claimable,
+
+32
+00:03:00,700 --> 00:03:07,724
+plus claimed. One honest limit: Studio Dev queues value
+transfers without delivering them, and the books show that gap.
+
+33
+00:03:08,174 --> 00:03:15,027
+The model only ever says breach, compliant or inconclusive,
+quoting a clause. Code decides everything else, and when
+
+34
+00:03:15,027 --> 00:03:18,835
+validators disagree, nothing is written. That is Sentinel
+version two.

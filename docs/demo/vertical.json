@@ -1,0 +1,51 @@
+{
+ "name": "sentinel-v2-vertical",
+ "vertical": true,
+ "voice": "Samantha",
+ "rate": 178,
+ "out_dir": ".",
+ "segments": [
+  {
+   "id": "v1",
+   "action": {
+    "goto": "https://sentinel-tau-ashen.vercel.app/",
+    "waitFn": "() => [...document.querySelectorAll('[data-stat]')].every(e => e.textContent.trim() !== '—')"
+   },
+   "then": {
+    "scrollTo": "#live-h",
+    "offset": 20
+   },
+   "say": "Sentinel puts a bond behind what an AI agent promises. Ten live bots on five chains, judged by GenLayer validators."
+  },
+  {
+   "id": "v2",
+   "action": {
+    "goto": "https://sentinel-tau-ashen.vercel.app/challenge/0",
+    "wait": "h1"
+   },
+   "then": {
+    "scrollBy": 900
+   },
+   "say": "Anyone can challenge a transaction. Validators each fetch it and must agree. This critical breach, filed by the patrol bot on its own, cost the bond 1.00 GEN, and code computed every wei."
+  },
+  {
+   "id": "v3",
+   "action": {
+    "goto": "https://sentinel-tau-ashen.vercel.app/challenge/2",
+    "wait": "h1"
+   },
+   "then": {
+    "scrollBy": 1400
+   },
+   "say": "Rulings stay provisional for an hour. The losing side can appeal once, and a fresh panel decides."
+  },
+  {
+   "id": "v4",
+   "action": {
+    "goto": "https://sentinel-tau-ashen.vercel.app/precedents",
+    "wait": "h1"
+   },
+   "say": "Final clearances teach the patrol bot what to stop accusing. Every number you see is read from the contract. Try every path yourself on the demo deployment."
+  }
+ ]
+}

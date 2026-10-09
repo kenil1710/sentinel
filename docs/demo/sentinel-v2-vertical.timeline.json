@@ -1,0 +1,26 @@
+[
+ {
+  "id": "v1",
+  "start": 0,
+  "end": 7.8,
+  "say": "Sentinel puts a bond behind what an AI agent promises. Ten live bots on five chains, judged by GenLayer validators."
+ },
+ {
+  "id": "v2",
+  "start": 7.8,
+  "end": 20.69,
+  "say": "Anyone can challenge a transaction. Validators each fetch it and must agree. This critical breach, filed by the patrol bot on its own, cost the bond 1.00 GEN, and code computed every wei."
+ },
+ {
+  "id": "v3",
+  "start": 20.69,
+  "end": 26.94,
+  "say": "Rulings stay provisional for an hour. The losing side can appeal once, and a fresh panel decides."
+ },
+ {
+  "id": "v4",
+  "start": 26.94,
+  "end": 36.23,
+  "say": "Final clearances teach the patrol bot what to stop accusing. Every number you see is read from the contract. Try every path yourself on the demo deployment."
+ }
+]

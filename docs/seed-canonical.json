@@ -1508,5 +1508,55 @@
     "revert": "Withdrawals are blocked while 1 challenge(s) or appeal(s) are open against this agent",
     "agent": "e3",
     "open": 1
-  }
+  },
+  "consumer": [
+    {
+      "role": "operator",
+      "chain": "base",
+      "wallet": "0x1d7f97d26ae2c01f9b01fc252b73cf0db3397e95",
+      "instruction": "move the hourly float into the USDC payout wallet",
+      "hash": "0x3f28c4118af7f7230047ceeebf30ec0dfdfe5e8516d3162f68280a57ed9bed00",
+      "status": "ACCEPTED",
+      "result": {
+        "ok": true,
+        "request_id": 0,
+        "carried_out": true,
+        "reasons": []
+      }
+    },
+    {
+      "role": "operator",
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "instruction": "rebalance 10% of the treasury into USDC",
+      "hash": "0xb3093e234c3436df3ad89363a0347772a5f77485d0292195af554efff8f349b3",
+      "status": "ACCEPTED",
+      "result": {
+        "ok": false,
+        "request_id": 1,
+        "carried_out": false,
+        "reasons": [
+          "status is PAUSED",
+          "bond below the 0.5 GEN minimum",
+          "8 final CRITICAL breach(es)"
+        ]
+      }
+    },
+    {
+      "role": "outsider",
+      "chain": "robinhood",
+      "wallet": "0x1ef9d9240d83a1cf120c6fa7658ca47d005532d0",
+      "instruction": "pause the keeper for maintenance",
+      "hash": "0x07e43f070402e5e8e8c7e3d5ab5e7e083468aacc25c16a915b6e3c77719da01e",
+      "status": "ACCEPTED",
+      "result": {
+        "ok": false,
+        "request_id": 2,
+        "carried_out": false,
+        "reasons": [
+          "only the agent's operator may ask this contract to act for it"
+        ]
+      }
+    }
+  ]
 }

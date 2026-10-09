@@ -47,7 +47,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ground/92 backdrop-blur-md">
       <div className="relative h-px overflow-hidden scanline" />
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-5">
         <Link href="/" className="flex items-center gap-2.5 text-signal shrink-0">
           <Shield size={26} />
           <span className="text-[15px] font-semibold tracking-tight text-ink">Sentinel</span>
@@ -59,7 +59,7 @@ export function AppHeader() {
             return (
               <Link key={item.href} href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-sm transition-colors ${
                   active ? "bg-panel-2 text-ink" : "text-ink-2 hover:text-ink hover:bg-panel"}`}>
                 {/* The icon is decoration on a labelled link — it never carries
                     the destination on its own. */}
@@ -72,14 +72,14 @@ export function AppHeader() {
 
         <div className="ml-auto flex items-center gap-2.5">
           <DeploymentSwitch />
-          <span className="hidden rounded-md border border-line bg-panel px-2.5 py-1 text-[11px] text-ink-2 2xl:inline-flex items-center gap-1.5">
+          <span className="hidden whitespace-nowrap rounded-md border border-line bg-panel px-2.5 py-1 text-[11px] text-ink-2 2xl:inline-flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-signal" />
             {NETWORK_LABEL}
           </span>
-          <Link href="/balance" className="hidden rounded-md border border-line bg-panel px-2.5 py-1.5 text-sm text-ink-2 hover:text-ink sm:inline-block">Balance</Link>
+          <Link href="/balance" className="hidden whitespace-nowrap rounded-md border border-line bg-panel px-2.5 py-1.5 text-sm text-ink-2 hover:text-ink sm:inline-block">Balance</Link>
 
           <Link href="/register"
-            className="hidden items-center gap-1.5 rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:flex">
+            className="hidden items-center gap-1.5 whitespace-nowrap rounded-md bg-signal px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:flex">
             <Icon name="register" size={15} />
             Register
           </Link>
@@ -99,7 +99,7 @@ export function AppHeader() {
             </button>
           ) : (
             <button onClick={connect} disabled={connecting}
-              className="rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-ink-2 hover:text-ink disabled:opacity-50">
+              className="whitespace-nowrap rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-ink-2 hover:text-ink disabled:opacity-50">
               {connecting ? "Connecting…" : hasWallet ? "Connect wallet" : "Install a wallet"}
             </button>
           )}

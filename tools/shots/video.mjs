@@ -19,8 +19,12 @@ const scriptPath = resolve(process.argv[2]);
 const S = JSON.parse(readFileSync(scriptPath, "utf8"));
 const vertical = process.argv.includes("--vertical") || S.vertical;
 const W = vertical ? 1080 : 1920, H = vertical ? 1920 : 1080;
-const VIEW = { width: W, height: H };
-const ZOOM = vertical ? 2.5 : 1.25;
+// Horizontal: a 1920x1080 viewport at 1.2x CSS zoom, recorded as video.
+// Vertical: a real 432x768 phone viewport at 2.5x pixel density, so media
+// queries see a phone; captured as a stream of high-DPI screenshots, because
+// Playwright's recorder cannot upscale a small viewport.
+const VIEW = vertical ? { width: 432, height: 768 } : { width: W, height: H };
+const ZOOM = vertical ? 1 : 1.2;
 const OUTDIR = resolve(dirname(scriptPath), S.out_dir ?? ".");
 const WORK = resolve(OUTDIR, `.work-${S.name}`);
 rmSync(WORK, { recursive: true, force: true });
@@ -35,15 +39,16 @@ for (const s of segs) {
   sh("say", ["-v", S.voice ?? "Samantha", "-r", String(S.rate ?? 178), "-o", aiff, s.say]);
   s.audio = aiff;
   s.len = dur(aiff);
-  s.hold = s.len + (s.pad ?? 0.6);
+  s.hold = s.len + (s.pad ?? 0.45);
 }
 const total = segs.reduce((a, s) => a + s.hold, 0);
 console.log(`narration ${total.toFixed(1)} s over ${segs.length} segments`);
 
 // 2. record
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: VIEW, deviceScaleFactor: 1,
-  recordVideo: { dir: WORK, size: { width: W, height: H } } });
+const ctx = await browser.newContext(vertical
+  ? { viewport: VIEW, deviceScaleFactor: 2.5, isMobile: true, hasTouch: true }
+  : { viewport: VIEW, deviceScaleFactor: 1, recordVideo: { dir: WORK, size: { width: W, height: H } } });
 await ctx.addInitScript((z) => {
   const apply = () => { if (document.documentElement) document.documentElement.style.zoom = String(z); };
   apply();
@@ -52,6 +57,16 @@ await ctx.addInitScript((z) => {
 if (S.storage) await ctx.addInitScript((kv) => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v); }, S.storage);
 const page = await ctx.newPage();
 const t0 = Date.now();
+const shots = [];
+let capturing = vertical;
+const capture = (async () => {
+  let k = 0;
+  while (capturing) {
+    const t = (Date.now() - t0) / 1000;
+    const f = `${WORK}/s${String(k).padStart(5, "0")}.jpg`;
+    try { await page.screenshot({ path: f, type: "jpeg", quality: 88 }); shots.push({ f, t }); k++; } catch { await new Promise((r) => setTimeout(r, 50)); }
+  }
+})();
 const smooth = async (y) => {
   const from = await page.evaluate(() => scrollY);
   for (let i = 1; i <= 30; i++) { await page.evaluate((v) => scrollTo(0, v), from + ((y - from) * i) / 30); await page.waitForTimeout(25); }
@@ -62,6 +77,8 @@ async function act(a) {
     await page.goto(a.goto, { waitUntil: "domcontentloaded", timeout: 120_000 }).catch(() => {});
     if (a.wait) await page.waitForSelector(a.wait, { timeout: 120_000 }).catch(() => console.log("  ! wait timed out:", a.wait));
     if (a.waitFn) await page.waitForFunction(a.waitFn, null, { timeout: 120_000 }).catch(() => console.log("  ! waitFn timed out"));
+    await page.waitForFunction(() => !document.body.innerText.includes("Loading"), null, { timeout: 90_000 }).catch(() => console.log("  ! still loading:", a.goto));
+    await page.waitForTimeout(600);
   }
   if (a.scrollTo) {
     const y = await page.evaluate(([sel, off]) => { const e = document.querySelector(sel); return e ? e.getBoundingClientRect().top + scrollY - off : null; }, [a.scrollTo, a.offset ?? 90]);
@@ -73,22 +90,37 @@ async function act(a) {
   if (a.highlight) await page.evaluate((sel) => { const e = document.querySelector(sel); if (e) { e.style.outline = "3px solid #0891B2"; e.style.outlineOffset = "4px"; e.style.borderRadius = "10px"; } }, a.highlight);
 }
 for (const s of segs) {
-  s.start = (Date.now() - t0) / 1000;
+  // The clock for a segment starts when its page is READY: loading time is
+  // recorded but cut out below, so narration never runs over a stale page.
   await act(s.action);
-  const spent = (Date.now() - t0) / 1000 - s.start;
-  const left = s.hold - spent;
-  if (s.then && left > 2) {
-    await page.waitForTimeout(Math.max(0, (left * 0.45) * 1000));
+  await page.waitForTimeout(400);
+  s.vstart = (Date.now() - t0) / 1000;
+  if (s.then && s.hold > 2) {
+    await page.waitForTimeout(s.hold * 0.45 * 1000);
     await act(s.then);
   }
-  const rest = s.hold - ((Date.now() - t0) / 1000 - s.start);
+  const rest = s.hold - ((Date.now() - t0) / 1000 - s.vstart);
   if (rest > 0) await page.waitForTimeout(rest * 1000);
-  s.end = (Date.now() - t0) / 1000;
-  console.log(`  ${String(s.i).padStart(2)} ${s.start.toFixed(1)}–${s.end.toFixed(1)}s ${s.id ?? ""}`);
+  s.vend = s.vstart + s.hold;
+  console.log(`  ${String(s.i).padStart(2)} recorded ${s.vstart.toFixed(1)}–${s.vend.toFixed(1)}s ${s.id ?? ""}`);
 }
 await page.waitForTimeout(800);
+capturing = false;
+await capture;
 await ctx.close();
-const webm = readdirSync(WORK).find((f) => f.endsWith(".webm"));
+let webm = readdirSync(WORK).find((f) => f.endsWith(".webm"));
+if (vertical) {
+  // Screenshots -> a constant-rate video on the same clock as the recorder.
+  const list = shots.map((x, i) => `file '${x.f}'\nduration ${((shots[i + 1]?.t ?? x.t + 0.1) - x.t).toFixed(3)}`).join("\n") + `\nfile '${shots[shots.length - 1].f}'\n`;
+  writeFileSync(`${WORK}/shots.txt`, list);
+  const first = shots[0].t;
+  sh("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", `${WORK}/shots.txt`, "-vf", `tpad=start_duration=${first.toFixed(3)}:start_mode=clone,fps=30,scale=${W}:${H}`, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", `${WORK}/cap.mp4`]);
+  webm = "cap.mp4";
+  console.log(`  ${shots.length} screenshots, about ${(shots.length / ((Date.now() - t0) / 1000)).toFixed(1)} per second`);
+}
+// Output timeline: segments back to back.
+let at0 = 0;
+for (const s of segs) { s.start = at0; s.end = at0 + s.hold; at0 = s.end; }
 
 // 3. captions
 const chunks = [];
@@ -102,7 +134,7 @@ for (const s of segs) {
     cur.push(w);
   }
   if (cur.length) lines.push(cur.join(" "));
-  const per = vertical ? 2 : 2;
+  const per = 2;
   const groups = [];
   for (let i = 0; i < lines.length; i += per) groups.push(lines.slice(i, i + per));
   const totalWords = words.length;
@@ -130,7 +162,9 @@ const final = resolve(OUTDIR, `${S.name}.mp4`);
 const inputs = ["-i", `${WORK}/${webm}`];
 for (const s of segs) inputs.push("-i", s.audio);
 for (const c of chunks) inputs.push("-i", c.png);
-let fc = `[0:v]fps=30,scale=${W}:${H}:flags=lanczos,format=yuv420p[v0];`;
+let fc = "";
+segs.forEach((s, k) => { fc += `[0:v]trim=start=${s.vstart.toFixed(3)}:end=${s.vend.toFixed(3)},setpts=PTS-STARTPTS,fps=30,scale=${W}:${H}:flags=lanczos,format=yuv420p[p${k}];`; });
+fc += segs.map((_, k) => `[p${k}]`).join("") + `concat=n=${segs.length}:v=1:a=0[v0];`;
 let last = "v0";
 chunks.forEach((c, k) => {
   const idx = 1 + segs.length + k;
@@ -139,7 +173,7 @@ chunks.forEach((c, k) => {
 });
 segs.forEach((s, k) => { fc += `[${k + 1}:a]adelay=${Math.round(s.start * 1000)}|${Math.round(s.start * 1000)},aresample=48000[a${k}];`; });
 fc += segs.map((_, k) => `[a${k}]`).join("") + `amix=inputs=${segs.length}:normalize=0,volume=1.6[aout]`;
-const end = segs[segs.length - 1].end + 0.5;
+const end = segs[segs.length - 1].end;
 writeFileSync(`${WORK}/filter.txt`, fc);
 sh("ffmpeg", ["-y", ...inputs, "-/filter_complex", `${WORK}/filter.txt`, "-map", `[${last}]`, "-map", "[aout]",
   "-t", end.toFixed(2), "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
