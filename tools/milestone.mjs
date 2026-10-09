@@ -77,6 +77,27 @@ const py = spawnSync("python3", ["-m", "unittest", "discover", "-s", ".", "-p", 
 const pyRan = (py.stderr.match(/Ran (\d+) tests/) || [])[1];
 const ts = spawnSync("node", ["--experimental-strip-types", "--no-warnings", "test/test_patrol.mjs"], { cwd: root, encoding: "utf8" });
 const tsRan = (ts.stdout.match(/(\d+) patrol tests passed/) || [])[1];
+const perFile = ["test_sentinel", "test_consumer", "test_attacks", "test_attacks_r2", "test_ported_engine", "test_ported_flow"].map((m) => {
+  const r = spawnSync("python3", ["-m", "unittest", m], { cwd: root + "test", encoding: "utf8" });
+  return [m, Number((r.stderr.match(/Ran (\d+) tests/) || [])[1]), r.status === 0];
+});
+const REMOVED = [
+  ["test_logic.py · TestArtifact", 18, "v2 deploys `contracts/Sentinel.py` itself; there is no mangled `build/Sentinel.min.py` for the battery to run on. What is deployed is compared byte for byte with the source on chain by `tools/verify_source.mjs`."],
+  ["test_logic.py · TestComplianceScore", 7, "v2 publishes a track record and a standing instead of a score in bps. The eighth test (\"unproven is not guilty\") is ported: INCONCLUSIVE counts on neither side."],
+  ["test_logic.py · TestOwnerControls", 7, "v2 has no owner, no settable minimum bond or stake, no ownership transfer and no pause. Ported (10): nobody can change the minimum, exact stake, decimal-string money, per-mandate severity bounds, every dial validated, the treasury's share claimable and nothing more, nothing can switch the contract off."],
+  ["test_logic.py · TestVindicationSplit", 3, "the bps dial that split a refuted challenger's stake is gone: the operator receives all of it. The default split, reconstruction and an inexact stake are ported."],
+  ["test_logic.py · TestChallengeFiling", 3, "no per-wallet cooldown (replaced by an exact stake and a 20-open-challenge cap per agent, both tested) and no global pause."],
+  ["test_logic.py · TestSettlementCompliant", 3, "the award is now a pull balance, not added to the bond; the protocol takes nothing from a refuted stake; no score."],
+  ["test_logic.py · TestBondLifecycle", 3, "no pause; top-ups are operator-only (a stranger's top-up is credited back); a paused agent is now challengeable on purpose (v2.1.0)."],
+  ["test_logic.py · TestViews", 3, "no by-chain views (the app filters `get_agents`); `is_tx_challenged`, not the preview, answers whether a transaction is taken."],
+  ["test_logic.py · TestProfileOnChain", 3, "list views return the full record; no by-type views."],
+  ["test_logic.py · TestARefundReleasesTheTransaction", 2, "reversed on purpose: an INCONCLUSIVE ruling holds the transaction, so nobody can re-roll the judge. Stall release, decided-holds and two-agents are ported."],
+  ["test_logic.py · TestJudgePipeline", 1, "the model is no longer asked for a confidence."],
+  ["test_logic.py · TestRegister / TestSettleStalled / TestSettlementTransient / TestSettlementViolation", 4, "no global pause (2); no judgement lock: a resolution is one consensus transaction (1); no score (1)."],
+  ["test_patrol.mjs · ticker extraction", 5, "v2 never reads token symbols: a token called USDT at another address is the oldest spoof. A clause naming tokens by symbol makes the bot flag every token and the validators decide."],
+  ["test_patrol.mjs · explorer-label rules", 4, "the bot no longer accuses on scam or verification labels (mutable, third-party; the linter flags clauses that rely on them), and native-symbol aliases went with symbol reading."],
+  ["test_patrol.mjs · the bot's own learning", 12, "replaced by on-chain precedents: no reason parsing (4), no clearance threshold (one FINAL COMPLIANT that outlived the appeal window counts) (4), no corroboration fetches (1), never defers on an amount rule (1), learns from any challenger's final ruling (1), a challenge cannot exist without a hash (1). The 18 learning tests whose behaviour exists in v2 are ported and run end to end against the contract."],
+];
 const seeds = readFileSync(root + "docs/SEEDS.md", "utf8");
 const canonicalTable = seeds.split("## Canonical register")[1].split("## Demo contract")[0].trim();
 const ex = (a) => `[\`${a}\`](${dep.explorer.replace(/\/$/, "")}/address/${a})`;
@@ -115,10 +136,28 @@ ${features.map(([id, name, what, contractLinks, files]) => `### ${id} — ${name
 
 | | BASE (hackathon) | FINAL |
 |---|---|---|
-| Offline contract suite | 423 tests (\`test/test_logic.py\`, v1 contract) | **${pyRan} tests** (\`test_sentinel\`, \`test_consumer\`, \`test_attacks\`, \`test_attacks_r2\`), all passing |
-| Patrol bot (TypeScript) | 60 tests | **${tsRan} tests**, including exact transaction-kind parity with the contract on real Blockscout documents |
+| Offline contract suite | 423 tests (\`test/test_logic.py\`, v1 contract) | **${pyRan} tests**, all passing |
+| Patrol bot (TypeScript) | 60 tests (\`test/test_patrol.mjs\`) | **${tsRan} tests**, all passing, including exact transaction-kind parity with the contract and the learning tests run end to end against it |
+| **Total** | **483** | **${Number(pyRan) + Number(tsRan)}** |
 | Static "no write before a revert" scan | — | every write method of both contracts (\`tools/scan_writes.py\`), 0 violations |
 | On chain | live e2e suite, not re-run on Studio Dev | the canonical seed and the demo run below |
+
+Per file at FINAL (BASE had one Python file, \`test_logic.py\`, 423 tests, and \`test_patrol.mjs\`, 60):
+
+| File | Tests | What it covers |
+|---|---|---|
+${perFile.map(([m, n, ok]) => `| \`test/${m}.py\` | ${n}${ok ? "" : " (FAILING)"} | ${({ test_sentinel: "v2 behaviour: clauses, tables, evidence, judgment, appeals, precedents, lint, bond, views, static checks", test_consumer: "SentinelConsumer", test_attacks: "attack round 1 (A1-A5)", test_attacks_r2: "attack round 2 (B1)", test_ported_engine: "BASE tests of the judgement engine, ported (117 of 117)", test_ported_flow: "BASE tests of money, filing, settlement, bond, views, profile, invariants, static checks and audit fixes, ported (249)" })[m]} |`).join("\n")}
+| \`test/test_patrol.mjs\` | ${tsRan} | 14 v2 tests, 39 ported from BASE, 9 for the v2.1.0 patrol fixes and \`lib/patrolPlan.ts\` |
+
+### Tests removed and why
+
+366 of the 423 BASE contract tests and 39 of its 60 patrol tests were ported to the v2 API (classes keep their v1 names).
+These were not, because the behaviour they test no longer exists in v2:
+
+| BASE tests | Count | Why |
+|---|---|---|
+${REMOVED.map(([w, n, why]) => `| ${w} | ${n} | ${why} |`).join("\n")}
+| **Total removed** | **${REMOVED.reduce((a, r) => a + r[1], 0)}** | 57 contract + 21 patrol |
 
 ## Seeded cases (canonical)
 

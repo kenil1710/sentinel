@@ -59,3 +59,30 @@ What each one recorded:
   Attack round 1 ran against it.
 - **v2.0.1** (`0x92979f66…b48D`): round-1 fixes; reseeding had started (agents registered) when round 2 found B1.
   Partial logs in [`v2.0.1/`](v2.0.1/).
+
+## v2.0.2 — the v2.0 live history (8–9 October 2026)
+
+Replaced by v2.1.0 (current addresses in [`deployments.json`](../../deployments.json)) after the pre-submission review:
+one spelling of INCONCLUSIVE on the consensus axis, paused agents answerable at any bond, withdrawals limited to what
+open challenges could not slash, bounded views. These contracts were not modified and stay readable, with their full
+record; the patrol bot and the app moved to v2.1.0, so challenges still open there keep their deadlines and
+permissionless exits.
+
+| Deployment | Address | From commit |
+|---|---|---|
+| Sentinel (canonical) | [`0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90`](https://explorer-studio-dev.genlayer.com/address/0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90) | `bdca383329` |
+| SentinelDemo | [`0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393`](https://explorer-studio-dev.genlayer.com/address/0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393) | `bdca383329` |
+| SentinelConsumer | [`0x02F421486a6de07c3D2cF624576ED7ecDFe711e5`](https://explorer-studio-dev.genlayer.com/address/0x02F421486a6de07c3D2cF624576ED7ecDFe711e5) | `bdca383329` |
+
+Its record when it was replaced (`get_stats`, 2026-10-09 07:25 UTC): 10 real agents on 5 chains; 120 challenges, of
+which 22 final BREACH, 20 COMPLIANT and 75 INCONCLUSIVE, 3 still open; 2 appeals (1 upheld, 1 rejected); 7 precedents;
+2.656125 GEN slashed and 1.3280625 GEN paid in bounties; the ledger invariant held. 108 of the challenges were filed by
+the patrol bot on its own. Every final BREACH was re-checked by hand against each chain's RPC, 22 of 22 confirmed.
+
+- Every case and every challenge: [`v2.0.2/SEEDS.md`](v2.0.2/SEEDS.md)
+- The breaches, checked by hand: [`v2.0.2/BREACHES.md`](v2.0.2/BREACHES.md)
+- The final check as it stood (20 of 20): [`v2.0.2/FINAL_CHECK.md`](v2.0.2/FINAL_CHECK.md)
+- Seed logs: [`v2.0.2/seed-canonical.json`](v2.0.2/seed-canonical.json), demo run drained to exactly 0: [`v2.0.2/seed-demo.json`](v2.0.2/seed-demo.json)
+- A live patrol dry run showing 6 accusations withheld by a precedent: [`v2.0.2/patrol-dry-run.json`](v2.0.2/patrol-dry-run.json)
+
+The demo video was recorded on this deployment.
