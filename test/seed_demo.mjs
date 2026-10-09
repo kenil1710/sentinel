@@ -11,7 +11,7 @@
  * the validators decide, an appeal refused by the novelty gate, an appeal
  * judged, an appeal left to expire, a VOID filing (wrong block time) then a
  * correct refiling, a challenge settled as stalled, a mandate edit and its
- * delay, a lint closed as INCONCLUSIVE, a withdrawal blocked then timelocked
+ * delay, a lint closed as INCONCLUSIVE, a withdrawal over what open challenges hold back refused, one timelocked
  * then executed, a cancelled withdrawal, a top-up, unregister, and claims.
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -100,7 +100,9 @@ await step("refused_before_registration", async () => r(await w1.write("challeng
 // A: an ordinary challenge, appealed by whoever lost, with a novelty-gate refusal first.
 await step("A_file", async () => file(w1, t1, t1.ts, "C1", "The bot moved a token; checking it is really the listed USDT contract."));
 await step("A_duplicate_refused", async () => r(await w2.write("challenge_agent", [0, t1.hash, t1.ts, "C2", "same transaction, another clause"], STAKE)));
-await step("A_withdraw_blocked", async () => r(await op.write("request_withdrawal", [0, (GEN / 2n).toString()])));
+// v2.1.0: an open challenge holds back what it could slash (here the CRITICAL rate, 50%); asking for more is refused.
+await step("A_withdraw_over_held_refused", async () => ({ agent: await view("get_agent", [0]),
+  ...r(await op.write("request_withdrawal", [0, (GEN / 2n + 1n).toString()])) }));
 await step("A_resolve", async () => { const o = await any.write("resolve_challenge", [id("A_file")]); return { ...r(o), challenge: await ch(id("A_file")) }; });
 await step("A_appeal_resend_refused", async () => {
   const c = await ch(id("A_file"));

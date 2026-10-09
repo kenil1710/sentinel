@@ -278,8 +278,10 @@ async function step(name, c) {
   const ch = await challengeView(cs.challenge_id);
   if (ch.status === "PENDING") {
     if (name === "e1_major" && !st.withdraw_blocked) {
-      const out = await as(AGENTS.e1.role).write("request_withdrawal", [ag.agent_id, (5n * 10n ** 17n).toString()]);
-      st.withdraw_blocked = rec(out);
+      // v2.1.0: an open challenge holds back what it could slash; one wei more than what is free is refused.
+      const a = await reader.view("get_agent", [ag.agent_id]);
+      const out = await as(AGENTS.e1.role).write("request_withdrawal", [ag.agent_id, (BigInt(a.withdrawable) + 1n).toString()]);
+      st.withdraw_blocked = { ...rec(out), bond: a.bond, held_for_open: a.held_for_open, withdrawable: a.withdrawable };
       event("withdrawal_blocked", { agent: "e1", challenge_id: cs.challenge_id, ...st.withdraw_blocked });
     }
     const out = await as("resolver").write("resolve_challenge", [cs.challenge_id]);
