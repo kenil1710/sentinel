@@ -132,5 +132,6 @@ if (existsSync(root + "docs/seed-demo.json")) {
     `\n\nFinal demo ledger, read from chain: received ${g(dl.received)}, bonds ${g(dl.bonds)}, open stakes ${g(dl.open_stakes)}, claimable ${g(dl.claimable)}, claimed ${g(dl.claimed)} — ${dl.bonds === "0" && dl.open_stakes === "0" && dl.claimable === "0" ? "**drained to exactly 0**" : "not yet drained"}; on-chain balance ${g(dl.on_chain_balance)} GEN = the claimed total, because Studio Dev does not deliver value transfers.\n`;
 }
 const every = `\n## Every challenge\n\n${head}\n${all.map((c) => row(c, caseOf(c.challenge_id) ? NOTE[caseOf(c.challenge_id)] ?? "seeded" : BOT_NOTE[c.challenge_id] ?? (c.challenger === BOT ? "patrol bot" : ""))).join("\n")}\n`;
-writeFileSync(root + "docs/SEEDS.md", `# Seeds\n\n## Canonical register\n\n${table}${demoMd}${every}`);
+// SEEDS.md lives in docs/, so links written for the README lose their docs/ prefix.
+writeFileSync(root + "docs/SEEDS.md", `# Seeds\n\n## Canonical register\n\n${table}${demoMd}${every}`.split("](docs/").join("]("));
 console.log(summary);

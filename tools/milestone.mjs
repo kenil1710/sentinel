@@ -50,7 +50,7 @@ const features = [
   ["A4", "Graduated slashing", "Severity table (MINOR / MAJOR / CRITICAL as bps of the bond at filing) frozen in the mandate version; capped repeat multiplier; code computes the slash; the model returns only a verdict, a clause, the severity label written in the mandate and a quote, which code checks.",
     [link(S, "def _parse_table"), link(S, "def _multiplier_bps"), link(S, "def _slash_amount"), link(S, "def _decide")],
     ["frontend/src/lib/mandate.ts"]],
-  ["A5", "Bond lifecycle", "Top-up; timelocked withdrawal and unregister, blocked while anything is open; auto-pause below the minimum; pull payouts; the ledger invariant received = bonds + open stakes + claimable + claimed, recomputed from records on chain.",
+  ["A5", "Bond lifecycle", "Top-up; timelocked withdrawal of what open challenges could never slash (they hold back the CRITICAL rate of their snapshot); unregister, whose release waits until nothing is open; auto-pause below the minimum; pull payouts; the ledger invariant received = bonds + open stakes + claimable + claimed, recomputed from records on chain.",
     [link(S, "def _set_bond"), link(S, "def top_up_bond"), link(S, "def request_withdrawal"), link(S, "def execute_withdrawal"), link(S, "def unregister("), link(S, "def finalize_unregister"), link(S, "def claim("), link(S, "def get_ledger")],
     ["frontend/src/components/OperatorPanel.tsx", "frontend/src/app/(app)/balance/page.tsx"]],
   ["B6", "Mandate linter", "Validators flag clauses that cannot be judged from on-chain data, each quoted verbatim; strict equality on the clause ids; INCONCLUSIVE after the deadline if they never agree; a breach can never rest on a flagged clause.",
@@ -99,7 +99,7 @@ const REMOVED = [
   ["test_patrol.mjs · the bot's own learning", 12, "replaced by on-chain precedents: no reason parsing (4), no clearance threshold (one FINAL COMPLIANT that outlived the appeal window counts) (4), no corroboration fetches (1), never defers on an amount rule (1), learns from any challenger's final ruling (1), a challenge cannot exist without a hash (1). The 18 learning tests whose behaviour exists in v2 are ported and run end to end against the contract."],
 ];
 const seeds = readFileSync(root + "docs/SEEDS.md", "utf8");
-const canonicalTable = seeds.split("## Canonical register")[1].split("## Demo contract")[0].trim();
+const canonicalTable = seeds.split("## Canonical register")[1].split("## Demo contract")[0].trim().split("](docs/").join("](");
 const ex = (a) => `[\`${a}\`](${dep.explorer.replace(/\/$/, "")}/address/${a})`;
 const commits = git("rev-list", "--count", `${BASE}..${FINAL}`);
 const changed = git("diff", "--stat", `${BASE}..${FINAL}`, "--", "contracts", "frontend/src", "test", "tools").split("\n").pop();
