@@ -279,7 +279,7 @@ async function step(name, c) {
     return true;
   }
   const ch = await challengeView(cs.challenge_id);
-  if (name === "e1_major" && !st.withdraw_blocked && ["PENDING", "CONTESTABLE", "APPEALED"].includes(ch.status)) {
+  if (c.agent === "e1" && !st.withdraw_blocked && ["PENDING", "CONTESTABLE", "APPEALED"].includes(ch.status)) {
     {
       // v2.1.0: an open challenge holds back what it could slash; one wei more than what is free is refused.
       const a = await reader.view("get_agent", [ag.agent_id]);

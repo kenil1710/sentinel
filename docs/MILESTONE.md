@@ -3,18 +3,18 @@
 | | |
 |---|---|
 | BASE (hackathon submission, last commit on main at or before 2026-09-17 23:59 UTC) | [`b5145fa76e`](https://github.com/kenil1710/sentinel/commit/b5145fa76e8aae914ca1735e2d0507fd4860c40a) (2026-09-13) |
-| FINAL | [`01deaa5ca2`](https://github.com/kenil1710/sentinel/commit/01deaa5ca2ba734f085ab5e274ad5b5be4775287) |
-| Compare | https://github.com/kenil1710/sentinel/compare/b5145fa76e8aae914ca1735e2d0507fd4860c40a...01deaa5ca2ba734f085ab5e274ad5b5be4775287 |
-| Commits | 30; 104 files changed, 12433 insertions(+), 16550 deletions(-) (contracts, frontend, tests, tools) |
-| Deployed from | [`bdca383329`](https://github.com/kenil1710/sentinel/commit/bdca383329911eb5b40b9389899782b8c488723e) — all three contracts, byte-identical to `contracts/` at FINAL (`node tools/verify_source.mjs`) |
+| FINAL | [`b7b5470aee`](https://github.com/kenil1710/sentinel/commit/b7b5470aee21f03d54e204c6d30fe0793482b4e1) |
+| Compare | https://github.com/kenil1710/sentinel/compare/b5145fa76e8aae914ca1735e2d0507fd4860c40a...b7b5470aee21f03d54e204c6d30fe0793482b4e1 |
+| Commits | 36; 109 files changed, 15176 insertions(+), 16549 deletions(-) (contracts, frontend, tests, tools) |
+| Deployed from | [`42a6172d96`](https://github.com/kenil1710/sentinel/commit/42a6172d966f1f67f40e7ad5d207d9689f1c046c) — all three contracts, byte-identical to `contracts/` at FINAL (`node tools/verify_source.mjs`) |
 
 ## New addresses (GenLayer Studio Dev, chain 61997)
 
 | Contract | Address | Constructor |
 |---|---|---|
-| Sentinel (canonical) | [`0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90`](https://explorer-studio-dev.genlayer.com/address/0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90) | `["CANONICAL"]` |
-| Sentinel (demo) | [`0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393`](https://explorer-studio-dev.genlayer.com/address/0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393) | `["DEMO"]` |
-| SentinelConsumer | [`0x02F421486a6de07c3D2cF624576ED7ecDFe711e5`](https://explorer-studio-dev.genlayer.com/address/0x02F421486a6de07c3D2cF624576ED7ecDFe711e5) | `["0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90"]` |
+| Sentinel (canonical) | [`0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB`](https://explorer-studio-dev.genlayer.com/address/0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB) | `["CANONICAL"]` |
+| Sentinel (demo) | [`0x74ca153c17a67F3E5Fcd893afF053395AEce1Aff`](https://explorer-studio-dev.genlayer.com/address/0x74ca153c17a67F3E5Fcd893afF053395AEce1Aff) | `["DEMO"]` |
+| SentinelConsumer | [`0x053f15512462FD4f8F70F443EdCA1413e96D5eD0`](https://explorer-studio-dev.genlayer.com/address/0x053f15512462FD4f8F70F443EdCA1413e96D5eD0) | `["0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB"]` |
 
 The hackathon contract `0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe` is untouched and still readable: [docs/superseded/README.md](superseded/README.md).
 
@@ -24,95 +24,132 @@ The hackathon contract `0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe` is untouched
 
 Ruling PROVISIONAL → CONTESTABLE (1 h canonical, 90 s demo) → FINAL; the losing party appeals once with a bond and counter-evidence; a fresh panel judges the same immutable facts; a novelty gate refuses a verbatim or near-verbatim resend; permissionless finalize after the deadline; expiry exit.
 
-- Contract: [resolve_challenge](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1765-L1802), [_appeal_problem](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1828-L1859), [appeal](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1862-L1886), [resolve_appeal](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1889-L1937), [expire_appeal](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1940-L1958), [finalize](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1961-L1974), [_too_similar](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L504-L525)
-- App / bot: [`frontend/src/app/(app)/challenge/[id]/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/challenge/[id]/page.tsx)
+- Contract: [resolve_challenge](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1791-L1828), [_appeal_problem](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1855-L1886), [appeal](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1889-L1913), [resolve_appeal](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1916-L1964), [expire_appeal](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1967-L1985), [finalize](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1988-L2001), [_too_similar](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L504-L525)
+- App / bot: [`frontend/src/app/(app)/challenge/[id]/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/challenge/[id]/page.tsx)
 
 ### A2 — Frozen mandate versions
 
 Versions stored with their sha256 and effective time; an edit takes effect after the delay (1 h / 90 s); a challenge is judged against the version in force at the transaction's block time, snapshotted at filing.
 
-- Contract: [_parse_clauses](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L350-L407), [_new_version](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1466-L1477), [update_mandate](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1541-L1574), [_version_at](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1432-L1441), [get_version_at](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2508-L2516)
-- App / bot: [`frontend/src/components/MandateVersions.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/components/MandateVersions.tsx), [`frontend/src/components/ClauseEditor.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/components/ClauseEditor.tsx)
+- Contract: [_parse_clauses](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L350-L407), [_new_version](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1494-L1505), [update_mandate](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1569-L1602), [_version_at](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1460-L1469), [get_version_at](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2574-L2582)
+- App / bot: [`frontend/src/components/MandateVersions.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/components/MandateVersions.tsx), [`frontend/src/components/ClauseEditor.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/components/ClauseEditor.tsx)
 
 ### A3 — Open challengers
 
 Anyone but the operator challenges with an exact stake; a losing challenger's stake goes to the operator; one challenge per (chain, tx, agent); the bounty goes to the challenger who proved the breach.
 
-- Contract: [_challenge_problem](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1637-L1668), [challenge_agent](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1671-L1728), [_finalize](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1976-L2044)
-- App / bot: [`frontend/src/components/ChallengeForm.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/components/ChallengeForm.tsx), [`frontend/src/app/api/txinfo/route.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/api/txinfo/route.ts)
+- Contract: [_challenge_problem](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1665-L1694), [challenge_agent](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1697-L1754), [_finalize](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2003-L2071)
+- App / bot: [`frontend/src/components/ChallengeForm.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/components/ChallengeForm.tsx), [`frontend/src/app/api/txinfo/route.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/api/txinfo/route.ts)
 
 ### A4 — Graduated slashing
 
 Severity table (MINOR / MAJOR / CRITICAL as bps of the bond at filing) frozen in the mandate version; capped repeat multiplier; code computes the slash; the model returns only a verdict, a clause, the severity label written in the mandate and a quote, which code checks.
 
-- Contract: [_parse_table](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L410-L442), [_multiplier_bps](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L445-L446), [_slash_amount](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L449-L456), [_decide](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L899-L952)
-- App / bot: [`frontend/src/lib/mandate.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/lib/mandate.ts)
+- Contract: [_parse_table](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L410-L442), [_multiplier_bps](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L445-L446), [_slash_amount](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L449-L456), [_decide](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L899-L952)
+- App / bot: [`frontend/src/lib/mandate.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/lib/mandate.ts)
 
 ### A5 — Bond lifecycle
 
 Top-up; timelocked withdrawal and unregister, blocked while anything is open; auto-pause below the minimum; pull payouts; the ledger invariant received = bonds + open stakes + claimable + claimed, recomputed from records on chain.
 
-- Contract: [_set_bond](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1399-L1408), [top_up_bond](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2095-L2115), [request_withdrawal](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2118-L2139), [execute_withdrawal](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2153-L2173), [unregister](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2176-L2193), [finalize_unregister](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2196-L2215), [claim](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2218-L2230), [get_ledger](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2394-L2433)
-- App / bot: [`frontend/src/components/OperatorPanel.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/components/OperatorPanel.tsx), [`frontend/src/app/(app)/balance/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/balance/page.tsx)
+- Contract: [_set_bond](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1403-L1412), [top_up_bond](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2122-L2142), [request_withdrawal](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2145-L2171), [execute_withdrawal](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2185-L2206), [unregister](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2209-L2225), [finalize_unregister](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2228-L2247), [claim](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2250-L2262), [get_ledger](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2432-L2462)
+- App / bot: [`frontend/src/components/OperatorPanel.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/components/OperatorPanel.tsx), [`frontend/src/app/(app)/balance/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/balance/page.tsx)
 
 ### B6 — Mandate linter
 
 Validators flag clauses that cannot be judged from on-chain data, each quoted verbatim; strict equality on the clause ids; INCONCLUSIVE after the deadline if they never agree; a breach can never rest on a flagged clause.
 
-- Contract: [_lint](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1065-L1086), [lint_mandate](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1577-L1618), [close_lint](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L1621-L1635)
-- App / bot: [`frontend/src/app/(app)/register/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/register/page.tsx)
+- Contract: [_lint](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1069-L1090), [lint_mandate](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1605-L1646), [close_lint](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L1649-L1663)
+- App / bot: [`frontend/src/app/(app)/register/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/register/page.tsx)
 
 ### B7 — Precedents
 
 Only a FINAL COMPLIANT whose first ruling was COMPLIANT (unappealed or upheld against the challenger) becomes a precedent, keyed by agent, clause-text hash and a direction-aware transaction kind; a FINAL BREACH of the same key vetoes it; the patrol skips matching transactions.
 
-- Contract: [_tx_kind](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L661-L681), [_maybe_precedent](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2046-L2072), [_veto](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2074-L2092), [precedent_for](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2658-L2675)
-- App / bot: [`frontend/src/lib/kind.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/lib/kind.ts), [`frontend/src/app/api/patrol/route.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/api/patrol/route.ts), [`frontend/src/app/(app)/precedents/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/precedents/page.tsx)
+- Contract: [_tx_kind](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L661-L681), [_maybe_precedent](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2073-L2099), [_veto](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2101-L2119), [precedent_for](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2755-L2772)
+- App / bot: [`frontend/src/lib/kind.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/lib/kind.ts), [`frontend/src/app/api/patrol/route.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/api/patrol/route.ts), [`frontend/src/app/(app)/precedents/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/precedents/page.tsx)
 
 ### B8 — Agent track record
 
 Breaches by severity, overrulings, appeals won/lost, last breach, total slashed — from final rulings only, and recomputed from the agent's challenges to prove the counters agree.
 
-- Contract: [_track](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2278-L2285), [get_track_record](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2565-L2608)
-- App / bot: [`frontend/src/components/TrackRecord.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/components/TrackRecord.tsx)
+- Contract: [_track](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2312-L2319), [get_track_record](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2648-L2691)
+- App / bot: [`frontend/src/components/TrackRecord.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/components/TrackRecord.tsx)
 
 ### C9 — Consumer contract
 
 SentinelConsumer.is_in_good_standing(chain, wallet) by cross-contract view, and act_for_agent, which refuses an agent that is not in good standing or a caller who is not its operator.
 
-- Contract: [_standing](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py#L2287-L2308), [is_in_good_standing](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/SentinelConsumer.py#L81-L83), [act_for_agent](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/SentinelConsumer.py#L90-L111)
-- App / bot: [`frontend/src/app/(app)/consumer/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/consumer/page.tsx)
+- Contract: [_standing](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py#L2321-L2342), [is_in_good_standing](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/SentinelConsumer.py#L81-L83), [act_for_agent](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/SentinelConsumer.py#L90-L111)
+- App / bot: [`frontend/src/app/(app)/consumer/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/consumer/page.tsx)
 
 ### C10 — Public API and badge
 
 /api/check?agent=…&chain=… and /badge/<agent>.svg, answered from the canonical contract at request time.
 
-- App / bot: [`frontend/src/app/api/check/route.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/api/check/route.ts), [`frontend/src/app/badge/[agent]/route.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/badge/[agent]/route.ts), [`frontend/src/lib/server.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/lib/server.ts)
+- App / bot: [`frontend/src/app/api/check/route.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/api/check/route.ts), [`frontend/src/app/badge/[agent]/route.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/badge/[agent]/route.ts), [`frontend/src/lib/server.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/lib/server.ts)
 
 ### C11 — Frontend v2
 
 Appeal flow, mandate version history, precedents, per-agent track record, open-challenge form, linter results at registration, the full transaction lifecycle (submitted → accepted → finalized) with success reported only after re-reading contract state; a canonical/demo switch.
 
-- App / bot: [`frontend/src/lib/contract.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/lib/contract.ts), [`frontend/src/components/tx.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/components/tx.tsx), [`frontend/src/app/(app)/agents/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/agents/page.tsx), [`frontend/src/app/(app)/agent/[id]/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(app)/agent/[id]/page.tsx), [`frontend/src/app/(marketing)/page.tsx`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/(marketing)/page.tsx)
+- App / bot: [`frontend/src/lib/contract.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/lib/contract.ts), [`frontend/src/components/tx.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/components/tx.tsx), [`frontend/src/app/(app)/agents/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/agents/page.tsx), [`frontend/src/app/(app)/agent/[id]/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(app)/agent/[id]/page.tsx), [`frontend/src/app/(marketing)/page.tsx`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/(marketing)/page.tsx)
 
 ### Patrol — Patrol bot v2
 
 Judges against the version in force at each transaction's block time, skips transactions a precedent covers, moves open challenges along, and attaches a fee estimate to every write.
 
-- App / bot: [`frontend/src/app/api/patrol/route.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/app/api/patrol/route.ts), [`frontend/src/lib/heuristics.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/lib/heuristics.ts), [`frontend/src/lib/blockscout.ts`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/frontend/src/lib/blockscout.ts)
+- App / bot: [`frontend/src/app/api/patrol/route.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/app/api/patrol/route.ts), [`frontend/src/lib/heuristics.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/lib/heuristics.ts), [`frontend/src/lib/blockscout.ts`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/frontend/src/lib/blockscout.ts)
 
 ### Contract files changed
 
-- [`contracts/Sentinel.py`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/Sentinel.py) (rewritten for v2) and [`contracts/SentinelConsumer.py`](https://github.com/kenil1710/sentinel/blob/01deaa5ca2ba734f085ab5e274ad5b5be4775287/contracts/SentinelConsumer.py) (new) — see the compare link above.
+- [`contracts/Sentinel.py`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/Sentinel.py) (rewritten for v2) and [`contracts/SentinelConsumer.py`](https://github.com/kenil1710/sentinel/blob/b7b5470aee21f03d54e204c6d30fe0793482b4e1/contracts/SentinelConsumer.py) (new) — see the compare link above.
 
 ## Tests, before and after
 
 | | BASE (hackathon) | FINAL |
 |---|---|---|
-| Offline contract suite | 423 tests (`test/test_logic.py`, v1 contract) | **133 tests** (`test_sentinel`, `test_consumer`, `test_attacks`, `test_attacks_r2`), all passing |
-| Patrol bot (TypeScript) | 60 tests | **14 tests**, including exact transaction-kind parity with the contract on real Blockscout documents |
+| Offline contract suite | 423 tests (`test/test_logic.py`, v1 contract) | **507 tests**, all passing |
+| Patrol bot (TypeScript) | 60 tests (`test/test_patrol.mjs`) | **62 tests**, all passing, including exact transaction-kind parity with the contract and the learning tests run end to end against it |
+| **Total** | **483** | **569** |
 | Static "no write before a revert" scan | — | every write method of both contracts (`tools/scan_writes.py`), 0 violations |
 | On chain | live e2e suite, not re-run on Studio Dev | the canonical seed and the demo run below |
+
+Per file at FINAL (BASE had one Python file, `test_logic.py`, 423 tests, and `test_patrol.mjs`, 60):
+
+| File | Tests | What it covers |
+|---|---|---|
+| `test/test_sentinel.py` | 125 | v2 behaviour: clauses, tables, evidence, judgment, appeals, precedents, lint, bond, views, static checks |
+| `test/test_consumer.py` | 6 | SentinelConsumer |
+| `test/test_attacks.py` | 6 | attack round 1 (A1-A5) |
+| `test/test_attacks_r2.py` | 4 | attack round 2 (B1) |
+| `test/test_ported_engine.py` | 117 | BASE tests of the judgement engine, ported (117 of 117) |
+| `test/test_ported_flow.py` | 249 | BASE tests of money, filing, settlement, bond, views, profile, invariants, static checks and audit fixes, ported (249) |
+| `test/test_patrol.mjs` | 62 | 14 v2 tests, 39 ported from BASE, 9 for the v2.1.0 patrol fixes and `lib/patrolPlan.ts` |
+
+### Tests removed and why
+
+366 of the 423 BASE contract tests and 39 of its 60 patrol tests were ported to the v2 API (classes keep their v1 names).
+These were not, because the behaviour they test no longer exists in v2:
+
+| BASE tests | Count | Why |
+|---|---|---|
+| test_logic.py · TestArtifact | 18 | v2 deploys `contracts/Sentinel.py` itself; there is no mangled `build/Sentinel.min.py` for the battery to run on. What is deployed is compared byte for byte with the source on chain by `tools/verify_source.mjs`. |
+| test_logic.py · TestComplianceScore | 7 | v2 publishes a track record and a standing instead of a score in bps. The eighth test ("unproven is not guilty") is ported: INCONCLUSIVE counts on neither side. |
+| test_logic.py · TestOwnerControls | 7 | v2 has no owner, no settable minimum bond or stake, no ownership transfer and no pause. Ported (10): nobody can change the minimum, exact stake, decimal-string money, per-mandate severity bounds, every dial validated, the treasury's share claimable and nothing more, nothing can switch the contract off. |
+| test_logic.py · TestVindicationSplit | 3 | the bps dial that split a refuted challenger's stake is gone: the operator receives all of it. The default split, reconstruction and an inexact stake are ported. |
+| test_logic.py · TestChallengeFiling | 3 | no per-wallet cooldown (replaced by an exact stake and a 20-open-challenge cap per agent, both tested) and no global pause. |
+| test_logic.py · TestSettlementCompliant | 3 | the award is now a pull balance, not added to the bond; the protocol takes nothing from a refuted stake; no score. |
+| test_logic.py · TestBondLifecycle | 3 | no pause; top-ups are operator-only (a stranger's top-up is credited back); a paused agent is now challengeable on purpose (v2.1.0). |
+| test_logic.py · TestViews | 3 | no by-chain views (the app filters `get_agents`); `is_tx_challenged`, not the preview, answers whether a transaction is taken. |
+| test_logic.py · TestProfileOnChain | 3 | list views return the full record; no by-type views. |
+| test_logic.py · TestARefundReleasesTheTransaction | 2 | reversed on purpose: an INCONCLUSIVE ruling holds the transaction, so nobody can re-roll the judge. Stall release, decided-holds and two-agents are ported. |
+| test_logic.py · TestJudgePipeline | 1 | the model is no longer asked for a confidence. |
+| test_logic.py · TestRegister / TestSettleStalled / TestSettlementTransient / TestSettlementViolation | 4 | no global pause (2); no judgement lock: a resolution is one consensus transaction (1); no score (1). |
+| test_patrol.mjs · ticker extraction | 5 | v2 never reads token symbols: a token called USDT at another address is the oldest spoof. A clause naming tokens by symbol makes the bot flag every token and the validators decide. |
+| test_patrol.mjs · explorer-label rules | 4 | the bot no longer accuses on scam or verification labels (mutable, third-party; the linter flags clauses that rely on them), and native-symbol aliases went with symbol reading. |
+| test_patrol.mjs · the bot's own learning | 12 | replaced by on-chain precedents: no reason parsing (4), no clearance threshold (one FINAL COMPLIANT that outlived the appeal window counts) (4), no corroboration fetches (1), never defers on an amount rule (1), learns from any challenger's final ruling (1), a challenge cannot exist without a hash (1). The 18 learning tests whose behaviour exists in v2 are ported and run end to end against the contract. |
+| **Total removed** | **78** | 57 contract + 21 patrol |
 
 ## Seeded cases (canonical)
 
