@@ -62,6 +62,9 @@ export interface Agent {
   versions: number;
   latest_version: MandateVersion | null;
   open_count: number;
+  /** The most the open challenges could still slash (wei), and what is free to withdraw now. */
+  held_for_open: string;
+  withdrawable: string;
   challenge_count: number;
   withdraw_amount: string;
   withdraw_unlock_at: number;

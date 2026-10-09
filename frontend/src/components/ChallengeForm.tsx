@@ -47,7 +47,6 @@ export function ChallengeForm({ agent, onFiled, initialTx = "" }: { agent: Agent
   const involves = info?.from && [info.from, info.to].includes(agent.wallet.toLowerCase());
   const problems: string[] = [];
   if (agent.status === "RETIRED") problems.push("This agent is retired and can no longer be challenged.");
-  if (BigInt(agent.bond) <= 0n) problems.push("This agent's bond is exhausted.");
   if (isOperator) problems.push("An operator cannot challenge their own agent.");
   if (hash && !valid) problems.push("A transaction hash is 0x followed by 64 hex characters.");
   if (valid && info && !info.found) problems.push(`No such transaction on ${agent.chain}.`);

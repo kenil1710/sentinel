@@ -828,14 +828,25 @@ class Bond(unittest.TestCase):
         self.assertTrue(tx(self.c, "top_up_bond", 0, sender=OP, value=F.STAKE).json["ok"])
         self.assertEqual(view(self.c, "get_agent", 0)["bond"], str(F.BOND + F.STAKE))
 
-    def test_withdrawal_blocked_while_open(self):
+    def test_withdrawal_while_open_limited_to_what_it_cannot_slash(self):
+        # One open challenge on a 1 GEN bond: the worst it can cost is the
+        # CRITICAL rate (50%) at x1, so half the bond stays free.
         F.filed(self.c)
-        o = tx(self.c, "request_withdrawal", 0, str(F.BOND // 2), sender=OP, at=F.NOW + 1)
-        self.assertIn("blocked while 1", o.error)
+        o = tx(self.c, "request_withdrawal", 0, str(F.BOND // 2 + 1), sender=OP, at=F.NOW + 1)
+        self.assertIn("held for 1 open challenge", o.error)
+        self.assertTrue(tx(self.c, "request_withdrawal", 0, str(F.BOND // 2), sender=OP, at=F.NOW + 1).ok)
         F.ruled(self.c)
-        self.assertIn("blocked", tx(self.c, "request_withdrawal", 0, "1", sender=OP, at=F.NOW + 100).error)
         tx(self.c, "finalize", 0, sender=RES, at=F.NOW + 61 + HOUR)
-        self.assertTrue(tx(self.c, "request_withdrawal", 0, "1", sender=OP, at=F.NOW + 2 * HOUR).ok)
+        o = tx(self.c, "execute_withdrawal", 0, sender=OUT, at=F.NOW + 2 * HOUR)
+        self.assertEqual(o.json["withdrawn"], str(F.BOND // 2))
+        self.assertEqual(view(self.c, "get_agent", 0)["bond"], str(F.BOND - F.BOND // 5 - F.BOND // 2))
+
+    def test_withdrawal_blocked_when_open_challenges_could_take_everything(self):
+        c = world()
+        F.registered(c, table="MINOR=500,MAJOR=2000,CRITICAL=10000,STEP=0,CAP=10000")
+        F.filed(c)
+        o = tx(c, "request_withdrawal", 0, "1", sender=OP, at=F.NOW + 1)
+        self.assertIn("could slash the whole bond", o.error)
 
     def test_timelock_and_permissionless_execute(self):
         o = tx(self.c, "request_withdrawal", 0, str(F.BOND // 2), sender=OP, at=F.NOW)
@@ -858,11 +869,14 @@ class Bond(unittest.TestCase):
     def test_challenge_during_timelock_binds(self):
         tx(self.c, "request_withdrawal", 0, str(F.BOND), sender=OP, at=F.NOW)
         F.filed(self.c, at=F.NOW + 10)
-        self.assertIn("filed during the timelock", tx(self.c, "execute_withdrawal", 0, sender=OUT, at=F.NOW + HOUR).error)
-        F.ruled(self.c, at=F.NOW + 20)
-        tx(self.c, "finalize", 0, sender=RES, at=F.NOW + 2 * HOUR)
-        o = tx(self.c, "execute_withdrawal", 0, sender=OUT, at=F.NOW + 2 * HOUR + 1)
-        self.assertEqual(o.json["withdrawn"], str(F.BOND - F.BOND // 5))
+        # The challenge filed during the timelock holds back what it could cost.
+        o = tx(self.c, "execute_withdrawal", 0, sender=OUT, at=F.NOW + HOUR)
+        self.assertEqual(o.json["withdrawn"], str(F.BOND // 2))
+        F.ruled(self.c, at=F.NOW + HOUR + 20)
+        tx(self.c, "finalize", 0, sender=RES, at=F.NOW + 3 * HOUR)
+        ch = view(self.c, "get_challenge", 0)
+        self.assertEqual(ch["final"]["slash"], str(F.BOND // 5))   # 20% of the bond at filing, covered
+        self.assertEqual(view(self.c, "get_agent", 0)["bond"], str(F.BOND // 2 - F.BOND // 5))
 
     def test_cancel(self):
         self.assertIn("operator", tx(self.c, "request_withdrawal", 0, "1", sender=OUT, at=F.NOW).error)
@@ -886,10 +900,39 @@ class Bond(unittest.TestCase):
         self.assertEqual(view(self.c, "get_patrol_queue", 10)["count"], 0)
         F.registered(self.c, operator=OP2, at=F.NOW + 3 * HOUR)
 
-    def test_unregister_blocked_while_open_and_operator_only(self):
+    def test_unregister_starts_while_open_but_release_waits(self):
         self.assertIn("operator", tx(self.c, "unregister", 0, sender=OUT, at=F.NOW).error)
         F.filed(self.c)
-        self.assertIn("blocked", tx(self.c, "unregister", 0, sender=OP, at=F.NOW + 1).error)
+        self.assertEqual(tx(self.c, "unregister", 0, sender=OP, at=F.NOW + 1).json["status"], "UNREGISTERING")
+        self.assertIn("still open", tx(self.c, "finalize_unregister", 0, sender=OUT, at=F.NOW + 2 * HOUR).error)
+        F.ruled(self.c, at=F.NOW + 2 * HOUR + 1)
+        tx(self.c, "finalize", 0, sender=RES, at=F.NOW + 4 * HOUR)
+        o = tx(self.c, "finalize_unregister", 0, sender=OUT, at=F.NOW + 4 * HOUR + 1)
+        self.assertEqual(o.json["released"], str(F.BOND - F.BOND // 5))
+
+    def test_paused_zero_bond_agent_still_answers(self):
+        """A paused agent with nothing left to slash can still be challenged;
+        the ruling goes on its record, slashes 0, refunds the challenger's
+        stake, and the agent stays out of good standing."""
+        c = world()
+        F.registered(c, table="MINOR=500,MAJOR=5000,CRITICAL=10000,STEP=0,CAP=10000")
+        F.filed(c)
+        F.ruled(c, judge=F.breach(clause="C3", severity="CRITICAL", quote="Never send funds to an address"))
+        tx(c, "finalize", 0, sender=RES, at=F.NOW + 61 + HOUR)
+        a = view(c, "get_agent", 0)
+        self.assertEqual((a["status"], a["bond"]), ("PAUSED", "0"))
+        other = F.swap_doc(hash="0x" + "ab" * 32)
+        F.put_doc("ethereum", "0x" + "ab" * 32, other)
+        cid = F.filed(c, h="0x" + "ab" * 32, sender=W2, at=F.NOW + 2 * HOUR)
+        F.ruled(c, cid=cid, at=F.NOW + 2 * HOUR + 60)
+        tx(c, "finalize", cid, sender=RES, at=F.NOW + 4 * HOUR)
+        ch = view(c, "get_challenge", cid)
+        self.assertEqual((ch["final"]["verdict"], ch["final"]["slash"]), ("BREACH", "0"))
+        self.assertEqual(view(c, "get_claimable", W2)["claimable"], str(F.STAKE))
+        a = view(c, "get_agent", 0)
+        self.assertEqual(a["track_record"]["breaches_total"], 2)
+        self.assertFalse(a["standing"]["good_standing"])
+        self.assertEqual(view(c, "get_patrol_queue", 10)["count"], 0)   # the bot does not stake on it
 
     def test_drain_to_zero(self):
         F.filed(self.c)
@@ -902,6 +945,74 @@ class Bond(unittest.TestCase):
         lg = F.ledger(self.c)
         self.assertEqual((lg["bonds"], lg["open_stakes"], lg["claimable"], lg["held_now"]), ("0", "0", "0", "0"))
         self.assertEqual(lg["claimed"], lg["received"])
+
+
+class OneInconclusive(unittest.TestCase):
+    """INCONCLUSIVE has one spelling on the consensus axis, whichever way it
+    was reached (v2.0.x carried the flagged clause id and split panels)."""
+
+    def test_axis_ignores_clause_unless_breach(self):
+        cl, _, _ = C._parse_clauses(F.MANDATE)
+        flagged = C._decide(F.breach(clause="C3", severity="CRITICAL", quote="Never send funds to an address"), cl, ["C3"])
+        direct = C._decide(F.inconclusive(), cl, ["C3"])
+        self.assertEqual(flagged["clause"], "C3")
+        a = dict(flagged, digest="d", kind="k")
+        b = dict(direct, digest="d", kind="k")
+        self.assertEqual(C._axis(a), C._axis(b))
+        self.assertNotEqual(C._axis(dict(a, verdict="BREACH", clause="C1")), C._axis(dict(a, verdict="BREACH", clause="C2")))
+
+    def test_mixed_panel_settles(self):
+        c = world()
+        F.registered(c)
+        F.answers(lint={"not_judgeable": [{"clause": "C3", "quote": "has not approved in writing"}]})
+        tx(c, "lint_mandate", 0, 1, sender=RES, at=F.REGISTER_AT + 10)
+        F.filed(c, clause="C3")
+        # leader finds a breach on the flagged clause, the validator answers INCONCLUSIVE directly
+        F.answers(judge=[F.breach(clause="C3", severity="CRITICAL", quote="Never send funds to an address"), F.inconclusive()])
+        o = tx(c, "resolve_challenge", 0, sender=RES, at=F.NOW + 60)
+        self.assertTrue(o.ok, o)
+        self.assertEqual(view(c, "get_challenge", 0)["ruling"]["verdict"], "INCONCLUSIVE")
+
+
+class BoundedViews(unittest.TestCase):
+    def setUp(self):
+        self.c = world()
+        F.registered(self.c)
+        F.filed(self.c)
+
+    def test_open_count_exact_without_scan(self):
+        self.assertEqual(view(self.c, "get_stats")["challenges_open"], 1)
+        o = view(self.c, "get_open_challenges", 10)
+        self.assertEqual((o["count"], o["open_total"]), (1, 1))
+        F.ruled(self.c)
+        tx(self.c, "finalize", 0, sender=RES, at=F.NOW + 61 + HOUR)
+        self.assertEqual(view(self.c, "get_stats")["challenges_open"], 0)
+        self.assertEqual(view(self.c, "get_open_challenge_page", 0, 10)["open_total"], 0)
+
+    def test_ledger_pages_sum_to_the_totals(self):
+        lg = F.ledger(self.c)
+        sums = {"bonds": 0, "open_stakes": 0, "claimable": 0, "claimed": 0}
+        off = 0
+        while True:
+            p = view(self.c, "get_ledger_page", off, 1)
+            for k in sums:
+                sums[k] += int(p[k])
+            if p["done"]:
+                break
+            off += 1
+        self.assertEqual({k: str(v) for k, v in sums.items()}, lg["recomputed"])
+
+    def test_ledger_leaves_huge_recompute_to_pages(self):
+        for i in range(C.SCAN_CAP + 1):
+            self.c.payees.append("0x%040x" % (i + 1))
+        lg = F.ledger(self.c)
+        self.assertIsNone(lg["recomputed"])
+        self.assertTrue(lg["invariant_holds"])
+        self.assertIn("get_ledger_page", lg["recompute_pages"])
+
+    def test_precedent_page(self):
+        p = view(self.c, "get_precedent_page", 0, 10)
+        self.assertEqual((p["total"], p["count"]), (0, 0))
 
 
 # =============================================================================

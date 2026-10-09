@@ -58,7 +58,7 @@ import json
 #   6. No value is pushed except by claim(); everything else is a pull balance.
 #   7. str.replace() is rejected by the runner; slice around find() instead.
 
-VERSION = "2.0.2"
+VERSION = "2.1.0"
 
 # ── Modes ────────────────────────────────────────────────────────────────────
 # CANONICAL is the deployment the register lives on. DEMO is the same code with
@@ -89,7 +89,7 @@ CAP_BOUNDS = (10000, 30000)      # the multiplier never exceeds this
 DEFAULT_TABLE = "MINOR=500,MAJOR=2000,CRITICAL=5000,STEP=5000,CAP=20000"
 
 AG_ACTIVE = "ACTIVE"
-AG_PAUSED = "PAUSED"              # bond below MIN_BOND; still answers for what it did
+AG_PAUSED = "PAUSED"              # bond below MIN_BOND: out of good standing, still challengeable, every ruling on its record
 AG_UNREGISTERING = "UNREGISTERING"
 AG_RETIRED = "RETIRED"
 
@@ -1029,8 +1029,12 @@ def _axis(data) -> str:
 		return V_RETRY
 	if v not in (V_BREACH, V_COMPLIANT, V_INCONCLUSIVE, V_VOID):
 		return ""
-	return (v + "|" + str(data.get("clause", "")) + "|" + str(data.get("digest", ""))
-		+ "|" + str(data.get("kind", "")))
+	# Only a BREACH carries its clause on the axis. An INCONCLUSIVE that came
+	# from a breach on a linter-flagged clause and one the model gave directly
+	# mean the same thing and must compare equal; the clause stays on record
+	# for display only.
+	clause = str(data.get("clause", "")) if v == V_BREACH else ""
+	return v + "|" + clause + "|" + str(data.get("digest", "")) + "|" + str(data.get("kind", ""))
 
 
 def _leader_shape_ok(data, clauses: list, flags: list) -> bool:
@@ -1426,6 +1430,30 @@ class Sentinel(gl.contract.Contract):
 	def _breaches(self, a) -> int:
 		return int(a.breaches_minor) + int(a.breaches_major) + int(a.breaches_critical)
 
+	def _exposure(self, a) -> int:
+		"""The most the agent's open challenges and appeals could still slash,
+		taking for each the CRITICAL rate of its snapshot (a fresh panel may
+		find a different clause) and its frozen multiplier. Capped at the bond.
+		Walks the agent's challenges newest first and stops once every open
+		one has been counted."""
+		need = int(a.open_count)
+		if need <= 0:
+			return 0
+		bucket = self.agent_challenges.get(u32(int(a.agent_id)))
+		ids = [int(x) for x in bucket] if bucket is not None else []
+		ids.reverse()
+		total = 0
+		for cid in ids:
+			if need <= 0:
+				break
+			c = self.challenges.get(u32(cid))
+			if c is None or str(c.status) not in OPEN_STATES:
+				continue
+			need -= 1
+			total += _slash_amount(int(c.bond_at_filing), int(c.sev_critical), int(c.multiplier_bps),
+				int(c.bond_at_filing))
+		return min(total, int(a.bond))
+
 	def _tx_key(self, chain: str, tx: str, aid: int) -> str:
 		return str(chain) + ":" + str(tx) + ":" + str(int(aid))
 
@@ -1640,8 +1668,6 @@ class Sentinel(gl.contract.Contract):
 			return ("No agent with that id", None)
 		if str(agent.status) == AG_RETIRED:
 			return ("That agent is retired", None)
-		if int(agent.bond) <= 0:
-			return ("That agent's bond is exhausted", None)
 		if sender == self._operator_of(agent):
 			return ("An operator cannot challenge their own agent", None)
 		if not tx:
@@ -2116,23 +2142,28 @@ class Sentinel(gl.contract.Contract):
 
 	@gl.public.write
 	def request_withdrawal(self, agent_id: int, amount: str) -> str:
-		"""Start a timelocked withdrawal of part of the bond. Refused while any
-		challenge or appeal against the agent is open. The bond keeps answering
-		for challenges filed during the timelock."""
+		"""Start a timelocked withdrawal of part of the bond. While challenges
+		or appeals are open, only the part of the bond they could never slash
+		(bond minus _exposure) can be queued, so an open challenge holds back
+		what it could cost and no more. The bond keeps answering for
+		challenges filed during the timelock."""
 		now = self._now()
 		agent = self._agent(agent_id)
 		if self._sender() != self._operator_of(agent):
 			raise gl.vm.UserError("Only this agent's operator can withdraw its bond")
 		if str(agent.status) not in (AG_ACTIVE, AG_PAUSED):
 			raise gl.vm.UserError("This agent is " + str(agent.status))
-		if int(agent.open_count) > 0:
-			raise gl.vm.UserError("Withdrawals are blocked while " + str(int(agent.open_count))
-				+ " challenge(s) or appeal(s) are open against this agent")
 		if int(agent.withdraw_amount) > 0:
 			raise gl.vm.UserError("A withdrawal is already queued; cancel or execute it first")
+		free = int(agent.bond) - self._exposure(agent)
 		want = _as_int(str(amount).strip(), -1)
-		if want <= 0 or want > int(agent.bond):
-			raise gl.vm.UserError("Withdraw between 1 wei and the bond (" + _wei_text(int(agent.bond)) + " GEN)")
+		if free <= 0:
+			raise gl.vm.UserError("Withdrawals are blocked: " + str(int(agent.open_count))
+				+ " open challenge(s) or appeal(s) could slash the whole bond")
+		if want <= 0 or want > free:
+			raise gl.vm.UserError("Withdraw between 1 wei and " + _wei_text(free) + " GEN"
+				+ (" (the rest is held for " + str(int(agent.open_count)) + " open challenge(s))"
+					if free < int(agent.bond) else ""))
 		agent.withdraw_amount = u256(want)
 		agent.withdraw_unlock_at = u64(now + int(self.withdraw_delay))
 		return json.dumps({"ok": True, "agent_id": int(agent.agent_id), "amount": str(want),
@@ -2151,19 +2182,20 @@ class Sentinel(gl.contract.Contract):
 
 	@gl.public.write
 	def execute_withdrawal(self, agent_id: int) -> str:
-		"""Anyone, after the timelock, with nothing open: the queued amount (or
-		what is left of the bond, if a slash took some) moves to the operator's
-		pull balance. Below MIN_BOND the agent is auto-paused."""
+		"""Anyone, after the timelock: the queued amount, or less if a slash
+		took some or challenges filed since hold it back, moves to the
+		operator's pull balance. Below MIN_BOND the agent is auto-paused."""
 		now = self._now()
 		agent = self._agent(agent_id)
 		if int(agent.withdraw_amount) <= 0:
 			raise gl.vm.UserError("No withdrawal is queued")
 		if now < int(agent.withdraw_unlock_at):
 			raise gl.vm.UserError("The withdrawal unlocks at " + str(int(agent.withdraw_unlock_at)))
-		if int(agent.open_count) > 0:
+		free = int(agent.bond) - self._exposure(agent)
+		if free <= 0:
 			raise gl.vm.UserError("Blocked: " + str(int(agent.open_count))
-				+ " challenge(s) or appeal(s) were filed during the timelock and are still open")
-		amount = min(int(agent.withdraw_amount), int(agent.bond))
+				+ " open challenge(s) or appeal(s) could slash the whole bond")
+		amount = min(int(agent.withdraw_amount), free)
 		agent.withdraw_amount = u256(0)
 		agent.withdraw_unlock_at = u64(0)
 		self._set_bond(agent, int(agent.bond) - amount)
@@ -2175,16 +2207,15 @@ class Sentinel(gl.contract.Contract):
 	@gl.public.write
 	def unregister(self, agent_id: int) -> str:
 		"""Begin retiring the agent. It stays challengeable for withdraw_delay
-		seconds; then finalize_unregister releases the whole bond."""
+		seconds; then finalize_unregister releases the whole bond once nothing
+		is open. Open challenges do not stop it starting: they hold the
+		release back, not the decision to leave."""
 		now = self._now()
 		agent = self._agent(agent_id)
 		if self._sender() != self._operator_of(agent):
 			raise gl.vm.UserError("Only this agent's operator can unregister it")
 		if str(agent.status) not in (AG_ACTIVE, AG_PAUSED):
 			raise gl.vm.UserError("This agent is " + str(agent.status))
-		if int(agent.open_count) > 0:
-			raise gl.vm.UserError("Unregistering is blocked while " + str(int(agent.open_count))
-				+ " challenge(s) or appeal(s) are open")
 		agent.status = AG_UNREGISTERING
 		agent.withdraw_amount = u256(0)
 		agent.withdraw_unlock_at = u64(0)
@@ -2267,6 +2298,8 @@ class Sentinel(gl.contract.Contract):
 			"registered_at": int(a.registered_at), "versions": int(a.versions),
 			"latest_version": self._version_json(latest) if latest is not None else None,
 			"open_count": int(a.open_count), "challenge_count": int(a.challenge_count),
+			"held_for_open": str(self._exposure(a)),
+			"withdrawable": str(int(a.bond) - self._exposure(a)),
 			"withdraw_amount": str(int(a.withdraw_amount)), "withdraw_unlock_at": int(a.withdraw_unlock_at),
 			"unregister_unlock_at": int(a.unregister_unlock_at), "last_checked": int(a.last_checked),
 			"track_record": self._track(a), "standing": self._standing(a),
@@ -2368,13 +2401,13 @@ class Sentinel(gl.contract.Contract):
 			a = self.agents.get(u32(raw))
 			if a is not None:
 				statuses[str(a.status)] = statuses.get(str(a.status), 0) + 1
-		open_n = 0
-		for raw in [int(x) for x in self.challenge_ids][-SCAN_CAP:]:
-			c = self.challenges.get(u32(raw))
-			if c is not None and str(c.status) in OPEN_STATES:
-				open_n += 1
+		# Every challenge ends in exactly one of the four final counters (a stall
+		# and an expired appeal included), so what is open is the difference:
+		# exact at any size, no scan.
+		open_n = len(self.challenge_ids) - (int(self.count_breach) + int(self.count_compliant)
+			+ int(self.count_inconclusive) + int(self.count_void))
 		active_prec = 0
-		for k in [str(x) for x in self.precedent_keys]:
+		for k in [str(x) for x in self.precedent_keys][-SCAN_CAP:]:
 			p = self.precedents.get(k)
 			if p is not None and bool(p.active):
 				active_prec += 1
@@ -2394,14 +2427,45 @@ class Sentinel(gl.contract.Contract):
 	def get_ledger(self) -> str:
 		"""The money, two ways: the running counters, and the same three totals
 		recomputed from every agent, challenge and pull balance on record. The
-		invariant is received == bonds + open stakes + claimable + claimed."""
+		invariant is received == bonds + open stakes + claimable + claimed.
+		The recomputation walks every record, so above SCAN_CAP records of any
+		kind it is left to get_ledger_page, which does the same sums a page at
+		a time; the counters and the invariant are always answered."""
+		big = max(len(self.agent_ids), len(self.challenge_ids), len(self.payees)) > SCAN_CAP
+		r = self._ledger_sums(0, SCAN_CAP) if not big else None
+		bonds = r["bonds"] if r is not None else 0
+		stakes = r["open_stakes"] if r is not None else 0
+		owed = r["claimable"] if r is not None else 0
+		paid = r["claimed"] if r is not None else 0
+		received = int(self.total_received)
+		books = int(self.total_bonds) + int(self.open_stakes) + int(self.claimable_total) + int(self.claimed_total)
+		balance = int(self.balance)
+		return json.dumps({"received": str(received), "bonds": str(int(self.total_bonds)),
+			"open_stakes": str(int(self.open_stakes)), "claimable": str(int(self.claimable_total)),
+			"claimed": str(int(self.claimed_total)),
+			"recomputed": ({"bonds": str(bonds), "open_stakes": str(stakes), "claimable": str(owed),
+				"claimed": str(paid)} if not big else None),
+			"invariant_holds": received == books,
+			"views_match_storage": ((bonds == int(self.total_bonds) and stakes == int(self.open_stakes)
+				and owed == int(self.claimable_total) and paid == int(self.claimed_total)) if not big else None),
+			"recompute_pages": "" if not big else "get_ledger_page(offset, count), count <= " + str(SCAN_CAP),
+			"held_now": str(int(self.total_bonds) + int(self.open_stakes) + int(self.claimable_total)),
+			"on_chain_balance": str(balance),
+			"undelivered_transfers": str(balance - int(self.total_bonds) - int(self.open_stakes)
+				- int(self.claimable_total)),
+			"note": ("claim() posts a value transfer; on Studio Dev these are queued and not "
+				"delivered, so on_chain_balance can exceed held_now by up to the claimed total.")})
+
+	def _ledger_sums(self, offset: int, count: int) -> dict:
+		"""Bonds, open stakes, claimable and claimed recomputed from records
+		[offset, offset + count) of each list: agents, challenges, payees."""
 		bonds = 0
-		for raw in [int(x) for x in self.agent_ids]:
+		for raw in [int(x) for x in self.agent_ids][offset:offset + count]:
 			a = self.agents.get(u32(raw))
 			if a is not None:
 				bonds += int(a.bond)
 		stakes = 0
-		for raw in [int(x) for x in self.challenge_ids]:
+		for raw in [int(x) for x in self.challenge_ids][offset:offset + count]:
 			c = self.challenges.get(u32(raw))
 			if c is None:
 				continue
@@ -2411,26 +2475,23 @@ class Sentinel(gl.contract.Contract):
 				stakes += int(c.appeal_stake)
 		owed = 0
 		paid = 0
-		for who in [str(x) for x in self.payees]:
+		for who in [str(x) for x in self.payees][offset:offset + count]:
 			owed += int(self.claimable.get(who, u256(0)))
 			paid += int(self.claimed.get(who, u256(0)))
-		received = int(self.total_received)
-		books = int(self.total_bonds) + int(self.open_stakes) + int(self.claimable_total) + int(self.claimed_total)
-		balance = int(self.balance)
-		return json.dumps({"received": str(received), "bonds": str(int(self.total_bonds)),
-			"open_stakes": str(int(self.open_stakes)), "claimable": str(int(self.claimable_total)),
-			"claimed": str(int(self.claimed_total)),
-			"recomputed": {"bonds": str(bonds), "open_stakes": str(stakes), "claimable": str(owed),
-				"claimed": str(paid)},
-			"invariant_holds": received == books,
-			"views_match_storage": (bonds == int(self.total_bonds) and stakes == int(self.open_stakes)
-				and owed == int(self.claimable_total) and paid == int(self.claimed_total)),
-			"held_now": str(int(self.total_bonds) + int(self.open_stakes) + int(self.claimable_total)),
-			"on_chain_balance": str(balance),
-			"undelivered_transfers": str(balance - int(self.total_bonds) - int(self.open_stakes)
-				- int(self.claimable_total)),
-			"note": ("claim() posts a value transfer; on Studio Dev these are queued and not "
-				"delivered, so on_chain_balance can exceed held_now by up to the claimed total.")})
+		return {"bonds": bonds, "open_stakes": stakes, "claimable": owed, "claimed": paid}
+
+	@gl.public.view
+	def get_ledger_page(self, offset: int, count: int) -> str:
+		"""One page of get_ledger's recomputation. Summing the pages from
+		offset 0 until `done` gives the four totals for a register of any
+		size."""
+		start = max(0, _as_int(offset, 0))
+		limit = _clamp(_as_int(count, SCAN_CAP), 1, SCAN_CAP)
+		r = self._ledger_sums(start, limit)
+		longest = max(len(self.agent_ids), len(self.challenge_ids), len(self.payees))
+		return json.dumps({"offset": start, "count": limit, "done": start + limit >= longest,
+			"bonds": str(r["bonds"]), "open_stakes": str(r["open_stakes"]),
+			"claimable": str(r["claimable"]), "claimed": str(r["claimed"])})
 
 	@gl.public.view
 	def get_agent(self, agent_id: int) -> str:
@@ -2534,16 +2595,33 @@ class Sentinel(gl.contract.Contract):
 
 	@gl.public.view
 	def get_open_challenges(self, count: int) -> str:
-		"""PENDING, CONTESTABLE and APPEALED, oldest first: what a resolver walks."""
+		"""PENDING, CONTESTABLE and APPEALED, oldest first, among the newest
+		SCAN_CAP challenges: what a resolver walks. `open_total` is exact (from
+		the counters); when it is larger than what this window found,
+		get_open_challenge_page reaches the older ones."""
 		limit = _clamp(_as_int(count, 50), 1, MAX_PAGE)
+		ids = [int(x) for x in self.challenge_ids]
+		return self._open_in(ids[-SCAN_CAP:], limit, max(0, len(ids) - SCAN_CAP))
+
+	@gl.public.view
+	def get_open_challenge_page(self, offset: int, count: int) -> str:
+		"""Open challenges among challenge ids [offset, offset + SCAN_CAP)."""
+		ids = [int(x) for x in self.challenge_ids]
+		start = _clamp(_as_int(offset, 0), 0, len(ids))
+		return self._open_in(ids[start:start + SCAN_CAP], _clamp(_as_int(count, 50), 1, MAX_PAGE), start)
+
+	def _open_in(self, window: list, limit: int, start: int) -> str:
 		out = []
-		for cid in [int(x) for x in self.challenge_ids][-SCAN_CAP:]:
+		for cid in window:
 			if len(out) >= limit:
 				break
 			c = self.challenges.get(u32(cid))
 			if c is not None and str(c.status) in OPEN_STATES:
 				out.append(self._challenge_json(c))
-		return json.dumps({"count": len(out), "challenges": out})
+		open_total = len(self.challenge_ids) - (int(self.count_breach) + int(self.count_compliant)
+			+ int(self.count_inconclusive) + int(self.count_void))
+		return json.dumps({"count": len(out), "open_total": open_total, "window_start": start,
+			"window_size": len(window), "challenges": out})
 
 	@gl.public.view
 	def get_agent_challenges(self, agent_id: int, count: int) -> str:
@@ -2635,7 +2713,7 @@ class Sentinel(gl.contract.Contract):
 
 	def _precedents_for(self, aid: int) -> list:
 		out = []
-		for k in [str(x) for x in self.precedent_keys]:
+		for k in [str(x) for x in self.precedent_keys][-SCAN_CAP:]:
 			p = self.precedents.get(k)
 			if p is not None and int(p.agent_id) == aid:
 				out.append(self._precedent_json(p))
@@ -2643,16 +2721,30 @@ class Sentinel(gl.contract.Contract):
 
 	@gl.public.view
 	def get_precedents(self, agent_id: int) -> str:
-		"""agent_id -1 lists every precedent."""
+		"""agent_id -1 lists the newest MAX_PAGE precedents; get_precedent_page
+		walks all of them."""
 		aid = _as_int(agent_id, -1)
 		if aid >= 0:
 			return json.dumps({"agent_id": aid, "precedents": self._precedents_for(aid)})
 		out = []
-		for k in [str(x) for x in self.precedent_keys]:
+		for k in [str(x) for x in self.precedent_keys][-MAX_PAGE:]:
 			p = self.precedents.get(k)
 			if p is not None:
 				out.append(self._precedent_json(p))
-		return json.dumps({"agent_id": -1, "precedents": out})
+		return json.dumps({"agent_id": -1, "total": len(self.precedent_keys), "precedents": out})
+
+	@gl.public.view
+	def get_precedent_page(self, offset: int, count: int) -> str:
+		"""Every precedent, oldest first, a page at a time."""
+		keys = [str(x) for x in self.precedent_keys]
+		start = _clamp(_as_int(offset, 0), 0, len(keys))
+		limit = _clamp(_as_int(count, 50), 1, MAX_PAGE)
+		out = []
+		for k in keys[start:start + limit]:
+			p = self.precedents.get(k)
+			if p is not None:
+				out.append(self._precedent_json(p))
+		return json.dumps({"total": len(keys), "offset": start, "count": len(out), "precedents": out})
 
 	@gl.public.view
 	def precedent_for(self, agent_id: int, clause_id: str, tx_kind: str, block_timestamp: int) -> str:
@@ -2698,7 +2790,7 @@ class Sentinel(gl.contract.Contract):
 		w = _norm_wallet(operator)
 		bucket = self.operator_agents.get(w) if w else None
 		out = []
-		for aid in ([int(x) for x in bucket] if bucket is not None else []):
+		for aid in ([int(x) for x in bucket] if bucket is not None else [])[-MAX_PAGE:]:
 			a = self.agents.get(u32(aid))
 			if a is not None:
 				out.append(self._agent_json(a))

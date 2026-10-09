@@ -53,7 +53,7 @@ export default function DocsPage() {
       </div>
       <p className="mt-3 text-ink-2">
         Slash = bond at filing × the clause&apos;s severity (from the version&apos;s table) × the repeat multiplier (1 + step × prior final breaches, capped), never more than the bond still there.
-        A lost appeal&apos;s bond goes to the other party; a won appeal&apos;s bond comes back. Below the minimum bond an agent is paused: still answerable, not in good standing.
+        A lost appeal&apos;s bond goes to the other party; a won appeal&apos;s bond comes back. Below the minimum bond an agent is paused. It is still answerable at any bond, zero included: it can be challenged, every ruling goes on its record and counts toward its repeat multiplier, and a slash takes what the bond can cover. It is not in good standing, so the API, the badge and SentinelConsumer refuse it. The patrol bot does not stake on an agent with nothing to slash; anyone else can. While challenges are open, an operator can withdraw only what they could never slash.
       </p>
 
       <H id="model">What the model decides, and what it never decides</H>

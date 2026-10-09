@@ -3,8 +3,10 @@
 /**
  * The operator's controls, shown only to the operator's own wallet (the
  * contract refuses everyone else anyway). Withdrawals and unregistering are
- * timelocked and blocked while anything is open against the agent; mandate
- * edits are queued behind a delay and never reach back.
+ * timelocked; while challenges are open, only the part of the bond they could
+ * never slash can be withdrawn, and an unregistering agent's bond is released
+ * only once nothing is open. Mandate edits are queued behind a delay and never
+ * reach back.
  */
 import { useState } from "react";
 import useSWR from "swr";
@@ -53,7 +55,7 @@ export function OperatorPanel({ agent, account, onChange }: { agent: Agent; acco
   return (
     <Panel className="p-5">
       <Label>Operator controls</Label>
-      <p className="mt-1 text-xs text-ink-2">Only {agent.operator.slice(0, 8)}… can use these. {open > 0 && <b className="text-neutral-ink">{open} challenge(s) or appeal(s) are open, so withdrawing and unregistering are blocked until they are final.</b>}</p>
+      <p className="mt-1 text-xs text-ink-2">Only {agent.operator.slice(0, 8)}… can use these. {open > 0 && <b className="text-neutral-ink">{open} challenge(s) or appeal(s) are open: {formatGen(agent.held_for_open)} GEN of the bond is held for what they could cost; {formatGen(agent.withdrawable)} GEN can be withdrawn.</b>}</p>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-line p-3.5">
@@ -73,9 +75,9 @@ export function OperatorPanel({ agent, account, onChange }: { agent: Agent; acco
           <div className="text-sm font-medium">Withdraw part of the bond</div>
           {queuedW ? (
             <>
-              <p className="text-xs text-ink-2">{formatGen(agent.withdraw_amount)} GEN queued; <Countdown at={agent.withdraw_unlock_at} open="unlocks in" closed="unlocked" />. Anyone may execute it once unlocked and nothing is open; it moves to your claimable balance.</p>
+              <p className="text-xs text-ink-2">{formatGen(agent.withdraw_amount)} GEN queued; <Countdown at={agent.withdraw_unlock_at} open="unlocks in" closed="unlocked" />. Anyone may execute it once unlocked; it moves to your claimable balance, less anything still held for open challenges.</p>
               <div className="mt-2 flex gap-2">
-                <button disabled={tx.busy || !unlocked || open > 0}
+                <button disabled={tx.busy || !unlocked || BigInt(agent.withdrawable) <= 0n}
                   onClick={() => act("Withdrawal executed; it is in your claimable balance.", (o) => executeWithdrawal(account, agent.agent_id, o), (a) => BigInt(a.withdraw_amount) === 0n)}
                   className="rounded-md bg-signal px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">Execute</button>
                 <button disabled={tx.busy} onClick={() => act("Withdrawal cancelled.", (o) => cancelWithdrawal(account, agent.agent_id, o), (a) => BigInt(a.withdraw_amount) === 0n)}
@@ -87,8 +89,8 @@ export function OperatorPanel({ agent, account, onChange }: { agent: Agent; acco
               <p className="text-xs text-ink-2">Timelocked {cfg ? Math.round(cfg.withdraw_delay / 60) : "…"} min; the bond keeps answering for challenges filed meanwhile.</p>
               <div className="mt-2 flex gap-2">
                 <label htmlFor="op-withdraw" className="sr-only">Withdrawal amount in GEN</label>
-                <input id="op-withdraw" value={withdraw} onChange={(e) => setWithdraw(e.target.value)} placeholder={formatGen(agent.bond)} className="mono w-28 rounded-md border border-line-2 px-2 py-1.5 text-sm" />
-                <button disabled={tx.busy || !parseGen(withdraw) || open > 0 || !["ACTIVE", "PAUSED"].includes(agent.status)}
+                <input id="op-withdraw" value={withdraw} onChange={(e) => setWithdraw(e.target.value)} placeholder={formatGen(agent.withdrawable)} className="mono w-28 rounded-md border border-line-2 px-2 py-1.5 text-sm" />
+                <button disabled={tx.busy || !parseGen(withdraw) || parseGen(withdraw)! > BigInt(agent.withdrawable) || !["ACTIVE", "PAUSED"].includes(agent.status)}
                   onClick={() => act("Withdrawal requested; the timelock has started.", (o) => requestWithdrawal(account, agent.agent_id, parseGen(withdraw)!, o), (a) => BigInt(a.withdraw_amount) > 0n)}
                   className="rounded-md bg-signal px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">Request</button>
               </div>
@@ -107,8 +109,8 @@ export function OperatorPanel({ agent, account, onChange }: { agent: Agent; acco
             </>
           ) : agent.status === "RETIRED" ? <p className="text-xs text-ink-2">Retired.</p> : (
             <>
-              <p className="text-xs text-ink-2">Starts a {cfg ? Math.round(cfg.withdraw_delay / 60) : "…"} min timelock during which the agent can still be challenged.</p>
-              <button disabled={tx.busy || open > 0} onClick={() => act("Unregistering started.", (o) => unregisterAgent(account, agent.agent_id, o), (a) => a.status === "UNREGISTERING")}
+              <p className="text-xs text-ink-2">Starts a {cfg ? Math.round(cfg.withdraw_delay / 60) : "…"} min timelock during which the agent can still be challenged; the bond is released once nothing is open.</p>
+              <button disabled={tx.busy} onClick={() => act("Unregistering started.", (o) => unregisterAgent(account, agent.agent_id, o), (a) => a.status === "UNREGISTERING")}
                 className="mt-2 rounded-md border border-line-2 px-3 py-1.5 text-sm disabled:opacity-50">Unregister</button>
             </>
           )}
