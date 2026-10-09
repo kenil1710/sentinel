@@ -126,6 +126,34 @@
           "flags": []
         }
       }
+    },
+    "arb2": {
+      "agent_id": 8,
+      "chain": "arbitrum",
+      "wallet": "0xe1acc9d6d65b24be793aff96fc6caa95ffb34ab3",
+      "start_block": 513085612,
+      "registered_at": 1791518315,
+      "register_tx": "0x2279176b6424e37a99f5433596031f8a15e3383fcda5fbbc6f475fcc337c6f0a",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "poly2": {
+      "agent_id": 9,
+      "chain": "polygon",
+      "wallet": "0x6dd23e950878b1142772335cd122e92d47876c3e",
+      "start_block": 95208743,
+      "registered_at": 1791518329,
+      "register_tx": "0x64375b82217d656d8efcb9b9a33889eb3f48957b46b7c1f7b0b62a11da368edd",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
     }
   },
   "cases": {
@@ -460,10 +488,12 @@
       ]
     },
     "arb_critical": {
-      "state": "WAITING_TX"
+      "state": "DROPPED",
+      "why": "the keeper wallet stopped transacting on this chain after registration; arb2_call and poly2_call replace these cases"
     },
     "poly_other": {
-      "state": "WAITING_TX"
+      "state": "DROPPED",
+      "why": "the keeper wallet stopped transacting on this chain after registration; arb2_call and poly2_call replace these cases"
     },
     "base_window": {
       "state": "FINAL",
@@ -683,6 +713,64 @@
         "revert": null,
         "text": "Counter-evidence: clause C1 lists tokens only by ticker symbol and gives no contract address. A token's symbol is chosen by whoever deploys it, and many contracts call themselves USDT. The record identifies the token by its symbol and contract address, but the mandate gives nothing to compare the address with, so it cannot establish which USDT the operator meant.",
         "status_after": "APPEALED"
+      }
+    },
+    "arb2_call": {
+      "state": "PENDING",
+      "cursor": 513086392,
+      "tx": {
+        "hash": "0x7d11a62b5a8d2f56b15c06f20856e5702e2e9cb7671184bd3b6eee086111ca99",
+        "block": 513088105,
+        "ts": 1791519011,
+        "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000c14e049119a941a00078cbcdc15cfcdfc059853700000000000000000000000000000000000000000000000000000000023c77b3"
+      },
+      "challenge_id": 109,
+      "filed": {
+        "hash": "0x8d61d89f870bc011365df1f8502ac8f0a2e19813caab69c00ab689fe0756227a",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 109,
+          "agent_id": 8,
+          "tx_hash": "0x7d11a62b5a8d2f56b15c06f20856e5702e2e9cb7671184bd3b6eee086111ca99",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791605549
+        },
+        "revert": null
+      }
+    },
+    "poly2_call": {
+      "state": "PENDING",
+      "cursor": 95209000,
+      "tx": {
+        "hash": "0xd9cc63dfa1e65ac119238889fc7125dc62a259ee997f0da1325f34b17d7b63c8",
+        "block": 95209237,
+        "ts": 1791519067,
+        "to": "0xe979926c0bf5af833a98a0c2e9818e8b637f6d0a",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb0000000000000000000000008eade7838e22ef8f1d593277bf1e9f1d2c53b8e200000000000000000000000000000000000000000000000000000000008ab75d"
+      },
+      "challenge_id": 110,
+      "filed": {
+        "hash": "0xe3b717b15841b337d126fb4e0d0f91b434851e984d8351fa26c8476f501dbb7d",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 110,
+          "agent_id": 9,
+          "tx_hash": "0xd9cc63dfa1e65ac119238889fc7125dc62a259ee997f0da1325f34b17d7b63c8",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791605563
+        },
+        "revert": null
       }
     }
   },
@@ -1245,6 +1333,78 @@
       "final": "BREACH",
       "slash": "200000000000000000",
       "precedent": ""
+    },
+    {
+      "at": "2026-10-09T03:58:44.258Z",
+      "kind": "registered",
+      "key": "arb2",
+      "agent_id": 8,
+      "tx": "0x2279176b6424e37a99f5433596031f8a15e3383fcda5fbbc6f475fcc337c6f0a"
+    },
+    {
+      "at": "2026-10-09T03:58:58.706Z",
+      "kind": "registered",
+      "key": "poly2",
+      "agent_id": 9,
+      "tx": "0x64375b82217d656d8efcb9b9a33889eb3f48957b46b7c1f7b0b62a11da368edd"
+    },
+    {
+      "at": "2026-10-09T03:59:34.014Z",
+      "kind": "lint",
+      "key": "arb2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x19eb8a98c5fa2e4fca7a9cdb6634bae570107fa41325bb5e070647760e1632bb",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T04:00:05.557Z",
+      "kind": "lint",
+      "key": "poly2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x7ee64d68e92067a8502c2757e20e150616c850456273c5aa174659e187a179ba",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T04:10:27.305Z",
+      "kind": "tx_found",
+      "case": "arb2_call",
+      "chain": "arbitrum",
+      "hash": "0x7d11a62b5a8d2f56b15c06f20856e5702e2e9cb7671184bd3b6eee086111ca99",
+      "block": 513088105,
+      "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "by": "catch_tx"
+    },
+    {
+      "at": "2026-10-09T04:11:14.947Z",
+      "kind": "tx_found",
+      "case": "poly2_call",
+      "chain": "polygon",
+      "hash": "0xd9cc63dfa1e65ac119238889fc7125dc62a259ee997f0da1325f34b17d7b63c8",
+      "block": 95209237,
+      "to": "0xe979926c0bf5af833a98a0c2e9818e8b637f6d0a",
+      "by": "catch_tx"
+    },
+    {
+      "at": "2026-10-09T04:12:38.820Z",
+      "kind": "filed",
+      "case": "arb2_call",
+      "challenge_id": 109,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x8d61d89f870bc011365df1f8502ac8f0a2e19813caab69c00ab689fe0756227a"
+    },
+    {
+      "at": "2026-10-09T04:12:51.813Z",
+      "kind": "filed",
+      "case": "poly2_call",
+      "challenge_id": 110,
+      "by": "watcher2",
+      "clause": "C1",
+      "tx": "0xe3b717b15841b337d126fb4e0d0f91b434851e984d8351fa26c8476f501dbb7d"
     }
   ],
   "edit_base": {
@@ -1279,5 +1439,14 @@
       },
       "revert": null
     }
+  },
+  "withdraw_blocked": {
+    "hash": "0x1e90f20fb08ff7402098588bf06af3bb865af3bc222c511fcda9b1019ac0b64a",
+    "status": "ACCEPTED",
+    "ok": false,
+    "ret": null,
+    "revert": "Withdrawals are blocked while 1 challenge(s) or appeal(s) are open against this agent",
+    "agent": "e3",
+    "open": 1
   }
 }

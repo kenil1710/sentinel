@@ -13,11 +13,15 @@ export const RPC = {
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Second endpoints, used when the first refuses an older (archive) lookup. */
+export const RPC_FALLBACK = { base: "https://mainnet.base.org", arbitrum: "https://arbitrum-one.public.blastapi.io", polygon: "https://polygon.drpc.org", ethereum: "https://eth.drpc.org" };
+
 export async function rpc(chain, method, params, tries = 5) {
   let last;
   for (let i = 0; i < tries; i++) {
     try {
-      const res = await fetch(RPC[chain], {
+      const url = i > 0 && /archive|historical|missing trie/i.test(String(last?.message ?? "")) && RPC_FALLBACK[chain] ? RPC_FALLBACK[chain] : RPC[chain];
+      const res = await fetch(url, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
         signal: AbortSignal.timeout(30_000),

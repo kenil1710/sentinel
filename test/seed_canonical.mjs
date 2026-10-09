@@ -248,7 +248,7 @@ async function findTx(name, c) {
 async function step(name, c) {
   const cs = (st.cases[name] ??= { state: "WAITING_TX" });
   const ag = st.agents[c.agent];
-  if (!ag) return false;
+  if (!ag || cs.state === "DROPPED") return false;
   if (c.after === "edit_base" && !st.edit_base) return false;
   if (c.after && c.after !== "edit_base" && st.cases[c.after]?.state !== "FINAL") return false;
   if (cs.state === "WAITING_TX") {
