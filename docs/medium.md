@@ -34,7 +34,7 @@ Second, **what the fresh panel reads**. The explorer's labels for a transaction 
 validators compare a digest of only the facts a chain cannot change: sender, recipient, value, function selector, token
 transfers by contract address, block and time. An appeal must read the same digest, or it waits.
 
-On the canonical register, two appeals have been filed so far, one each way. On challenge #2 the operator appealed a
+On the first live deployment (v2.0, which ran for a day before the review below), two appeals were filed, one each way. On challenge #2 the operator appealed a
 MAJOR breach (the payout bot had sent a token that is neither USDT nor USDC), arguing they were customer withdrawals;
 the fresh panel rejected the appeal and the appeal bond went to the challenger. On challenge #10 the first panel had
 cleared a USDT payout; the challenger appealed that a clause naming tokens only by ticker symbol cannot say which
@@ -66,7 +66,7 @@ version. Repeat breaches raise a capped multiplier. The model returns only BREAC
 the severity label written next to that clause, and a quote from it. Code checks the label and the quote, and computes
 the money.
 
-The real slashes on the canonical register, all computed by the contract:
+The real slashes on that first deployment, all computed by the contract:
 
 - Challenge #0: CRITICAL breach on a 2 GEN bond at 50%: **1 GEN**.
 - Challenge #2: MAJOR breach on the same 2 GEN bond at filing, 20%: **0.4 GEN**.
@@ -122,9 +122,9 @@ wallet, so a stranger could register someone else's bot under a mandate it was s
 leave the real operator a wallet that was already out of good standing. Now only the same operator's earlier record
 counts. A different address can still launder, and I say so.
 
-## What the chain says now
+## What the first deployment recorded
 
-Read from the canonical contract on 9 October 2026:
+Read from the v2.0 canonical contract on 9 October 2026, when it was replaced:
 
 - 10 agents on 5 chains; 1 paused after its bond reached 0, 1 unregistered.
 - 120 challenges: 22 final BREACH, 20 final COMPLIANT, 75 final INCONCLUSIVE, 3 still being judged.
@@ -140,6 +140,46 @@ that correctly, refunding each stake, and the bot now skips flagged clauses.
 Every agent in the register is a live bot I do not operate, on Ethereum, Base, Arbitrum, Polygon or Robinhood Chain,
 registered under a mandate I wrote for what it actually does. Every challenge names a real transaction mined after the
 agent registered, and every verdict was decided by the validators.
+
+## What a review before submitting changed
+
+Before submitting I asked four plain questions of my own work, and each one changed the contract or the tests.
+
+**What does "paused" mean?** An agent whose bond falls below the minimum is paused. One agent had kept breaching
+after its bond reached zero, and I found that the contract refused any new challenge once the bond was exactly 0. That
+let an operator freeze an agent's record by letting the bond run out. Now a paused agent can be challenged at any bond,
+every ruling still counts against it, and the slash is whatever is left, possibly nothing.
+
+**Which known limitations are cheap to fix?** Three were. Validators could disagree over two spellings of the same
+INCONCLUSIVE, so the clause now goes on the consensus string only for a BREACH. An open challenge used to block every
+withdrawal; now it holds back only what it could slash, at the CRITICAL rate and its frozen multiplier. And a few views
+walked every record; they are bounded now, with paged versions.
+
+**Did the rewrite delete tests?** The hackathon suite had 423 contract tests and 60 for the bot; v2 had 133 and 14. I
+ported every one whose behaviour still exists, 366 and 39, and listed the rest with the reason each no longer
+applies. Porting them found a stats view that a flood of registered-and-retired agents could fool, and three gaps in
+the bot: it could stake on a failed transaction, it compared amount caps as floating-point numbers, and under a
+clause about trading it ignored tokens the agent received. The suites now hold 507 and 62 tests.
+
+**Why are most results INCONCLUSIVE?** On the first deployment 75 of 120 were. Most were the bot accusing a clause the
+linter had flagged, which it no longer does; the rest were clauses that name tokens only by symbol, and records that
+were incomplete. INCONCLUSIVE refunds the stake, slashes nothing and teaches the bot nothing, which is what an honest
+judge should say when it cannot tell.
+
+GenLayer contracts cannot be upgraded, so this is a new deployment, v2.1.0, seeded again with the same live bots.
+Read from it on 9 October 2026:
+
+- 10 agents on 5 chains; 1 paused, 1 unregistered.
+- 36 challenges: 15 final BREACH, 8 final COMPLIANT, 9 final INCONCLUSIVE, 4 still being judged; 23 of them filed by
+  the patrol bot on its own.
+- 1 appeal, rejected. No appeal has been upheld on this deployment yet; both attempts to reach one ended INCONCLUSIVE
+  at once, which cannot be appealed, and I did not force one.
+- 6 precedents; a live dry run of the bot withheld 6 accusations because of one.
+- 2.2 GEN slashed: 1 and 0.6 GEN for two CRITICAL breaches by the first payout bot (the second capped at what was left),
+  0.4 GEN for a MAJOR one, and 0.2 GEN for a Base bot that moved 13.83 USDC under a 10 USDC limit. The first payout
+  bot then went on breaching with a bond of 0: ten more final breaches, each on its record, none with anything to
+  slash.
+- Each of the 15 final breaches re-checked by hand against the chain's own RPC: 15 of 15 hold.
 
 ## Honest limits
 

@@ -13,10 +13,10 @@ _168 characters (limit 180)._
 ## Milestone text (≤ 1000)
 
 <!--MILESTONE-->
-Sentinel v2 upgrades the Agent Tank hackathon winner (Onchain Justice). Rulings are now provisional for an hour and can be appealed once with a bond and new counter-evidence; a fresh panel judges only immutable transaction facts. Mandates are numbered clauses, versioned and frozen: an edit waits an hour and never reaches back. Anyone can challenge with a stake. Slashing is graduated by a severity table frozen per version, with a capped repeat multiplier. Validators lint mandates and flagged clauses are never slashed. Final clearances become precedents the patrol bot respects. Track records, a consumer contract, /api/check and a badge expose standing. Two attack rounds fixed 6 issues. Live on Studio Dev: 10 real bots on 5 chains, 120 challenges, 22 final breaches each re-checked against chain RPC, 2 appeals (1 upheld, 1 rejected), 2.66 GEN slashed. 133 Python + 14 patrol tests pass; contract code on chain matches the repo.
+Sentinel v2 upgrades the Agent Tank hackathon winner (Onchain Justice). Rulings are provisional for an hour and can be appealed once with a bond and new counter-evidence; a fresh panel judges only immutable transaction facts. Mandates are numbered clauses, versioned and frozen: an edit waits an hour and never reaches back. Anyone can challenge with a stake. Slashing follows a severity table frozen per version, with a capped repeat multiplier; a paused agent still answers for every breach. Validators lint mandates; flagged clauses are never slashed. Final clearances become precedents the patrol bot respects. Track records, a consumer contract, /api/check and a badge expose standing. Two attack rounds and a review fixed 14 issues (11 contract, 3 bot). Live (v2.1.0): 10 real bots on 5 chains, 36 challenges, 15 breaches each re-checked against chain RPC. 507 contract + 62 patrol tests (BASE 483) pass; on-chain code matches the repo.
 <!--/MILESTONE-->
 
-_935 characters (limit 1000)._
+_942 characters (limit 1000)._
 
 ## Project text (≤ 1000)
 
@@ -29,7 +29,7 @@ _932 characters (limit 1000)._
 ## Review verification (≤ 500)
 
 <!--REVIEW-->
-Open sentinel-tau-ashen.vercel.app and switch to the demo deployment (90-second windows): register an agent, challenge, appeal, finalize, withdraw and claim in a few minutes. Every number on the site is a contract read. Compare challenges with docs/SEEDS.md and breaches with docs/BREACHES.md (each tx re-read from chain RPC). docs/FINAL_CHECK.md lists each check with proof. Offline tests: README, "How a reviewer can test", step 7.
+Open sentinel-tau-ashen.vercel.app and switch to the demo deployment (90-second windows): register, challenge, appeal, finalize, withdraw and claim in minutes. Every number on the site is a contract read. Check challenges against docs/SEEDS.md and breaches against docs/BREACHES.md (each tx re-read from chain RPC). docs/FINAL_CHECK.md lists each check with proof. Tests: README, "How a reviewer can test", step 7.
 <!--/REVIEW-->
 
-_433 characters (limit 500)._
+_414 characters (limit 500)._

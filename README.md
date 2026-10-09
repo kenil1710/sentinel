@@ -14,9 +14,9 @@ every payout is a pull balance.
 
 | Contract (GenLayer Studio Dev, chain 61997) | Address |
 |---|---|
-| **Sentinel** — canonical register, 1 h windows | <!--ADDR:Sentinel-->`0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90`<!--/ADDR--> |
-| **Sentinel** — demo, same code, 90 s windows | <!--ADDR:SentinelDemo-->`0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393`<!--/ADDR--> |
-| **SentinelConsumer** — reads the canonical register | <!--ADDR:SentinelConsumer-->`0x02F421486a6de07c3D2cF624576ED7ecDFe711e5`<!--/ADDR--> |
+| **Sentinel** — canonical register, 1 h windows | <!--ADDR:Sentinel-->`0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB`<!--/ADDR--> |
+| **Sentinel** — demo, same code, 90 s windows | <!--ADDR:SentinelDemo-->`0x74ca153c17a67F3E5Fcd893afF053395AEce1Aff`<!--/ADDR--> |
+| **SentinelConsumer** — reads the canonical register | <!--ADDR:SentinelConsumer-->`0x053f15512462FD4f8F70F443EdCA1413e96D5eD0`<!--/ADDR--> |
 
 RPC `https://studio-dev.genlayer.com/api`, explorer <https://explorer-studio-dev.genlayer.com/>. All three were
 deployed from one commit, and `node tools/verify_source.mjs` reads each back with `gen_getContractCode` and compares
@@ -206,6 +206,10 @@ That is the safe outcome. INCONCLUSIVE costs the challenger nothing (the stake c
 nothing, adds nothing to the agent's breaches, and creates no precedent. The alternative, a judge that must answer
 BREACH or COMPLIANT every time, would slash bonds and clear transactions on guesses. An INCONCLUSIVE also holds the
 transaction, so nobody can file the same accusation again and again until a panel says BREACH.
+
+On the current v2.1.0 register, with the bot no longer staking on flagged clauses, the share is lower: 9 of the 32
+final results on 9 October were INCONCLUSIVE (the counts above are read from the chain and keep moving as the bot
+patrols).
 
 ## How a reviewer can test
 
