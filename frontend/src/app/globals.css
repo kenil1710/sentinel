@@ -14,8 +14,8 @@
  * especially. So each carries a darker `-ink` sibling used wherever the colour
  * has to be READ. Measured against the ground (#FAFAF9):
  *
- *   violation-ink #B91C1C  6.3:1      compliant-ink #15803D  4.8:1
- *   neutral-ink   #B45309  4.9:1      signal        #0E7490  5.2:1
+ *   violation-ink #B91C1C  6.3:1      compliant-ink #166534  (5.6:1 on its tint)
+ *   neutral-ink   #92400E  (5.9:1 on its tint)  signal  #0E7490  5.2:1
  *
  * The fill hues (#DC2626 / #16A34A / #D97706) stay exactly as specified and are
  * what you see in chart series, score rings, badge grounds and borders, where
@@ -52,9 +52,11 @@
   --color-violation: #DC2626;
   --color-violation-ink: #B91C1C;
   --color-compliant: #16A34A;
-  --color-compliant-ink: #15803D;
+  /* One step deeper than green-700: on its own 10% tint #15803D measured
+     4.49:1 (Lighthouse), a hair under AA. */
+  --color-compliant-ink: #166534;
   --color-neutral: #D97706;
-  --color-neutral-ink: #B45309;
+  --color-neutral-ink: #92400E;
 
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 
@@ -144,4 +146,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* A link inside running text is told apart by more than colour (WCAG 1.4.1). */
+main p a, main li a, main dd a, main td a, main span.text-xs a, main span.block a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
 }

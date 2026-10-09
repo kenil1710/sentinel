@@ -716,7 +716,7 @@
       }
     },
     "arb2_call": {
-      "state": "PENDING",
+      "state": "CONTESTABLE",
       "cursor": 513086392,
       "tx": {
         "hash": "0x7d11a62b5a8d2f56b15c06f20856e5702e2e9cb7671184bd3b6eee086111ca99",
@@ -742,10 +742,29 @@
           "resolve_deadline": 1791605549
         },
         "revert": null
-      }
+      },
+      "resolves": [
+        {
+          "hash": "0xaffd828bd314c09f7b91bf60eae730cef0230588db9d0cbe00e28eafea607a4a",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 109,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791522805
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ]
     },
     "poly2_call": {
-      "state": "PENDING",
+      "state": "CONTESTABLE",
       "cursor": 95209000,
       "tx": {
         "hash": "0xd9cc63dfa1e65ac119238889fc7125dc62a259ee997f0da1325f34b17d7b63c8",
@@ -771,7 +790,26 @@
           "resolve_deadline": 1791605563
         },
         "revert": null
-      }
+      },
+      "resolves": [
+        {
+          "hash": "0xa795d1c3879dc4d8b68daf9fe686c4b21d15c74cc09b7f54ab22a399c727a0a0",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 110,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791522863
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ]
     }
   },
   "events": [
@@ -1405,6 +1443,28 @@
       "by": "watcher2",
       "clause": "C1",
       "tx": "0xe3b717b15841b337d126fb4e0d0f91b434851e984d8351fa26c8476f501dbb7d"
+    },
+    {
+      "at": "2026-10-09T04:14:07.415Z",
+      "kind": "resolve",
+      "case": "arb2_call",
+      "challenge_id": 109,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T04:14:51.624Z",
+      "kind": "resolve",
+      "case": "poly2_call",
+      "challenge_id": 110,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
     }
   ],
   "edit_base": {
