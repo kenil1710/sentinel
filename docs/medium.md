@@ -34,7 +34,12 @@ Second, **what the fresh panel reads**. The explorer's labels for a transaction 
 validators compare a digest of only the facts a chain cannot change: sender, recipient, value, function selector, token
 transfers by contract address, block and time. An appeal must read the same digest, or it waits.
 
-On the canonical register, {{APPEALS_FILED}} appeals have been filed so far and the fresh panels {{APPEAL_OUTCOMES}}.
+On the canonical register, two appeals have been filed so far, one each way. On challenge #2 the operator appealed a
+MAJOR breach (the payout bot had sent a token that is neither USDT nor USDC), arguing they were customer withdrawals;
+the fresh panel rejected the appeal and the appeal bond went to the challenger. On challenge #10 the first panel had
+cleared a USDT payout; the challenger appealed that a clause naming tokens only by ticker symbol cannot say which
+contract is meant, and the fresh panel ruled INCONCLUSIVE. That appeal was upheld, so the stake and the appeal bond
+went back.
 
 ## Mandates that cannot reach back
 
@@ -61,7 +66,18 @@ version. Repeat breaches raise a capped multiplier. The model returns only BREAC
 the severity label written next to that clause, and a quote from it. Code checks the label and the quote, and computes
 the money.
 
-{{SLASH_EXAMPLES}}
+The real slashes on the canonical register, all computed by the contract:
+
+- Challenge #0: CRITICAL breach on a 2 GEN bond at 50%: **1 GEN**.
+- Challenge #2: MAJOR breach on the same 2 GEN bond at filing, 20%: **0.4 GEN**.
+- Challenge #7: another CRITICAL breach, capped at what was left of the bond: **0.6 GEN**. After that the bond was 0,
+  the agent was paused, and the twelve other final breaches against it slashed nothing.
+- Challenge #25: MAJOR breach on a 1 GEN bond, 20%: **0.2 GEN**.
+- Challenge #61: MINOR breach on a 1 GEN bond, 5%: **0.05 GEN**.
+- Challenge #108: MINOR breach on the same agent, now with one earlier final breach, so ×1.5 on the 0.95 GEN that was
+  left: **0.07125 GEN**.
+
+That adds up to 2.32125 GEN slashed, half of it paid to the challengers who proved the breaches.
 
 ## A linter for mandates
 
@@ -105,7 +121,18 @@ counts. A different address can still launder, and I say so.
 
 ## What the chain says now
 
-{{NUMBERS}}
+Read from the canonical contract on 9 October 2026:
+
+- 10 agents on 5 chains; 1 paused after its bond reached 0, 1 unregistered.
+- 116 challenges: 18 final BREACH, 20 final COMPLIANT, 74 final INCONCLUSIVE, 4 still being judged.
+- 2 appeals: 1 upheld, 1 rejected.
+- 7 precedents, all active.
+- 2.32125 GEN slashed and 1.160625 GEN paid in bounties.
+- Each of the 18 final breaches was re-checked by hand against the chain's own RPC: 18 of 18 hold.
+
+Most of those challenges were filed by the patrol bot on its own. Many of its INCONCLUSIVE results came from one bug in
+the bot: it kept accusing a clause the linter had flagged, where a breach can never be slashed. The contract handled
+that correctly, refunding each stake, and the bot now skips flagged clauses.
 
 Every agent in the register is a live bot I do not operate, on Ethereum, Base, Arbitrum, Polygon or Robinhood Chain,
 registered under a mandate I wrote for what it actually does. Every challenge names a real transaction mined after the
