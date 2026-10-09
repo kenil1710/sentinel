@@ -3,12 +3,13 @@
  * latest nonce and scanning only the newest blocks when it moves (for public
  * nodes that refuse historical-state queries), then hands it to the seed state
  * as FOUND so seed_canonical.mjs files and drives it.
- *   node catch_tx.mjs <case> <chain> <wallet> <to-equals|to-not> <address> [minutes]
+ *   node catch_tx.mjs <case> <chain> <wallet> <to-equals|to-not> <address> [minutes] [min ERC-20 transfer amount, raw units]
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { head, nonceOf, block } from "./chainscan.mjs";
 import { sleep } from "./harness.mjs";
-const [name, chain, wallet, mode, addr, minutes = "45"] = process.argv.slice(2);
+const [name, chain, wallet, mode, addr, minutes = "45", minAmount = "0"] = process.argv.slice(2);
+const amountOf = (input) => (String(input).slice(0, 10) === "0xa9059cbb" ? BigInt("0x" + String(input).slice(74, 138)) : 0n);
 const w = wallet.toLowerCase(), a = addr.toLowerCase();
 const STATE = new URL("../docs/seed-canonical.json", import.meta.url);
 const until = Date.now() + Number(minutes) * 60_000;
@@ -23,6 +24,7 @@ while (Date.now() < until) {
       for (const t of blk?.transactions ?? []) {
         if (String(t.from).toLowerCase() !== w) continue;
         const to = String(t.to ?? "").toLowerCase();
+        if (BigInt(minAmount) > 0n && amountOf(t.input) <= BigInt(minAmount)) continue;
         if ((mode === "to-equals" && to === a) || (mode === "to-not" && to !== a && t.input !== "0x")) {
           if (process.env.FOUND_FILE) {
             const side = (() => { try { return JSON.parse(readFileSync(process.env.FOUND_FILE, "utf8")); } catch { return {}; } })();
