@@ -117,9 +117,9 @@ linter exists to flag.
 ## The seeded register
 
 <!--SEED-->
-Canonical contract [`0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90`](https://explorer-studio-dev.genlayer.com/address/0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90), read 2026-10-09T05:43:54.072Z.
+Canonical contract [`0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90`](https://explorer-studio-dev.genlayer.com/address/0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90), read 2026-10-09T07:24:01.056Z.
 
-**10 agents on 5 chains · 114 challenges: 18 BREACH, 20 COMPLIANT, 74 INCONCLUSIVE final, 2 open · 2 appeals (1 upheld, 1 rejected) · 7 precedents · 2.3212 GEN slashed, 1.1606 GEN in bounties.** Ledger: received 16.9 = bonds 7.6787 + open stakes 0.15 + claimable 9.0712 + claimed 0 (holds, and every total matches its recomputation from the records).
+**10 agents on 5 chains · 120 challenges: 22 BREACH, 20 COMPLIANT, 75 INCONCLUSIVE final, 3 open · 2 appeals (1 upheld, 1 rejected) · 7 precedents · 2.6561 GEN slashed, 1.328 GEN in bounties.** Ledger: received 17.15 = bonds 7.3438 + open stakes 0.15 + claimable 9.6561 + claimed 0 (holds, and every total matches its recomputation from the records).
 
 Every agent is a live bot we do not operate; every mandate is ours, written for that bot's observable behaviour; every challenge names a real transaction mined after the agent registered; the validators decided each one. Every final BREACH was re-checked by hand against the chain's own RPC: [docs/BREACHES.md](docs/BREACHES.md). Linter at registration: #0 DONE · #1 DONE · #2 DONE (C2, C3 flagged) · #3 DONE · #4 DONE · #5 DONE · #6 DONE · #7 DONE · #8 DONE · #9 DONE.
 
@@ -149,7 +149,7 @@ Every agent is a live bot we do not operate; every mandate is ours, written for 
 
 ### The patrol bot, unattended
 
-Between the seed runs the patrol bot (`0x81d6bf84a5b03950d910b4a2f83c68006e0b93f4`, cron every 10 minutes) filed **104** challenges on its own against 3 agents: 15 final BREACH, 15 COMPLIANT, 70 INCONCLUSIVE, 4 still open. Its BREACHes are all against payout bot A (#0), which kept calling the batch executor its C3 forbids and sending tokens its C1 does not list, until its bond reached 0 and it was paused. 73 of its filings were the same accusation against payout bot B's clause C2 ("Only send stablecoins"), which the linter had flagged: a breach there can never be slashed, so each came back INCONCLUSIVE and the stake was refunded. That was a flaw in the bot, not the contract; the patrol now never stakes on a flagged clause, and defers instead of filing when the precedent check cannot be read (commit be2e44f).
+Between the seed runs the patrol bot (`0x81d6bf84a5b03950d910b4a2f83c68006e0b93f4`, cron every 10 minutes) filed **108** challenges on its own against 3 agents: 19 final BREACH, 15 COMPLIANT, 71 INCONCLUSIVE, 3 still open. 13 of its BREACHes are against payout bot A (#0), which kept calling the batch executor its C3 forbids and sending tokens its C1 does not list, until its bond reached 0 and it was paused; 6 are against payout bot B (#2), each a single transaction sending more than the 5 ETH its C1 allows. 73 of its filings were the same accusation against payout bot B's clause C2 ("Only send stablecoins"), which the linter had flagged: a breach there can never be slashed, so each came back INCONCLUSIVE and the stake was refunded. That was a flaw in the bot, not the contract; the patrol now never stakes on a flagged clause, and defers instead of filing when the precedent check cannot be read (commit be2e44f).
 
 | Challenge | Agent | Transaction | Clause | Filed by | First ruling | Appeal | Final | Slash (GEN) | What happened |
 |---|---|---|---|---|---|---|---|---|---|

@@ -74,10 +74,13 @@ The real slashes on the canonical register, all computed by the contract:
   the agent was paused, and the twelve other final breaches against it slashed nothing.
 - Challenge #25: MAJOR breach on a 1 GEN bond, 20%: **0.2 GEN**.
 - Challenge #61: MINOR breach on a 1 GEN bond, 5%: **0.05 GEN**.
-- Challenge #108: MINOR breach on the same agent, now with one earlier final breach, so ×1.5 on the 0.95 GEN that was
-  left: **0.07125 GEN**.
+- Challenges #108 and #112: MINOR breaches on the same agent, each filed after one earlier final breach, so ×1.5 on the
+  0.95 GEN bond at filing: **0.07125 GEN** each.
+- Challenges #113, #114 and #116: MINOR breaches filed after two earlier final breaches, so ×2 on the 0.87875 GEN bond
+  at filing: **0.087875 GEN** each. The patrol bot filed these on its own while I was writing this.
 
-That adds up to 2.32125 GEN slashed, half of it paid to the challengers who proved the breaches.
+That adds up to 2.656125 GEN slashed, half of it paid to the challengers who proved the breaches. The second agent's
+bond is now 0.543875 GEN: one more breach would take it below the 0.5 GEN minimum and pause it.
 
 ## A linter for mandates
 
@@ -124,11 +127,11 @@ counts. A different address can still launder, and I say so.
 Read from the canonical contract on 9 October 2026:
 
 - 10 agents on 5 chains; 1 paused after its bond reached 0, 1 unregistered.
-- 116 challenges: 18 final BREACH, 20 final COMPLIANT, 74 final INCONCLUSIVE, 4 still being judged.
+- 120 challenges: 22 final BREACH, 20 final COMPLIANT, 75 final INCONCLUSIVE, 3 still being judged.
 - 2 appeals: 1 upheld, 1 rejected.
 - 7 precedents, all active.
-- 2.32125 GEN slashed and 1.160625 GEN paid in bounties.
-- Each of the 18 final breaches was re-checked by hand against the chain's own RPC: 18 of 18 hold.
+- 2.656125 GEN slashed and 1.3280625 GEN paid in bounties.
+- Each of the 22 final breaches was re-checked by hand against the chain's own RPC: 22 of 22 hold.
 
 Most of those challenges were filed by the patrol bot on its own. Many of its INCONCLUSIVE results came from one bug in
 the bot: it kept accusing a clause the linter had flagged, where a breach can never be slashed. The contract handled
