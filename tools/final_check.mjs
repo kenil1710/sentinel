@@ -153,7 +153,7 @@ add("Vercel production build green", ready, fence((vl.stdout + vl.stderr).split(
 const log = git("log", "--format=%H%n%B", "b5145fa..HEAD");
 const bad = ["co-authored-by", "claude", "anthropic", "generated with", " ai "].filter((w) => log.toLowerCase().includes(w));
 const dirty = git("status", "--porcelain");
-const secrets = git("ls-files").split("\n").filter((f) => /accounts\.json|\.env|\.fees\.json/.test(f));
+const secrets = git("ls-files").split("\n").filter((f) => /accounts\.json|\.env|\.fees\.json/.test(f) && !/\.example$/.test(f));
 const pushed = git("rev-parse", "HEAD") === git("rev-parse", "origin/main");
 add("Git history clean (no attribution or AI mentions, no secrets tracked, tree clean, pushed, no force push)",
   bad.length === 0 && secrets.length === 0 && pushed,
