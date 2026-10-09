@@ -159,6 +159,9 @@ const CASES = {
     reason: () => "C1 names its tokens only by symbol; this transfer's token is identified by a self-declared symbol.",
     appealIfCompliant: { by: "watcher", text: async () => "Counter-evidence: clause C1 lists tokens only by ticker symbol and gives no contract address. A token's symbol is chosen by whoever deploys it, and many contracts call themselves USDT. The record identifies the token by its symbol and contract address, but the mandate gives nothing to compare the address with, so it cannot establish which USDT the operator meant." } },
 };
+// A second try at the same question when the first came back INCONCLUSIVE directly (nothing to appeal). Same text,
+// same appeal rule; never forced.
+CASES.e2_symbol2 = { ...CASES.e2_symbol, after: "e2_symbol" };
 
 const st = existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : { contract: ADDRESS, started_at: new Date().toISOString(), agents: {}, cases: {}, events: [] };
 if (st.contract !== ADDRESS) { console.error(`state is for ${st.contract}, not ${ADDRESS}; move ${STATE} aside to reseed`); process.exit(1); }
