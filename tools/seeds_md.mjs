@@ -18,9 +18,9 @@ const SITE = "https://sentinel-tau-ashen.vercel.app";
 const BOT = "0x81d6bf84a5b03950d910b4a2f83c68006e0b93f4";
 const BS = { ethereum: "eth.blockscout.com", base: "base.blockscout.com", arbitrum: "arbitrum.blockscout.com", polygon: "polygon.blockscout.com", robinhood: "robinhoodchain.blockscout.com" };
 async function view(address, fn, args = []) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 30; i++) {
     try { const r = await client.readContract({ address, functionName: fn, args }); return typeof r === "string" ? JSON.parse(r) : r; }
-    catch { await new Promise((r) => setTimeout(r, 5000 * (i + 1))); }
+    catch { await new Promise((r) => setTimeout(r, 20_000)); }
   }
   throw new Error(fn);
 }

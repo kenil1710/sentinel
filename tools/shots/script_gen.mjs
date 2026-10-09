@@ -18,9 +18,9 @@ const dep = JSON.parse(readFileSync(root + "deployments.json", "utf8"));
 const CAN = dep.contracts.Sentinel.address;
 const EX = "https://explorer-studio-dev.genlayer.com";
 async function view(fn, args = [], address = CAN) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 30; i++) {
     try { const r = await client.readContract({ address, functionName: fn, args }); return typeof r === "string" ? JSON.parse(r) : r; }
-    catch { await new Promise((r) => setTimeout(r, 4000 * (i + 1))); }
+    catch { await new Promise((r) => setTimeout(r, 20_000)); }
   }
   throw new Error(fn);
 }

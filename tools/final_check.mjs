@@ -24,12 +24,12 @@ const add = (item, pass, proof) => { rows.push({ item, pass, proof }); console.l
 const fence = (t) => "```\n" + String(t).trim() + "\n```";
 
 async function view(address, fn, args = []) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 30; i++) {
     try {
       const raw = await Promise.race([client.readContract({ address, functionName: fn, args }),
         new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 60_000))]);
       return typeof raw === "string" ? JSON.parse(raw) : raw;
-    } catch { await new Promise((r) => setTimeout(r, 5000 * (i + 1))); }
+    } catch { await new Promise((r) => setTimeout(r, 20_000)); }
   }
   throw new Error("view " + fn);
 }

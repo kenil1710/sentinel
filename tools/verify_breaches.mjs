@@ -16,7 +16,7 @@ const chain = relay ? { ...studioDevnet, rpcUrls: { ...studioDevnet.rpcUrls, def
 const client = createClient({ chain });
 const dep = JSON.parse(readFileSync(root + "deployments.json", "utf8"));
 const CAN = dep.contracts.Sentinel.address;
-const view = async (fn, args) => { for (let i = 0; i < 6; i++) { try { const r = await client.readContract({ address: CAN, functionName: fn, args }); return JSON.parse(r); } catch { await new Promise((r) => setTimeout(r, 5000 * (i + 1))); } } throw new Error(fn); };
+const view = async (fn, args) => { for (let i = 0; i < 6; i++) { try { const r = await client.readContract({ address: CAN, functionName: fn, args }); return JSON.parse(r); } catch { await new Promise((r) => setTimeout(r, 20_000)); } } throw new Error(fn); };
 const all = [...(await view("get_challenges", [0, 100])).challenges, ...(await view("get_challenges", [100, 100])).challenges];
 const breaches = all.filter((c) => c.status === "FINAL" && c.final.verdict === "BREACH").sort((a, b) => a.challenge_id - b.challenge_id);
 const rows = [];
