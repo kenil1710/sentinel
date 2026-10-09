@@ -716,7 +716,7 @@
       }
     },
     "arb2_call": {
-      "state": "CONTESTABLE",
+      "state": "FINAL",
       "cursor": 513086392,
       "tx": {
         "hash": "0x7d11a62b5a8d2f56b15c06f20856e5702e2e9cb7671184bd3b6eee086111ca99",
@@ -761,10 +761,24 @@
           "revert": null,
           "status_after": "CONTESTABLE"
         }
-      ]
+      ],
+      "finalize": {
+        "hash": "0x6fbd829b3c385ab198d14e7dc75acd361f25c11639770356703deb0b1b29e5dc",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 109,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "342dd6c1829e268beaae0140dfb5284f"
+        },
+        "revert": null
+      }
     },
     "poly2_call": {
-      "state": "CONTESTABLE",
+      "state": "FINAL",
       "cursor": 95209000,
       "tx": {
         "hash": "0xd9cc63dfa1e65ac119238889fc7125dc62a259ee997f0da1325f34b17d7b63c8",
@@ -809,7 +823,21 @@
           "revert": null,
           "status_after": "CONTESTABLE"
         }
-      ]
+      ],
+      "finalize": {
+        "hash": "0xc1bbddef1ca9bd6e4b245871c8a50c17dc8e3a5df869dd8343433e7bddee90af",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 110,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "bf89da2872010ac142fb12f14fa9666f"
+        },
+        "revert": null
+      }
     }
   },
   "events": [
@@ -1465,6 +1493,26 @@
       "verdict": "COMPLIANT",
       "clause": "",
       "code": ""
+    },
+    {
+      "at": "2026-10-09T05:14:00.661Z",
+      "kind": "finalize",
+      "case": "arb2_call",
+      "challenge_id": 109,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "342dd6c1829e268beaae0140dfb5284f"
+    },
+    {
+      "at": "2026-10-09T05:15:01.763Z",
+      "kind": "finalize",
+      "case": "poly2_call",
+      "challenge_id": 110,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "bf89da2872010ac142fb12f14fa9666f"
     }
   ],
   "edit_base": {
