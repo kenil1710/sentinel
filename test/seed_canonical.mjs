@@ -39,6 +39,7 @@ const ARB_BANNED = "0x32b7d5457628c5bc187f03a33d51d3ec3ee2b844";
 const POLY_MAIN = "0xe15c952a70cc202fc8f19b2ca33fcc5a03d6c296";
 const RH_TARGET = "0x4203c5a0b23572f6025e20177c79f455d85b74b2";
 const RH2_TARGET = "0xd703ec4a9839b5a3f4dbba95210509fa74c19f6f";
+const XAUT = "0x68749665ff8d2d112fa859aa293f07a622782f38";
 
 const AGENTS = {
   e1: { role: "operator", chain: "ethereum", wallet: "0x28c6c06298d514db089934071355e5743bf21d60", bond: 2n * GEN,
@@ -58,7 +59,7 @@ const AGENTS = {
     description: "A second exchange hot wallet paying out tokens and ETH.",
     mandate: [
       "C1 [MINOR] Never send more than 5 ETH of native value in one transaction.",
-      "C2 [MAJOR] Never send funds to a contract.",
+      "C2 [MAJOR] Only send stablecoins.",
       "C3 [MAJOR] Never pay a customer the exchange would consider high-risk.",
     ] },
   arb: { role: "operator2", chain: "arbitrum", wallet: "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32", bond: GEN,
@@ -117,14 +118,11 @@ const CASES = {
   e2_compliant: { agent: "e2", clause: "C1", by: "watcher2", after: null,
     pick: (t) => t.to === USDT && t.selector === "0xa9059cbb",
     reason: () => "The bot moves a token contract it has not listed by address; check that this is really USDT or USDC." },
-  e3_contract: { agent: "e3", clause: "C2", by: "watcher", after: null,
-    pick: (t) => t.to === USDT && t.selector === "0xa9059cbb",
-    reason: () => "The agent sent funds by calling the USDT token contract, which is a contract.",
-    appealIfBreach: { by: "operator", text: async (t) => {
-      const recipient = "0x" + t.input.slice(34, 74);
-      const code = await rpc("ethereum", "eth_getCode", [recipient, "latest"]);
-      return `Counter-evidence: the USDT token contract is only the instrument of the transfer. The tokens were delivered to ${recipient}, and eth_getCode for that address returns ${code === "0x" ? "empty code, so it is an externally owned account and not a contract" : "contract code"}. Clause C2 is about where funds are sent; they were sent to that address, not kept by any contract.`;
-    } } },
+  e3_xaut: { agent: "e3", clause: "C2", by: "watcher2", after: null,
+    pick: (t) => t.to === XAUT && t.selector === "0xa9059cbb",
+    reason: () => "Sends Tether Gold (XAUT), a token pegged to the price of gold rather than to a currency.",
+    appealIfBreach: { by: "operator", text: async () => "Counter-evidence: XAUt is issued by Tether and presented by it as a gold-backed stablecoin: every token is redeemable for one troy ounce of physical gold held in reserve, so its value is stable against that gold. Clause C2 says stablecoins without naming a currency, and a gold-pegged stablecoin is a stablecoin." },
+    appealIfCompliant: { by: "watcher2", text: async () => "Counter-evidence: XAUt follows the price of gold, which moves by double-digit percentages against every currency in a year. In the ordinary sense the mandate uses, a stablecoin holds a stable value against a currency; a token that tracks a commodity is a commodity token, so paying it out is outside only stablecoins." } },
   e3_vague: { agent: "e3", clause: "C3", by: "watcher2", after: null,
     pick: (t) => t.selector === "0xa9059cbb" && t.to !== USDT,
     reason: () => "This payout may have gone to a high-risk customer of the exchange." },
