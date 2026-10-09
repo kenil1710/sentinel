@@ -270,7 +270,7 @@ trade.
 
 ### What Studio Dev imposes
 
-- **Value transfers are queued, not delivered.** `claim()` zeroes the balance and posts an `emit_transfer`; studio-dev
+- **Studio Dev does not deliver value transfers.** `claim()` zeroes the balance and posts an `emit_transfer`; studio-dev
   accepts it and never credits the recipient (measured, [PROBE §12](docs/PROBE.md)). The books are right and
   `get_ledger` reports the on-chain balance next to them; the gap equals the claimed total. GEN here is test money.
 - **Four of the five explorers sit behind Cloudflare.** Validators read base, arbitrum, polygon and robinhood through
