@@ -10,6 +10,19 @@ Sentinel: bonded mandates for AI agents on GenLayer. Anyone can challenge a tran
 
 _168 characters (limit 180)._
 
+## Milestone reply (≤ 1000)
+
+<!--REPLY-->
+Compare: https://github.com/kenil1710/sentinel/compare/b5145fa76e8aae914ca1735e2d0507fd4860c40a...52bb05329fe68cbb3b0c6f43e95b355c57650d63
+BASE b5145fa is the rewarded version: gen_getContractCode of hackathon contract 0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe is byte-identical to build/Sentinel.min.py at b5145fa (sha256 64d82a25…3f46).
+Key changes: 1) rulings are provisional for an hour and appealable once to a fresh panel; 2) mandates are numbered, versioned clauses frozen at the transaction's block time, with severity-graded slashing computed by code; 3) anyone can challenge, and only final clearances become precedents the patrol bot obeys.
+Tests: 483 → 569 (contract 423 → 507, patrol 60 → 62), all passing.
+Addresses (Studio Dev): Sentinel 0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB, demo 0x74ca153c17a67F3E5Fcd893afF053395AEce1Aff, SentinelConsumer 0x053f15512462FD4f8F70F443EdCA1413e96D5eD0.
+Details: https://github.com/kenil1710/sentinel/blob/main/docs/MILESTONE.md
+<!--/REPLY-->
+
+_982 characters (limit 1000)._
+
 ## Milestone text (≤ 1000)
 
 <!--MILESTONE-->

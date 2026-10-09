@@ -6,6 +6,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 const root = new URL("..", import.meta.url).pathname;
 const git = (...a) => execFileSync("git", ["-C", root, ...a]).toString().trim();
 const FINAL = process.argv[2] ?? git("rev-parse", "HEAD");
@@ -104,7 +105,25 @@ const ex = (a) => `[\`${a}\`](${dep.explorer.replace(/\/$/, "")}/address/${a})`;
 const commits = git("rev-list", "--count", `${BASE}..${FINAL}`);
 const changed = git("diff", "--stat", `${BASE}..${FINAL}`, "--", "contracts", "frontend/src", "test", "tools").split("\n").pop();
 
-const md = `# Sentinel v2 — milestone
+// BASE proof: the hackathon contract's code, read back from the chain, against the artifact at BASE.
+const HACK = "0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe";
+const onchain = await fetch(dep.rpc ?? "https://studio-dev.genlayer.com/api", { method: "POST", headers: { "content-type": "application/json" },
+  body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "gen_getContractCode", params: [HACK] }) }).then((r) => r.json()).then((j) => Buffer.from(j.result, "base64"));
+const artifact = execFileSync("git", ["-C", root, "show", `${BASE}:build/Sentinel.min.py`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const identical = Buffer.compare(onchain, artifact) === 0;
+if (!identical) throw new Error("the hackathon contract's on-chain code does not match build/Sentinel.min.py at BASE");
+const proof = `**BASE = \`${BASE.slice(0, 7)}\`, proven: on-chain code of the hackathon contract is byte-identical to \`build/Sentinel.min.py\` at \`${BASE.slice(0, 7)}\`.**
+
+| | bytes | sha256 |
+|---|---|---|
+| \`gen_getContractCode(${HACK})\` on Studio Dev, read ${new Date().toISOString().slice(0, 10)} | ${onchain.length} | \`${sha(onchain)}\` |
+| [\`build/Sentinel.min.py\` at \`${BASE.slice(0, 7)}\`](${REPO}/blob/${BASE}/build/Sentinel.min.py) | ${artifact.length} | \`${sha(artifact)}\` |
+
+The hackathon contract was deployed from that minified artifact of [\`contracts/Sentinel.py\`](${REPO}/blob/${BASE}/contracts/Sentinel.py); both files last changed together, in \`df2a633\` (2026-09-12), and the five later commits up to \`${BASE.slice(0, 7)}\` (2026-09-13), the last on main before the 2026-09-17 23:59 UTC cut-off, touch neither. Reproduce: \`node tools/milestone.mjs\` refuses to write this file if the bytes differ.
+
+`;
+const md = proof + `# Sentinel v2 — milestone
 
 | | |
 |---|---|

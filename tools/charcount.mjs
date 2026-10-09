@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 const p = new URL("../docs/SUBMISSION.md", import.meta.url);
 let md = readFileSync(p, "utf8");
-const limits = { ONELINER: 180, MILESTONE: 1000, PROJECT: 1000, REVIEW: 500 };
+const limits = { ONELINER: 180, REPLY: 1000, MILESTONE: 1000, PROJECT: 1000, REVIEW: 500 };
 let bad = 0;
 for (const [k, lim] of Object.entries(limits)) {
   const m = md.match(new RegExp(`<!--${k}-->\\n([\\s\\S]*?)\\n<!--/${k}-->(\\n\\n_[^\\n]*_)?`));

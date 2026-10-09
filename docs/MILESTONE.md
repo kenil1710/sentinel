@@ -1,3 +1,12 @@
+**BASE = `b5145fa`, proven: on-chain code of the hackathon contract is byte-identical to `build/Sentinel.min.py` at `b5145fa`.**
+
+| | bytes | sha256 |
+|---|---|---|
+| `gen_getContractCode(0x67A1276E240376D06Cec7bA37AE3E497AeF48dEe)` on Studio Dev, read 2026-10-09 | 50355 | `64d82a250f22bed0c243b37d1c523425556a63adc591f52237d9be926d313f46` |
+| [`build/Sentinel.min.py` at `b5145fa`](https://github.com/kenil1710/sentinel/blob/b5145fa76e8aae914ca1735e2d0507fd4860c40a/build/Sentinel.min.py) | 50355 | `64d82a250f22bed0c243b37d1c523425556a63adc591f52237d9be926d313f46` |
+
+The hackathon contract was deployed from that minified artifact of [`contracts/Sentinel.py`](https://github.com/kenil1710/sentinel/blob/b5145fa76e8aae914ca1735e2d0507fd4860c40a/contracts/Sentinel.py); both files last changed together, in `df2a633` (2026-09-12), and the five later commits up to `b5145fa` (2026-09-13), the last on main before the 2026-09-17 23:59 UTC cut-off, touch neither. Reproduce: `node tools/milestone.mjs` refuses to write this file if the bytes differ.
+
 # Sentinel v2 — milestone
 
 | | |
