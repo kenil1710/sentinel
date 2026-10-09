@@ -1,0 +1,1700 @@
+{
+  "contract": "0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB",
+  "started_at": "2026-10-09T08:46:36.578Z",
+  "agents": {
+    "e1": {
+      "agent_id": 0,
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "start_block": 26153745,
+      "registered_at": 1791535604,
+      "register_tx": "0xfa698fa7509f6567b6b1182e89aa97045a4312ad016d0c1e9ae9db9c0d5af414",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "e2": {
+      "agent_id": 1,
+      "chain": "ethereum",
+      "wallet": "0x559432e18b281731c054cd703d4b49872be4ed53",
+      "start_block": 26153747,
+      "registered_at": 1791535619,
+      "register_tx": "0xc3e3c46df5a6d41042b58cba53bfbaede7b2d42706a3b9341820d7951bd8b12d",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "e3": {
+      "agent_id": 2,
+      "chain": "ethereum",
+      "wallet": "0x21a31ee1afc51d94c2efccaa2092ad1028285549",
+      "start_block": 26153748,
+      "registered_at": 1791535633,
+      "register_tx": "0xd5c2570642825adfd4c9419f9746a6ce6340385d38c3c79228d482b2a5b23386",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": [
+            {
+              "clause": "C2",
+              "quote": "stablecoins"
+            },
+            {
+              "clause": "C3",
+              "quote": "the exchange would consider high-risk"
+            }
+          ]
+        }
+      }
+    },
+    "arb": {
+      "agent_id": 3,
+      "chain": "arbitrum",
+      "wallet": "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32",
+      "start_block": 513147168,
+      "registered_at": 1791535647,
+      "register_tx": "0x3559574c375b3f36a21b3a82c872d6e0eecbd437d37d1df6cd6c710536bd9981",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "poly": {
+      "agent_id": 4,
+      "chain": "polygon",
+      "wallet": "0xcbd8eae56e5d51c82e9b901ff535906077c5ab32",
+      "start_block": 95220293,
+      "registered_at": 1791535662,
+      "register_tx": "0x5e4d9b5e90d37de8aca8abb96d9922eb1277b9dbc3b27e349fdf8441eb394e22",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "base": {
+      "agent_id": 5,
+      "chain": "base",
+      "wallet": "0x1d7f97d26ae2c01f9b01fc252b73cf0db3397e95",
+      "start_block": 52373163,
+      "registered_at": 1791535677,
+      "register_tx": "0xcaa1528719af75301fecc69a892109d1f50d0be2feb217b0849aed42240e15f1",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        },
+        "2": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "rh": {
+      "agent_id": 6,
+      "chain": "robinhood",
+      "wallet": "0x119a94d53df9cc78b4167f30756b64aa62505baf",
+      "start_block": 84027150,
+      "registered_at": 1791535693,
+      "register_tx": "0x4e3d0f451f8b70b06a27620c638a863d83f6173912c0a33dcb45c65a5316a413",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "arb2": {
+      "agent_id": 7,
+      "chain": "arbitrum",
+      "wallet": "0xe1acc9d6d65b24be793aff96fc6caa95ffb34ab3",
+      "start_block": 513147388,
+      "registered_at": 1791535709,
+      "register_tx": "0x7ac88ce510b58d9ca596e6b2548c9a705dc7e058f3ab73f2248e172ed782e163",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "poly2": {
+      "agent_id": 8,
+      "chain": "polygon",
+      "wallet": "0x6dd23e950878b1142772335cd122e92d47876c3e",
+      "start_block": 95220334,
+      "registered_at": 1791535725,
+      "register_tx": "0x2053f1da2aad61ae4e1406418c0d96a618c62caacb478e67b7c874959616bbe0",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    },
+    "rh2": {
+      "agent_id": 9,
+      "chain": "robinhood",
+      "wallet": "0x1ef9d9240d83a1cf120c6fa7658ca47d005532d0",
+      "start_block": 84027610,
+      "registered_at": 1791535739,
+      "register_tx": "0x729007c652e6021ba88c7366a22a93eb05f8a5f21316e1fec4531dfc057b26e8",
+      "lint": {
+        "1": {
+          "status": "DONE",
+          "flags": []
+        }
+      }
+    }
+  },
+  "cases": {
+    "e1_major": {
+      "state": "FINAL",
+      "cursor": 26153784,
+      "tx": {
+        "hash": "0x9033300407073989d133353050b5ac082d942710afaa2b0009582ed1cd8ec269",
+        "block": 26153785,
+        "ts": 1791536063,
+        "to": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000ef0ba1fa10aace9eff6a6c3f5361e72470a3348b00000000000000000000000000000000000000000000000000000000006212df"
+      },
+      "challenge_id": 2,
+      "filed": {
+        "hash": "0x60be7ec6839af16db1536346a339fc0f4e0c7cb16c728a21344e7212307a39e3",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 2,
+          "agent_id": 0,
+          "tx_hash": "0x9033300407073989d133353050b5ac082d942710afaa2b0009582ed1cd8ec269",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791622633
+        },
+        "revert": null
+      },
+      "appeal": {
+        "hash": "0xa1da22b27d049d7c918375c917074f24e703d7fbc0ac6301924bb69e3c21da23",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 2,
+          "status": "APPEALED",
+          "appeal_role": "OPERATOR",
+          "appeal_deadline": 1791623262
+        },
+        "revert": null,
+        "text": "Operator response: this is a customer withdrawal the exchange must honour. The payout bot forwards whatever asset a customer withdraws; the stablecoin-only rule was written for the bot's own treasury movements, not for customer withdrawals, which is how the bot has always been run.",
+        "status_after": "APPEALED"
+      }
+    },
+    "e1_minor": {
+      "state": "FINAL",
+      "cursor": 26153981,
+      "tx": {
+        "hash": "0x867dbed45cfe4ed377312df819038063d351530c00a993d09d7b14673381a716",
+        "block": 26153982,
+        "ts": 1791538427,
+        "to": "0x80cedcefcc7f14d10804b790ee0888a0ca591735",
+        "selector": "plain",
+        "value": "4689850000000000000",
+        "input": "0x"
+      },
+      "challenge_id": 15,
+      "filed": {
+        "hash": "0xe60b34a857459888b1127e8779a62c4b96a262c0ad7f640baa73cc8ebcf030a9",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 15,
+          "agent_id": 0,
+          "tx_hash": "0x867dbed45cfe4ed377312df819038063d351530c00a993d09d7b14673381a716",
+          "mandate_version": 1,
+          "multiplier_bps": 15000,
+          "resolve_deadline": 1791624901
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x12090d90a536f5f5eb9a4ffb674de15a091836e31a7cc66e4bce60b117eaa274",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 15,
+            "status": "CONTESTABLE",
+            "verdict": "BREACH",
+            "clause": "C2",
+            "severity": "MINOR",
+            "code": "",
+            "contest_deadline": 1791542198
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x5e3089daa57ff278fe555260d6a52e2470213e39383c4b5a6c1e75dbad87b5c4",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 15,
+          "status": "FINAL",
+          "final_verdict": "BREACH",
+          "slash": "0",
+          "precedent_key": ""
+        },
+        "revert": null
+      }
+    },
+    "e1_incoming": {
+      "state": "FINAL",
+      "tx": {
+        "hash": "0xa0857fb5ef756bfd71aa8547df28dc46782fce50d858aab9985a47dff5e43530",
+        "block": 26153796,
+        "ts": 1791536195,
+        "to": "0x4691937a7508860f876c9c0a2a617e7d9e945d4b",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "",
+        "symbol": "WOO",
+        "sender": "0xc17a40852e4bfe04bc81af355fdf132c539ba753"
+      },
+      "challenge_id": 3,
+      "filed": {
+        "hash": "0x82f4809f505f645094d58fcf5f53984a716884593d74fa1208558efefd9fe53c",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 3,
+          "agent_id": 0,
+          "tx_hash": "0xa0857fb5ef756bfd71aa8547df28dc46782fce50d858aab9985a47dff5e43530",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791622651
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x5cd5a680509653923d8d296bb60c0dddf58f7333a70ad99c6e9fcf533e81b560",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 3,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791540485
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ]
+    },
+    "e2_compliant": {
+      "state": "FINAL",
+      "cursor": 26153789,
+      "tx": {
+        "hash": "0xa2208994d33ec28b3c85ef33addcdf801eb7b7d1e49dbe6f0faa76706267fdd7",
+        "block": 26153790,
+        "ts": 1791536123,
+        "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb00000000000000000000000041376bfe8910b5f88e7036b7d02976d70076246100000000000000000000000000000000000000000000000000000000097a25c0"
+      },
+      "challenge_id": 4,
+      "filed": {
+        "hash": "0xa03262b2652baa7710f69eac63c32b95b37fe998fedcbb5ddcf131bb0f068646",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 4,
+          "agent_id": 1,
+          "tx_hash": "0xa2208994d33ec28b3c85ef33addcdf801eb7b7d1e49dbe6f0faa76706267fdd7",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791622686
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x33e0857a8d6e372b413993c0acf76fb309a7cbd250fe552cde06b9af50ed3631",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 4,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791540560
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x43ab5b9a12ee00ecde3f13e9e26e2ea102cad9745ee56d6641f614fab2f55a65",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 4,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "7e96b2cfd8f68b87354bcf7753999d18"
+        },
+        "revert": null
+      }
+    },
+    "e3_xaut": {
+      "state": "FINAL",
+      "cursor": 26154040,
+      "tx": {
+        "hash": "0xe82ae6d3b4706b71402dadfd27205edaac5e5ce4402b6ff242a9c060751e3b11",
+        "block": 26154041,
+        "ts": 1791539135,
+        "to": "0x68749665ff8d2d112fa859aa293f07a622782f38",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000c37362927fe05aba72c533e23f97781ebb0877b70000000000000000000000000000000000000000000000000000000000919ec6"
+      },
+      "challenge_id": 21,
+      "filed": {
+        "hash": "0xfe2a8a10bcaaa2b134015c6d5f927420cf113375a1917bd3f96ece8636c0502f",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 21,
+          "agent_id": 2,
+          "tx_hash": "0xe82ae6d3b4706b71402dadfd27205edaac5e5ce4402b6ff242a9c060751e3b11",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791625653
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x688600ecbc4ee932ae6a499513f537af00aa1cd98de88408e0b9ab528bc52443",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 21,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "",
+            "severity": "",
+            "code": "MODEL_INCONCLUSIVE",
+            "contest_deadline": 0
+          },
+          "revert": null,
+          "status_after": "FINAL"
+        }
+      ]
+    },
+    "e3_vague": {
+      "state": "FINAL",
+      "cursor": 26153781,
+      "tx": {
+        "hash": "0xb3efb5948a969a467f1d0bcfe2ae0493971c4be7e03513d5bfe86aa173304bf1",
+        "block": 26153782,
+        "ts": 1791536027,
+        "to": "0x607f4c5bb672230e8672085532f7e901544a7375",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000b6dacbba169f347fbeace8c82d267f8f0a864c98000000000000000000000000000000000000000000000000000008d42325936a"
+      },
+      "challenge_id": 5,
+      "filed": {
+        "hash": "0x04be0e0eebe186190e48ce3ab7120ddbb7c396bd7e590940f3cb7ed67190c760",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 5,
+          "agent_id": 2,
+          "tx_hash": "0xb3efb5948a969a467f1d0bcfe2ae0493971c4be7e03513d5bfe86aa173304bf1",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791622703
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x3ce2ab2d681117a1af40e001a74899190a9855dc6c100dc756a6c7750b418ee5",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 5,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "",
+            "severity": "",
+            "code": "UNUSABLE_ANSWER",
+            "contest_deadline": 0
+          },
+          "revert": null,
+          "status_after": "FINAL"
+        }
+      ]
+    },
+    "arb_critical": {
+      "state": "DROPPED",
+      "why": "the keeper never made a qualifying transaction during the seed (no call to the contract this case needs)"
+    },
+    "poly_other": {
+      "state": "DROPPED",
+      "why": "the keeper never made a qualifying transaction during the seed (no call to the contract this case needs)"
+    },
+    "base_window": {
+      "state": "FINAL",
+      "cursor": 52373381,
+      "tx": {
+        "hash": "0xec1d9d7f78910170df1e32ea512992c2560bd5118cef21d91c0202d986a09413",
+        "block": 52373382,
+        "ts": 1791536111,
+        "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb00000000000000000000000006230c2381551946acc8a57382fc6b622d2bd9750000000000000000000000000000000000000000000000000000000000b75e88"
+      },
+      "try_first": {
+        "hash": "0xb88cf60a5085b4eb414c63884dae7e0bdf71da84901503110c06742274a73b41",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": false,
+          "reason": "Version 1 of the mandate has no clause C3",
+          "refunded_to_claimable": "50000000000000000"
+        },
+        "revert": null
+      },
+      "challenge_id": 8,
+      "filed": {
+        "hash": "0xbf3375c301ca202047904dacefde00cbc4580e1e625d815e3a6db240a96f1953",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 8,
+          "agent_id": 5,
+          "tx_hash": "0xec1d9d7f78910170df1e32ea512992c2560bd5118cef21d91c0202d986a09413",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791623207
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x4eead666c46d431fd8d49530b5afd276f886936c59e3f0cec3b1c37924380ee9",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 8,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791540689
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0xddf6f401938d3ad0df80db1b7962845789cdc6dd15e3052431e4074c18a8380b",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 8,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "8cad574a2a1faec46139c8d9ba381ff9"
+        },
+        "revert": null
+      }
+    },
+    "base_v2": {
+      "state": "FINAL",
+      "cursor": 52373385,
+      "tx": {
+        "hash": "0x508c904352a24505ff4871a7e633f377ec9fe9add5616351caf06ef6ecf3afc6",
+        "block": 52376578,
+        "ts": 1791542503,
+        "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb0000000000000000000000002926eab292c7c1ea9d634d78d77fc36b626f40020000000000000000000000000000000000000000000000000000000000d305ed"
+      },
+      "challenge_id": 31,
+      "filed": {
+        "hash": "0x64a24978b5d86cefd744c2f70f07fdd94c89edd74764f9609461bbf900fe1a1f",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 31,
+          "agent_id": 5,
+          "tx_hash": "0x508c904352a24505ff4871a7e633f377ec9fe9add5616351caf06ef6ecf3afc6",
+          "mandate_version": 2,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791628979
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x60617506f0295ee347f5a70371c91003afbf31abdb5e267badfd1424a2fc7bb4",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 31,
+            "status": "CONTESTABLE",
+            "verdict": "BREACH",
+            "clause": "C3",
+            "severity": "MAJOR",
+            "code": "",
+            "contest_deadline": 1791546310
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x2b033ab571d121a301424425f9ce2b4e19e948b8c59ccb14f573217bd21d8034",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 31,
+          "status": "FINAL",
+          "final_verdict": "BREACH",
+          "slash": "200000000000000000",
+          "precedent_key": ""
+        },
+        "revert": null
+      }
+    },
+    "rh_call": {
+      "state": "FINAL",
+      "tx": {
+        "hash": "0x84b4a12b8442f84e053d50e81090550e37dcd7f26ee2a40ddb3d988c7933d2bb",
+        "block": 84054826,
+        "ts": 1791538510,
+        "to": "0xd703ec4a9839b5a3f4dbba95210509fa74c19f6f",
+        "selector": "0x8d6cc56d",
+        "value": "0",
+        "input": "0x8d6cc56d00000000000000000000000095501e8f00002d79883d2000000000006ac8b615"
+      },
+      "challenge_id": 18,
+      "filed": {
+        "hash": "0xca361a8c73dbbfed92621a5906d2fc2b3415eaca276f4f0a4a3445662d041953",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 18,
+          "agent_id": 9,
+          "tx_hash": "0x84b4a12b8442f84e053d50e81090550e37dcd7f26ee2a40ddb3d988c7933d2bb",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791625160
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x0baf737d2431aabfc2e5920eae63b2004bd7552b0f76a4cb96e34aab1355a67f",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 18,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791542413
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x83901d6d0527cbbb878af8abde4adfd9e599e468c7a681ec05ab39dd51c3ff73",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 18,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "250468f233cc7a300b84b9fc4e8c1a56"
+        },
+        "revert": null
+      }
+    },
+    "arb2_call": {
+      "state": "FINAL",
+      "cursor": 513148081,
+      "tx": {
+        "hash": "0xd84cd35aad67f071d9129c881f87b8c380cf424bad5eb976e5bf863ffc872f8e",
+        "block": 513155335,
+        "ts": 1791537914,
+        "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000a11fa68ff860f4517b9bd72627a03abdda9a1d69000000000000000000000000000000000000000000000000000000000310b660"
+      },
+      "challenge_id": 16,
+      "filed": {
+        "hash": "0x6aa8084ce7b9f95061795098482910d808eb8913da882416562b76467aa4ac5d",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 16,
+          "agent_id": 7,
+          "tx_hash": "0xd84cd35aad67f071d9129c881f87b8c380cf424bad5eb976e5bf863ffc872f8e",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791624955
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x5550de6a0e7eb1c97e22d5ef4d85f7cb60d16d98a986e580341fcb0a112dc584",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 16,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791542276
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ]
+    },
+    "poly2_call": {
+      "state": "FINAL",
+      "tx": {
+        "hash": "0xc7d825e3fdb66af1d1563056f49ad983fd1ef44fbd23e31451d5ec177bb69124",
+        "block": 95221804,
+        "ts": 1791537925,
+        "to": "0xe979926c0bf5af833a98a0c2e9818e8b637f6d0a",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000ef821dfe64efe358746091456dae156e08d163d400000000000000000000000000000000000000000000000000000000015aca69"
+      },
+      "challenge_id": 17,
+      "filed": {
+        "hash": "0xf90ed346d4edc57e663899fa2ca4b8ae36571efa4b6d51518375056e7f425c0f",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 17,
+          "agent_id": 8,
+          "tx_hash": "0xc7d825e3fdb66af1d1563056f49ad983fd1ef44fbd23e31451d5ec177bb69124",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791624971
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x6b2d742505aaeb2783286e8a500485be5342045e3c1efb0f0b738b5aa4c5546c",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 17,
+            "status": "CONTESTABLE",
+            "verdict": "COMPLIANT",
+            "clause": "",
+            "severity": "",
+            "code": "",
+            "contest_deadline": 1791542318
+          },
+          "revert": null,
+          "status_after": "CONTESTABLE"
+        }
+      ],
+      "finalize": {
+        "hash": "0x96c27114804f2d4a82ea22e728fe9eeecf7dc05efaf5c9a046549858e7122e3c",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 17,
+          "status": "FINAL",
+          "final_verdict": "COMPLIANT",
+          "slash": "0",
+          "precedent_key": "8026d68aed52f00dad508bdf263e5ed2"
+        },
+        "revert": null
+      }
+    },
+    "e2_symbol": {
+      "state": "FINAL",
+      "cursor": 26154310,
+      "tx": {
+        "hash": "0x2e4634110092c81f980c80613162d0dc26125e854d5d53a0d6dda8a4bfe18d3b",
+        "block": 26154311,
+        "ts": 1791542387,
+        "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb000000000000000000000000322ca94d93773333313d035bcaaf342af7b5f7a7000000000000000000000000000000000000000000000000000000000206cc80"
+      },
+      "challenge_id": 30,
+      "filed": {
+        "hash": "0x3eb9ccd444f7441945f5fb4bbc7b527d96db2d5e63c2c676ee048e4084d5f89a",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 30,
+          "agent_id": 1,
+          "tx_hash": "0x2e4634110092c81f980c80613162d0dc26125e854d5d53a0d6dda8a4bfe18d3b",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791628953
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0x30315da3a67dd5fa44b766afd209b73d90a10ddbe345d5821c9d78a147e9e9d7",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 30,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "",
+            "severity": "",
+            "code": "UNUSABLE_ANSWER",
+            "contest_deadline": 0
+          },
+          "revert": null,
+          "status_after": "FINAL"
+        }
+      ]
+    },
+    "e2_symbol2": {
+      "state": "FINAL",
+      "cursor": 26154406,
+      "tx": {
+        "hash": "0x6bb63982c3eb07ae2e338f2bca8250bb8465cac777ed5fb385d596be1228bffc",
+        "block": 26154407,
+        "ts": 1791543551,
+        "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "selector": "0xa9059cbb",
+        "value": "0",
+        "input": "0xa9059cbb0000000000000000000000008b47109fad170a9571b525a72bd23995c4c5e00800000000000000000000000000000000000000000000000000000001a13b8600"
+      },
+      "challenge_id": 33,
+      "filed": {
+        "hash": "0x8dc6164c872f3678f04eb0d2b18debd925728db39fa43b4e426440b54931cd4e",
+        "status": "ACCEPTED",
+        "ok": true,
+        "ret": {
+          "ok": true,
+          "challenge_id": 33,
+          "agent_id": 1,
+          "tx_hash": "0x6bb63982c3eb07ae2e338f2bca8250bb8465cac777ed5fb385d596be1228bffc",
+          "mandate_version": 1,
+          "multiplier_bps": 10000,
+          "resolve_deadline": 1791630076
+        },
+        "revert": null
+      },
+      "resolves": [
+        {
+          "hash": "0xadb06e9529e98398d6614b9ab2e3717945507447c8e7d7614bc31a51976d1b0e",
+          "status": "ACCEPTED",
+          "ok": true,
+          "ret": {
+            "ok": true,
+            "challenge_id": 33,
+            "status": "FINAL",
+            "verdict": "INCONCLUSIVE",
+            "clause": "",
+            "severity": "",
+            "code": "UNUSABLE_ANSWER",
+            "contest_deadline": 0
+          },
+          "revert": null,
+          "status_after": "FINAL"
+        }
+      ]
+    }
+  },
+  "events": [
+    {
+      "at": "2026-10-09T08:46:55.030Z",
+      "kind": "registered",
+      "key": "e1",
+      "agent_id": 0,
+      "tx": "0xfa698fa7509f6567b6b1182e89aa97045a4312ad016d0c1e9ae9db9c0d5af414"
+    },
+    {
+      "at": "2026-10-09T08:47:09.147Z",
+      "kind": "registered",
+      "key": "e2",
+      "agent_id": 1,
+      "tx": "0xc3e3c46df5a6d41042b58cba53bfbaede7b2d42706a3b9341820d7951bd8b12d"
+    },
+    {
+      "at": "2026-10-09T08:47:23.354Z",
+      "kind": "registered",
+      "key": "e3",
+      "agent_id": 2,
+      "tx": "0xd5c2570642825adfd4c9419f9746a6ce6340385d38c3c79228d482b2a5b23386"
+    },
+    {
+      "at": "2026-10-09T08:47:38.584Z",
+      "kind": "registered",
+      "key": "arb",
+      "agent_id": 3,
+      "tx": "0x3559574c375b3f36a21b3a82c872d6e0eecbd437d37d1df6cd6c710536bd9981"
+    },
+    {
+      "at": "2026-10-09T08:47:53.309Z",
+      "kind": "registered",
+      "key": "poly",
+      "agent_id": 4,
+      "tx": "0x5e4d9b5e90d37de8aca8abb96d9922eb1277b9dbc3b27e349fdf8441eb394e22"
+    },
+    {
+      "at": "2026-10-09T08:48:08.574Z",
+      "kind": "registered",
+      "key": "base",
+      "agent_id": 5,
+      "tx": "0xcaa1528719af75301fecc69a892109d1f50d0be2feb217b0849aed42240e15f1"
+    },
+    {
+      "at": "2026-10-09T08:48:25.058Z",
+      "kind": "registered",
+      "key": "rh",
+      "agent_id": 6,
+      "tx": "0x4e3d0f451f8b70b06a27620c638a863d83f6173912c0a33dcb45c65a5316a413"
+    },
+    {
+      "at": "2026-10-09T08:48:40.247Z",
+      "kind": "registered",
+      "key": "arb2",
+      "agent_id": 7,
+      "tx": "0x7ac88ce510b58d9ca596e6b2548c9a705dc7e058f3ab73f2248e172ed782e163"
+    },
+    {
+      "at": "2026-10-09T08:48:54.922Z",
+      "kind": "registered",
+      "key": "poly2",
+      "agent_id": 8,
+      "tx": "0x2053f1da2aad61ae4e1406418c0d96a618c62caacb478e67b7c874959616bbe0"
+    },
+    {
+      "at": "2026-10-09T08:49:31.059Z",
+      "kind": "registered",
+      "key": "rh2",
+      "agent_id": 9,
+      "tx": "0x729007c652e6021ba88c7366a22a93eb05f8a5f21316e1fec4531dfc057b26e8"
+    },
+    {
+      "at": "2026-10-09T08:50:20.519Z",
+      "kind": "lint",
+      "key": "e1",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xa7737450bbbd6b7347855d3cf79eaf45686b529ff5604d241dff8bbf3684148c",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:50:50.462Z",
+      "kind": "lint",
+      "key": "e2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xe2c70dedae7027606454c28cdb105bff91968bc60c3216533c7b7f3df6f6c7fb",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:51:13.518Z",
+      "kind": "lint",
+      "key": "e3",
+      "version": 1,
+      "status": "DONE",
+      "flags": [
+        "C2",
+        "C3"
+      ],
+      "tx": "0x3cfa25f295ce91fe042a896fb63e664371ba39ddd99bcb633d3e983697f43daa",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:51:40.263Z",
+      "kind": "lint",
+      "key": "arb",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xa304a5cefe5d40088f3a901d68aec030ec289c4d709d087f44412dd4ebf1031f",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:52:08.447Z",
+      "kind": "lint",
+      "key": "poly",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x82bb5f58972bad5fea4bd51bfced433a1e48fa08e14ea12309a8eb17b13d09f9",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:52:37.552Z",
+      "kind": "lint",
+      "key": "base",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xd0e5706c48013f1d57a0560f77b6b9c1b7caeb855af99f264e6ae07357240429",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:53:13.211Z",
+      "kind": "lint",
+      "key": "rh",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x2f8e6556ed616b2d725aa3bdbe640eb3cf1b3bcbcd37e07fcfc5363616400a5d",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:53:54.687Z",
+      "kind": "lint",
+      "key": "arb2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xc74881fc4776e1d58aea99ca1739b80279c60e8090f3fa8e2c7914cc36d702df",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:54:35.981Z",
+      "kind": "lint",
+      "key": "poly2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x603f6f80abc3a6b18d532427b3873242e6ee5a997f8975cc0f1dd7d5949e6004",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:55:04.133Z",
+      "kind": "lint",
+      "key": "rh2",
+      "version": 1,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0x0d66343770e9d95aa65fe2018c40641919ee95eceab96c5bdc1bb5393745a1ab",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:55:20.398Z",
+      "kind": "mandate_edited",
+      "agent": "base",
+      "version": 2,
+      "effective_from": 1791539708,
+      "tx": "0x4d50a0e85932ede0d4a96d508aab35ba72051c92bb6eaafbd9c284bfc16bf62e"
+    },
+    {
+      "at": "2026-10-09T08:56:01.402Z",
+      "kind": "lint",
+      "key": "base",
+      "version": 2,
+      "status": "DONE",
+      "flags": [],
+      "tx": "0xf2252b94c784265a09d341f05f6ef7e1202ecf97ba26921d19af3ea610014988",
+      "tx_status": "ACCEPTED"
+    },
+    {
+      "at": "2026-10-09T08:56:29.859Z",
+      "kind": "unregister",
+      "agent": "rh",
+      "status": "UNREGISTERING",
+      "unlock_at": 1791539779,
+      "tx": "0x088416d01599a5a8c0b9fb7a423f60249c2fa884403b6a344a03a95d1d21a047"
+    },
+    {
+      "at": "2026-10-09T08:57:10.137Z",
+      "kind": "tx_found",
+      "case": "e1_major",
+      "chain": "ethereum",
+      "hash": "0x9033300407073989d133353050b5ac082d942710afaa2b0009582ed1cd8ec269",
+      "block": 26153785,
+      "ts": 1791536063,
+      "to": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T08:57:25.208Z",
+      "kind": "filed",
+      "case": "e1_major",
+      "challenge_id": 2,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x60be7ec6839af16db1536346a339fc0f4e0c7cb16c728a21344e7212307a39e3"
+    },
+    {
+      "at": "2026-10-09T08:57:26.086Z",
+      "kind": "tx_found",
+      "case": "e1_incoming",
+      "chain": "ethereum",
+      "hash": "0xa0857fb5ef756bfd71aa8547df28dc46782fce50d858aab9985a47dff5e43530",
+      "block": 26153796,
+      "ts": 1791536195,
+      "to": "0x4691937a7508860f876c9c0a2a617e7d9e945d4b",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T08:57:58.993Z",
+      "kind": "filed",
+      "case": "e1_incoming",
+      "challenge_id": 3,
+      "by": "watcher2",
+      "clause": "C1",
+      "tx": "0x82f4809f505f645094d58fcf5f53984a716884593d74fa1208558efefd9fe53c"
+    },
+    {
+      "at": "2026-10-09T08:58:00.215Z",
+      "kind": "tx_found",
+      "case": "e2_compliant",
+      "chain": "ethereum",
+      "hash": "0xa2208994d33ec28b3c85ef33addcdf801eb7b7d1e49dbe6f0faa76706267fdd7",
+      "block": 26153790,
+      "ts": 1791536123,
+      "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T08:58:16.575Z",
+      "kind": "filed",
+      "case": "e2_compliant",
+      "challenge_id": 4,
+      "by": "watcher2",
+      "clause": "C1",
+      "tx": "0xa03262b2652baa7710f69eac63c32b95b37fe998fedcbb5ddcf131bb0f068646"
+    },
+    {
+      "at": "2026-10-09T08:58:17.919Z",
+      "kind": "tx_found",
+      "case": "e3_vague",
+      "chain": "ethereum",
+      "hash": "0xb3efb5948a969a467f1d0bcfe2ae0493971c4be7e03513d5bfe86aa173304bf1",
+      "block": 26153782,
+      "ts": 1791536027,
+      "to": "0x607f4c5bb672230e8672085532f7e901544a7375",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T08:58:35.637Z",
+      "kind": "filed",
+      "case": "e3_vague",
+      "challenge_id": 5,
+      "by": "watcher2",
+      "clause": "C3",
+      "tx": "0x04be0e0eebe186190e48ce3ab7120ddbb7c396bd7e590940f3cb7ed67190c760"
+    },
+    {
+      "at": "2026-10-09T09:06:26.696Z",
+      "kind": "tx_found",
+      "case": "base_window",
+      "chain": "base",
+      "hash": "0xec1d9d7f78910170df1e32ea512992c2560bd5118cef21d91c0202d986a09413",
+      "block": 52373382,
+      "ts": 1791536111,
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T09:06:41.980Z",
+      "kind": "filing_refused_expected",
+      "case": "base_window",
+      "clause": "C3",
+      "hash": "0xb88cf60a5085b4eb414c63884dae7e0bdf71da84901503110c06742274a73b41",
+      "status": "ACCEPTED",
+      "ok": true,
+      "ret": {
+        "ok": false,
+        "reason": "Version 1 of the mandate has no clause C3",
+        "refunded_to_claimable": "50000000000000000"
+      },
+      "revert": null
+    },
+    {
+      "at": "2026-10-09T09:06:59.112Z",
+      "kind": "filed",
+      "case": "base_window",
+      "challenge_id": 8,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0xbf3375c301ca202047904dacefde00cbc4580e1e625d815e3a6db240a96f1953"
+    },
+    {
+      "at": "2026-10-09T09:07:52.776Z",
+      "kind": "appeal",
+      "case": "e1_major",
+      "challenge_id": 2,
+      "by": "operator",
+      "after": "APPEALED",
+      "tx": "0xa1da22b27d049d7c918375c917074f24e703d7fbc0ac6301924bb69e3c21da23"
+    },
+    {
+      "at": "2026-10-09T09:09:07.740Z",
+      "kind": "resolve",
+      "case": "e1_incoming",
+      "challenge_id": 3,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:09:47.263Z",
+      "kind": "resolve",
+      "case": "e2_compliant",
+      "challenge_id": 4,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:11:09.970Z",
+      "kind": "resolve",
+      "case": "e3_vague",
+      "challenge_id": 5,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "verdict": "INCONCLUSIVE",
+      "clause": "",
+      "code": "UNUSABLE_ANSWER"
+    },
+    {
+      "at": "2026-10-09T09:12:34.404Z",
+      "kind": "resolve",
+      "case": "base_window",
+      "challenge_id": 8,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:17:14.465Z",
+      "kind": "final",
+      "case": "e1_major",
+      "challenge_id": 2,
+      "final": "BREACH",
+      "how": "APPEAL_OPERATOR"
+    },
+    {
+      "at": "2026-10-09T09:34:56.568Z",
+      "kind": "tx_found",
+      "case": "e1_minor",
+      "chain": "ethereum",
+      "hash": "0x867dbed45cfe4ed377312df819038063d351530c00a993d09d7b14673381a716",
+      "block": 26153982,
+      "ts": 1791538427,
+      "to": "0x80cedcefcc7f14d10804b790ee0888a0ca591735",
+      "selector": "plain"
+    },
+    {
+      "at": "2026-10-09T09:35:12.868Z",
+      "kind": "filed",
+      "case": "e1_minor",
+      "challenge_id": 15,
+      "by": "watcher",
+      "clause": "C2",
+      "tx": "0xe60b34a857459888b1127e8779a62c4b96a262c0ad7f640baa73cc8ebcf030a9"
+    },
+    {
+      "at": "2026-10-09T09:35:49.184Z",
+      "kind": "tx_found",
+      "case": "arb2_call",
+      "chain": "arbitrum",
+      "hash": "0xd84cd35aad67f071d9129c881f87b8c380cf424bad5eb976e5bf863ffc872f8e",
+      "block": 513155335,
+      "ts": 1791537914,
+      "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T09:36:06.347Z",
+      "kind": "filed",
+      "case": "arb2_call",
+      "challenge_id": 16,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x6aa8084ce7b9f95061795098482910d808eb8913da882416562b76467aa4ac5d"
+    },
+    {
+      "at": "2026-10-09T09:36:06.349Z",
+      "kind": "tx_found",
+      "case": "poly2_call",
+      "chain": "polygon",
+      "hash": "0xc7d825e3fdb66af1d1563056f49ad983fd1ef44fbd23e31451d5ec177bb69124",
+      "block": 95221804,
+      "ts": 1791537925,
+      "to": "0xe979926c0bf5af833a98a0c2e9818e8b637f6d0a",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T09:36:22.672Z",
+      "kind": "filed",
+      "case": "poly2_call",
+      "challenge_id": 17,
+      "by": "watcher2",
+      "clause": "C1",
+      "tx": "0xf90ed346d4edc57e663899fa2ca4b8ae36571efa4b6d51518375056e7f425c0f"
+    },
+    {
+      "at": "2026-10-09T09:36:57.040Z",
+      "kind": "resolve",
+      "case": "e1_minor",
+      "challenge_id": 15,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "BREACH",
+      "clause": "C2",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:38:23.636Z",
+      "kind": "resolve",
+      "case": "arb2_call",
+      "challenge_id": 16,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:38:59.130Z",
+      "kind": "resolve",
+      "case": "poly2_call",
+      "challenge_id": 17,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:39:15.405Z",
+      "kind": "tx_found",
+      "case": "rh_call",
+      "chain": "robinhood",
+      "hash": "0x84b4a12b8442f84e053d50e81090550e37dcd7f26ee2a40ddb3d988c7933d2bb",
+      "block": 84054826,
+      "ts": 1791538510,
+      "to": "0xd703ec4a9839b5a3f4dbba95210509fa74c19f6f",
+      "selector": "0x8d6cc56d"
+    },
+    {
+      "at": "2026-10-09T09:39:30.231Z",
+      "kind": "filed",
+      "case": "rh_call",
+      "challenge_id": 18,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0xca361a8c73dbbfed92621a5906d2fc2b3415eaca276f4f0a4a3445662d041953"
+    },
+    {
+      "at": "2026-10-09T09:40:43.370Z",
+      "kind": "resolve",
+      "case": "rh_call",
+      "challenge_id": 18,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "COMPLIANT",
+      "clause": "",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T09:47:20.314Z",
+      "kind": "tx_found",
+      "case": "e3_xaut",
+      "chain": "ethereum",
+      "hash": "0xe82ae6d3b4706b71402dadfd27205edaac5e5ce4402b6ff242a9c060751e3b11",
+      "block": 26154041,
+      "ts": 1791539135,
+      "to": "0x68749665ff8d2d112fa859aa293f07a622782f38",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T09:47:44.104Z",
+      "kind": "filed",
+      "case": "e3_xaut",
+      "challenge_id": 21,
+      "by": "watcher2",
+      "clause": "C2",
+      "tx": "0xfe2a8a10bcaaa2b134015c6d5f927420cf113375a1917bd3f96ece8636c0502f"
+    },
+    {
+      "at": "2026-10-09T09:48:47.043Z",
+      "kind": "resolve",
+      "case": "e3_xaut",
+      "challenge_id": 21,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "verdict": "INCONCLUSIVE",
+      "clause": "",
+      "code": "MODEL_INCONCLUSIVE"
+    },
+    {
+      "at": "2026-10-09T10:11:18.559Z",
+      "kind": "finalize_unregister",
+      "agent": "rh",
+      "status": "RETIRED",
+      "tx": "0x4c9e98d2f163a39ed652e5752d5af610d1950558f8f2de03bce9cdda558c1e89"
+    },
+    {
+      "at": "2026-10-09T10:11:40.069Z",
+      "kind": "withdrawal_blocked",
+      "agent": "e1",
+      "challenge_id": 15,
+      "hash": "0x9c1f95606e76a0b060850d87ea858b573236c627f97714133a7c99d14aa13b0b",
+      "status": "ACCEPTED",
+      "ok": false,
+      "ret": null,
+      "revert": "Withdrawals are blocked: 11 open challenge(s) or appeal(s) could slash the whole bond",
+      "bond": "0",
+      "held_for_open": "0",
+      "withdrawable": "0",
+      "open_count": 11
+    },
+    {
+      "at": "2026-10-09T10:11:41.324Z",
+      "kind": "final",
+      "case": "e1_incoming",
+      "challenge_id": 3,
+      "final": "COMPLIANT",
+      "how": "UNAPPEALED"
+    },
+    {
+      "at": "2026-10-09T10:11:59.940Z",
+      "kind": "finalize",
+      "case": "e2_compliant",
+      "challenge_id": 4,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "7e96b2cfd8f68b87354bcf7753999d18"
+    },
+    {
+      "at": "2026-10-09T10:12:31.857Z",
+      "kind": "finalize",
+      "case": "base_window",
+      "challenge_id": 8,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "8cad574a2a1faec46139c8d9ba381ff9"
+    },
+    {
+      "at": "2026-10-09T10:40:30.964Z",
+      "kind": "finalize",
+      "case": "e1_minor",
+      "challenge_id": 15,
+      "after": "FINAL",
+      "final": "BREACH",
+      "slash": "0",
+      "precedent": ""
+    },
+    {
+      "at": "2026-10-09T10:42:06.972Z",
+      "kind": "finalize",
+      "case": "rh_call",
+      "challenge_id": 18,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "250468f233cc7a300b84b9fc4e8c1a56"
+    },
+    {
+      "at": "2026-10-09T10:42:09.138Z",
+      "kind": "final",
+      "case": "arb2_call",
+      "challenge_id": 16,
+      "final": "COMPLIANT",
+      "how": "UNAPPEALED"
+    },
+    {
+      "at": "2026-10-09T10:42:28.080Z",
+      "kind": "finalize",
+      "case": "poly2_call",
+      "challenge_id": 17,
+      "after": "FINAL",
+      "final": "COMPLIANT",
+      "slash": "0",
+      "precedent": "8026d68aed52f00dad508bdf263e5ed2"
+    },
+    {
+      "at": "2026-10-09T10:42:29.428Z",
+      "kind": "tx_found",
+      "case": "e2_symbol",
+      "chain": "ethereum",
+      "hash": "0x2e4634110092c81f980c80613162d0dc26125e854d5d53a0d6dda8a4bfe18d3b",
+      "block": 26154311,
+      "ts": 1791542387,
+      "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T10:42:42.883Z",
+      "kind": "filed",
+      "case": "e2_symbol",
+      "challenge_id": 30,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x3eb9ccd444f7441945f5fb4bbc7b527d96db2d5e63c2c676ee048e4084d5f89a"
+    },
+    {
+      "at": "2026-10-09T10:42:51.027Z",
+      "kind": "tx_found",
+      "case": "base_v2",
+      "chain": "base",
+      "hash": "0x508c904352a24505ff4871a7e633f377ec9fe9add5616351caf06ef6ecf3afc6",
+      "block": 52376578,
+      "ts": 1791542503,
+      "to": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T10:43:10.668Z",
+      "kind": "filed",
+      "case": "base_v2",
+      "challenge_id": 31,
+      "by": "watcher2",
+      "clause": "C3",
+      "tx": "0x64a24978b5d86cefd744c2f70f07fdd94c89edd74764f9609461bbf900fe1a1f"
+    },
+    {
+      "at": "2026-10-09T10:44:47.451Z",
+      "kind": "resolve",
+      "case": "e2_symbol",
+      "challenge_id": 30,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "verdict": "INCONCLUSIVE",
+      "clause": "",
+      "code": "UNUSABLE_ANSWER"
+    },
+    {
+      "at": "2026-10-09T10:45:51.144Z",
+      "kind": "resolve",
+      "case": "base_v2",
+      "challenge_id": 31,
+      "tx_status": "ACCEPTED",
+      "after": "CONTESTABLE",
+      "verdict": "BREACH",
+      "clause": "C3",
+      "code": ""
+    },
+    {
+      "at": "2026-10-09T11:01:03.486Z",
+      "kind": "tx_found",
+      "case": "e2_symbol2",
+      "chain": "ethereum",
+      "hash": "0x6bb63982c3eb07ae2e338f2bca8250bb8465cac777ed5fb385d596be1228bffc",
+      "block": 26154407,
+      "ts": 1791543551,
+      "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "selector": "0xa9059cbb"
+    },
+    {
+      "at": "2026-10-09T11:01:34.872Z",
+      "kind": "filed",
+      "case": "e2_symbol2",
+      "challenge_id": 33,
+      "by": "watcher",
+      "clause": "C1",
+      "tx": "0x8dc6164c872f3678f04eb0d2b18debd925728db39fa43b4e426440b54931cd4e"
+    },
+    {
+      "at": "2026-10-09T11:03:25.828Z",
+      "kind": "resolve",
+      "case": "e2_symbol2",
+      "challenge_id": 33,
+      "tx_status": "ACCEPTED",
+      "after": "FINAL",
+      "verdict": "INCONCLUSIVE",
+      "clause": "",
+      "code": "UNUSABLE_ANSWER"
+    },
+    {
+      "at": "2026-10-09T11:47:15.050Z",
+      "kind": "finalize",
+      "case": "base_v2",
+      "challenge_id": 31,
+      "after": "FINAL",
+      "final": "BREACH",
+      "slash": "200000000000000000",
+      "precedent": ""
+    }
+  ],
+  "edit_base": {
+    "tx": "0x4d50a0e85932ede0d4a96d508aab35ba72051c92bb6eaafbd9c284bfc16bf62e",
+    "created_at": 1791536108,
+    "effective_from": 1791539708,
+    "block": 52373386
+  },
+  "unregister": {
+    "agent": "rh",
+    "why": "the bot stopped transacting after registration",
+    "hash": "0x088416d01599a5a8c0b9fb7a423f60249c2fa884403b6a344a03a95d1d21a047",
+    "status": "ACCEPTED",
+    "ok": true,
+    "ret": {
+      "ok": true,
+      "agent_id": 6,
+      "status": "UNREGISTERING",
+      "unlock_at": 1791539779
+    },
+    "revert": null,
+    "unlock_at": 1791539779,
+    "final": {
+      "hash": "0x4c9e98d2f163a39ed652e5752d5af610d1950558f8f2de03bce9cdda558c1e89",
+      "status": "RETIRED",
+      "ok": true,
+      "ret": {
+        "ok": true,
+        "agent_id": 6,
+        "status": "RETIRED",
+        "released": "1000000000000000000"
+      },
+      "revert": null
+    }
+  },
+  "withdraw_blocked": {
+    "hash": "0x9c1f95606e76a0b060850d87ea858b573236c627f97714133a7c99d14aa13b0b",
+    "status": "ACCEPTED",
+    "ok": false,
+    "ret": null,
+    "revert": "Withdrawals are blocked: 11 open challenge(s) or appeal(s) could slash the whole bond",
+    "bond": "0",
+    "held_for_open": "0",
+    "withdrawable": "0",
+    "open_count": 11
+  },
+  "consumer": [
+    {
+      "role": "operator",
+      "chain": "base",
+      "wallet": "0x1d7f97d26ae2c01f9b01fc252b73cf0db3397e95",
+      "instruction": "move the hourly float into the USDC payout wallet",
+      "hash": "0xc119dae362dfdcd629462b1bc740b85d50bc602ecbeac68b4b295b268eeb7f92",
+      "status": "ACCEPTED",
+      "result": {
+        "ok": true,
+        "request_id": 0,
+        "carried_out": true,
+        "reasons": []
+      }
+    },
+    {
+      "role": "operator",
+      "chain": "ethereum",
+      "wallet": "0x28c6c06298d514db089934071355e5743bf21d60",
+      "instruction": "rebalance 10% of the treasury into USDC",
+      "hash": "0xd0f0ef35fffcebdc4d42d9f88ce70be2f17da2a6e09198426cd04e43d5dc05de",
+      "status": "ACCEPTED",
+      "result": {
+        "ok": false,
+        "request_id": 1,
+        "carried_out": false,
+        "reasons": [
+          "status is PAUSED",
+          "bond below the 0.5 GEN minimum",
+          "8 final CRITICAL breach(es)"
+        ]
+      }
+    },
+    {
+      "role": "outsider",
+      "chain": "robinhood",
+      "wallet": "0x1ef9d9240d83a1cf120c6fa7658ca47d005532d0",
+      "instruction": "pause the keeper for maintenance",
+      "hash": "0x89a722d34af310db965020395f584247976476266390e453df6607e2ff26bc53",
+      "status": "ACCEPTED",
+      "result": {
+        "ok": false,
+        "request_id": 2,
+        "carried_out": false,
+        "reasons": [
+          "only the agent's operator may ask this contract to act for it"
+        ]
+      }
+    }
+  ]
+}

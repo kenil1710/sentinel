@@ -36,31 +36,30 @@ for (let off = 0; ; off += 100) { const p = await view(CAN, "get_challenges", [o
 all.sort((a, b) => a.challenge_id - b.challenge_id);
 const agents = (await view(CAN, "get_agents", [0, 100])).agents.sort((a, b) => a.agent_id - b.agent_id);
 const consumer = await view(CONS, "get_requests", [20]);
+const dry = existsSync(root + "docs/patrol-dry-run.json") ? JSON.parse(readFileSync(root + "docs/patrol-dry-run.json", "utf8")) : null;
 const name = (id) => agents.find((a) => a.agent_id === id)?.name ?? `#${id}`;
 const caseOf = (id) => Object.entries(seed.cases).find(([, c]) => c.challenge_id === id)?.[0] ?? "";
+// What happened, in plain words, from this run's records. The validators' own reasoning is quoted where it decides.
+const usdc = (raw) => (Number(raw) / 1e6).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const firstSentence = (t) => { const x = String(t ?? "").split(/(?<=\.)\s/)[0]; return x.length > 220 ? x.slice(0, 217) + "…" : x; };
 const NOTE = {
-  e1_major: "MAJOR breach: the payout bot sent a token that is neither USDT nor USDC. The operator appealed (customer withdrawals); a fresh panel rejected the appeal",
-  e1_minor: "MINOR breach: 6.13 ETH sent in one transaction against a 0.5 ETH cap; filed after an earlier breach was final, so the multiplier was ×1.5 (no slash left: the bond was already 0)",
-  e1_incoming: "an open challenger read a deposit the agent RECEIVED as the agent sending it; the panel saw the agent was only the recipient. Open-challenger loss; became a precedent (direction `in:`)",
-  e2_compliant: "the panel judged a symbol-only clause too vague to decide (INCONCLUSIVE); stake refunded",
-  e2_symbol: "first panel: COMPLIANT. The challenger appealed that a ticker symbol cannot say which token is meant; the fresh panel ruled INCONCLUSIVE. **Appeal upheld**: stake and appeal bond returned",
-  e3_xaut: "a Tether Gold payout under \"Only send stablecoins\", a clause the linter had flagged; the panel ruled INCONCLUSIVE",
-  e3_vague: "the linter had flagged C3 (a customer's risk is not in the transaction data); INCONCLUSIVE",
-  base_window: "mined while mandate v2 (10 USDC limit) was queued: judged under v1, COMPLIANT. A filing alleging v2's C3 on it was refused by the contract (\"version 1 has no clause C3\")",
-  base_v2: "mined after v2 took effect: 232.99 USDC in one transfer against the 10 USDC limit. MAJOR breach, filed by an open challenger",
-  rh_call: "Robinhood Chain, read by validators through a real browser (Cloudflare): COMPLIANT; became a precedent",
-  arb2_call: "an ordinary USDC payout on Arbitrum, read through a real browser: COMPLIANT; became a precedent",
-  poly2_call: "an ordinary token payout on Polygon, read through a real browser: COMPLIANT; became a precedent",
+  e1_major: (c) => `the payout bot sent a token that is neither USDT nor USDC: ${c.final.severity || c.ruling.severity} breach. The operator appealed (customer withdrawals); a fresh panel ${c.appeal.outcome === "REJECTED" ? "rejected the appeal, so the appeal bond went to the challenger" : c.appeal.outcome.toLowerCase()}`,
+  e1_minor: (c) => `${firstSentence(c.ruling.reasoning)} Filed after ${c.snapshot.prior_breaches} earlier final breach(es), so the snapshot multiplier was ×${c.snapshot.multiplier_bps / 10000}${c.final.slash === "0" ? "; no slash left: the bond had already been taken to 0 by earlier breaches" : ""}`,
+  e1_incoming: () => "an open challenger read a token the agent RECEIVED as the agent sending it; the panel saw the agent was only the recipient. Open-challenger loss; the stake went to the operator, and the ruling became a precedent (direction `in:`)",
+  e2_compliant: (c) => `an ordinary USDT payout under a clause that names tokens by symbol: ${c.final.verdict}${c.final.precedent_key ? "; became a precedent" : ""}`,
+  e2_symbol: (c) => `the same symbol-only clause, filed to test an appeal: the panel's answers could not be used (quote or label did not match the clause), so code recorded ${c.final.verdict} at once and there was nothing to appeal`,
+  e2_symbol2: (c) => `a second try at the same question: again ${c.final.verdict} (\`${c.ruling.code}\`), so no appeal`,
+  e3_xaut: (c) => `a Tether Gold payout under "Only send stablecoins", a clause the linter had flagged: ${c.final.verdict} (\`${c.ruling.code}\`); stake refunded`,
+  e3_vague: (c) => `the linter had flagged C3 (a customer's risk is not in the transaction data): ${c.final.verdict}; stake refunded`,
+  base_window: () => "mined while mandate v2 (10 USDC limit) was still queued: judged under v1, COMPLIANT. A filing alleging v2's C3 on it was refused by the contract (\"version 1 has no clause C3\")",
+  base_v2: (c) => `mined after v2 took effect: ${firstSentence(c.ruling.reasoning)} ${c.final.verdict || c.ruling.verdict} ${c.final.severity || c.ruling.severity}, filed by an open challenger`,
+  rh_call: () => "Robinhood Chain, read by validators through a real browser (Cloudflare): COMPLIANT; became a precedent",
+  arb2_call: () => "an ordinary USDC payout on Arbitrum, read through a real browser: COMPLIANT; became a precedent",
+  poly2_call: () => "an ordinary token payout on Polygon, read through a real browser: COMPLIANT; became a precedent",
 };
-const BOT_NOTE = {
-  0: "the bot's first filing: payout bot A called the batch executor its C3 forbids. CRITICAL breach, 1 GEN slashed (50% of the 2 GEN bond)",
-  1: "the bot flags every token named only by symbol; the panel ruled INCONCLUSIVE",
-  11: "another call to the forbidden batch executor; CRITICAL, no slash left (the bond had already been taken to 0)",
-  12: "the agent sent token 0x4e3fbd… (not USDT or USDC); MAJOR, no slash left",
-  13: "another call to the forbidden batch executor; CRITICAL, no slash left",
-  14: "another call to the forbidden batch executor; CRITICAL, no slash left",
-};
-const row = (c, note) => {
+const BOT_NOTE = {};
+const row = (c, noteIn) => {
+  const note = typeof noteIn === "function" ? noteIn(c) : noteIn;
   const verdict = c.status === "FINAL" ? c.final.verdict : c.status;
   const sev = c.final.severity || c.ruling.severity;
   const appeal = c.appeal.outcome ? `${c.appeal.role.toLowerCase()} → ${c.appeal.outcome.toLowerCase()}` : "—";
@@ -69,18 +68,23 @@ const row = (c, note) => {
 };
 const head = `| Challenge | Agent | Transaction | Clause | Filed by | First ruling | Appeal | Final | Slash (GEN) | What happened |\n|---|---|---|---|---|---|---|---|---|---|`;
 const seeded = all.filter((c) => caseOf(c.challenge_id));
-const featured = all.filter((c) => BOT_NOTE[c.challenge_id] !== undefined);
+const featuredIds = new Set();
+for (const want of ["CRITICAL", "MAJOR", "MINOR"]) { const f = all.find((c) => c.challenger === BOT && c.status === "FINAL" && c.final.verdict === "BREACH" && c.final.severity === want); if (f) featuredIds.add(f.challenge_id); }
+for (const v of ["COMPLIANT", "INCONCLUSIVE"]) { const f = all.find((c) => c.challenger === BOT && c.status === "FINAL" && c.final.verdict === v); if (f) featuredIds.add(f.challenge_id); }
+const featured = all.filter((c) => featuredIds.has(c.challenge_id));
+for (const c of featured) BOT_NOTE[c.challenge_id] = `the panel: “${firstSentence(c.ruling.reasoning)}”${c.final.verdict === "BREACH" && c.final.slash === "0" ? " No slash: the bond was already 0." : ""}`;
 const bot = all.filter((c) => c.challenger === BOT);
 const cnt = (xs, v) => xs.filter((c) => c.status === "FINAL" && c.final.verdict === v).length;
 const flaggedChurn = bot.filter((c) => c.agent_id === 2 && c.alleged_clause === "C2");
 const botAgents = [...new Set(bot.map((c) => c.agent_id))];
 const extra = [
   seed.withdraw_blocked && `- **Withdrawal held back while a challenge was open:** with ${seed.withdraw_blocked.open_count ?? "a"} challenge(s) open against payout bot A, ${g(seed.withdraw_blocked.held_for_open ?? "0")} GEN of its ${g(seed.withdraw_blocked.bond ?? "0")} GEN bond was held for what they could slash; its operator asked for 1 wei more than the ${g(seed.withdraw_blocked.withdrawable ?? "0")} GEN that was free and the contract refused — [tx](${EX}/tx/${seed.withdraw_blocked.hash}): “${String(seed.withdraw_blocked.revert ?? "").slice(0, 140)}”.`,
-  seed.unregister && `- **Unregister:** agent #${seed.agents.rh.agent_id} (Robinhood keeper A) stopped transacting after registration; its operator unregistered it ([tx](${EX}/tx/${seed.unregister.hash})) and after the 1 h timelock anyone finalized it ([tx](${EX}/tx/${seed.unregister.final?.hash})): status ${seed.unregister.final?.status}, the bond moved to the operator's claimable balance.`,
-  seed.edit_base && `- **Mandate edit not applied retroactively:** the Base bot published v2 ([tx](${EX}/tx/${seed.edit_base.tx})) adding a 10 USDC limit, effective ${new Date(seed.edit_base.effective_from * 1000).toISOString()}; see #6 and #25 above.`,
-  `- **Precedent skip:** ${stats.precedents} precedents exist ([/precedents](${SITE}/precedents)). The bot's accusations against the USDT payout bot's USDT transfers stopped once #17 became a final COMPLIANT precedent for that agent, clause and transaction kind; the patrol report lists each withheld transaction under "withheld by precedent".`,
+  seed.unregister && `- **Unregister:** its operator unregistered agent #${seed.agents.rh.agent_id} (Robinhood keeper A; on the v2.0 deployment this keeper had stopped transacting) to exercise the exit ([tx](${EX}/tx/${seed.unregister.hash})); after the 1 h timelock anyone could finalize it, and it was ([tx](${EX}/tx/${seed.unregister.final?.hash})): status ${seed.unregister.final?.status ?? "?"}, the bond moved to the operator's claimable balance.`,
+  seed.edit_base && `- **Mandate edit not applied retroactively:** the Base bot published v2 ([tx](${EX}/tx/${seed.edit_base.tx})) adding a 10 USDC limit, effective ${new Date(seed.edit_base.effective_from * 1000).toISOString()}; see #${seed.cases.base_window?.challenge_id} (mined while it was queued) and #${seed.cases.base_v2?.challenge_id} (mined after) above.`,
+  dry && `- **Precedent skip:** ${stats.precedents} precedents exist ([/precedents](${SITE}/precedents)). A live dry run of the patrol ([docs/patrol-dry-run.json](docs/patrol-dry-run.json), ${dry.started_at}) withheld ${dry.skipped_by_precedent} flag(s) because a final COMPLIANT precedent covers that agent, clause and transaction kind${dry.rows?.flatMap((r) => r.skipped_precedent ?? []).length ? ` (for example ${dry.rows.flatMap((r) => r.skipped_precedent)[0].tx_hash.slice(0, 12)}… under ${dry.rows.flatMap((r) => r.skipped_precedent)[0].clause}, covered by #${dry.rows.flatMap((r) => r.skipped_precedent)[0].challenge_id})` : ""}.`,
   consumer.total && `- **SentinelConsumer:** ${consumer.total} requests on [${short(CONS)}](${EX}/address/${CONS}) — ${consumer.carried_out} carried out (the Base bot's operator, agent in good standing), ${consumer.refused} refused (payout bot A: "${consumer.requests.find((r) => r.agent_id === 0)?.reasons.join("; ")}"; and a caller who was not the operator).`,
-  `- **Two keeper wallets went quiet** on Arbitrum and Polygon after registration (agents #3 and #4 have no challenges); two active payout bots (#8, #9) carry those chains' cases.`,
+  `- **No appeal was upheld on this deployment.** The operator's appeal on #${seed.cases.e1_major?.challenge_id} was rejected; both tries at the symbol-only clause (#${seed.cases.e2_symbol?.challenge_id}, #${seed.cases.e2_symbol2?.challenge_id}) came back INCONCLUSIVE at once, which cannot be appealed. Nothing was forced. An upheld appeal is on chain in the v2.0 live history (challenge #10 on [\`0x1d4B73BD…6a90\`](${EX}/address/0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90), [docs/superseded/v2.0.2/SEEDS.md](docs/superseded/v2.0.2/SEEDS.md)), and the path is covered offline (\`test_sentinel.Appeals\`).`,
+  `- **Two cases found no transaction:** the cross-chain keeper (agents #${seed.agents.arb?.agent_id} on Arbitrum and #${seed.agents.poly?.agent_id} on Polygon) never called the contracts those cases need; the active payout bots #${seed.agents.arb2?.agent_id} and #${seed.agents.poly2?.agent_id} carry those chains' cases.`,
 ].filter(Boolean);
 const lint = Object.entries(seed.agents).map(([, a]) => { const v = a.lint?.["1"]; return `#${a.agent_id} ${v?.status ?? "?"}${v?.flags?.length ? ` (${v.flags.map((f) => f.clause ?? f).join(", ")} flagged)` : ""}`; }).join(" · ");
 
@@ -93,7 +97,7 @@ Every agent is a live bot we do not operate; every mandate is ours, written for 
 const botBreach = (id) => bot.filter((c) => c.agent_id === id && c.status === "FINAL" && c.final.verdict === "BREACH").length;
 const botBlock = `### The patrol bot, unattended
 
-Between the seed runs the patrol bot (\`${BOT}\`, cron every 10 minutes) filed **${bot.length}** challenges on its own against ${botAgents.length} agents: ${cnt(bot, "BREACH")} final BREACH, ${cnt(bot, "COMPLIANT")} COMPLIANT, ${cnt(bot, "INCONCLUSIVE")} INCONCLUSIVE, ${bot.filter((c) => c.status !== "FINAL").length} still open. ${botBreach(0)} of its BREACHes are against payout bot A (#0), which kept calling the batch executor its C3 forbids and sending tokens its C1 does not list, until its bond reached 0 and it was paused${botBreach(2) ? `; ${botBreach(2)} are against payout bot B (#2), each a single transaction sending more than the 5 ETH its C1 allows` : ""}. ${flaggedChurn.length} of its filings were the same accusation against payout bot B's clause C2 ("Only send stablecoins"), which the linter had flagged: a breach there can never be slashed, so each came back INCONCLUSIVE and the stake was refunded. That was a flaw in the bot, not the contract; the patrol now never stakes on a flagged clause, and defers instead of filing when the precedent check cannot be read (commit be2e44f).
+Between the seed runs the patrol bot (\`${BOT}\`, cron every 10 minutes) filed **${bot.length}** challenges on its own against ${botAgents.length} agents: ${cnt(bot, "BREACH")} final BREACH, ${cnt(bot, "COMPLIANT")} COMPLIANT, ${cnt(bot, "INCONCLUSIVE")} INCONCLUSIVE, ${bot.filter((c) => c.status !== "FINAL").length} still open. ${botAgents.map((id) => { const mine = bot.filter((c) => c.agent_id === id); const b = cnt(mine, "BREACH"); return `${mine.length} against ${name(id)} (#${id})${b ? `, ${b} of them final BREACH` : ""}`; }).join("; ")}. ${flaggedChurn.length ? `${flaggedChurn.length} accused a clause the linter had flagged, which can only come back INCONCLUSIVE.` : "None accused a linter-flagged clause: since the v2.0 fix (commit be2e44f) the bot never stakes on one, and it defers instead of filing when the precedent check cannot be read."} Every one of its filings is in the full list below; the first of each kind of outcome:
 
 ${head}
 ${featured.map((c) => row(c, BOT_NOTE[c.challenge_id])).join("\n")}
