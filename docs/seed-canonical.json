@@ -1637,15 +1637,18 @@
     }
   },
   "withdraw_blocked": {
-    "hash": "0x9c1f95606e76a0b060850d87ea858b573236c627f97714133a7c99d14aa13b0b",
+    "hash": "0xac891600c0856f0ef67dc39ed6007b4fe3e97a9096d43f580e8c2743a25200fc",
     "status": "ACCEPTED",
     "ok": false,
     "ret": null,
-    "revert": "Withdrawals are blocked: 11 open challenge(s) or appeal(s) could slash the whole bond",
-    "bond": "0",
-    "held_for_open": "0",
+    "revert": "Withdrawals are blocked: 6 open challenge(s) or appeal(s) could slash the whole bond",
+    "bond": "2000000000000000000",
+    "held_for_open": "2000000000000000000",
     "withdrawable": "0",
-    "open_count": 11
+    "open_count": 6,
+    "challenge_id": 2,
+    "challenge_status": "APPEALED",
+    "note": "sent by hand (tools: scratch script) while #2 was under appeal, before the seed reached this step"
   },
   "consumer": [
     {
@@ -1696,5 +1699,16 @@
         ]
       }
     }
-  ]
+  ],
+  "withdraw_blocked_at_zero": {
+    "hash": "0x9c1f95606e76a0b060850d87ea858b573236c627f97714133a7c99d14aa13b0b",
+    "status": "ACCEPTED",
+    "ok": false,
+    "ret": null,
+    "revert": "Withdrawals are blocked: 11 open challenge(s) or appeal(s) could slash the whole bond",
+    "bond": "0",
+    "held_for_open": "0",
+    "withdrawable": "0",
+    "open_count": 11
+  }
 }
