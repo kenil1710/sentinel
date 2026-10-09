@@ -1,52 +1,52 @@
 {
   "project": "Sentinel",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "network": "studiodev",
   "chain_id": 61997,
   "rpc": "https://studio-dev.genlayer.com/api",
   "explorer": "https://explorer-studio-dev.genlayer.com/",
   "contracts": {
     "Sentinel": {
-      "address": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90",
-      "deploy_tx": "0x3b033f4a8e47c9c8aebe567be13de67b61d1363905f0673ceb069fe968d0b43d",
+      "address": "0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB",
+      "deploy_tx": "0x3a81e607b181f8452076df2b8999d8ae96ec8806de3a62784410eaffcb0ca371",
       "file": "contracts/Sentinel.py",
-      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
-      "bytes": 115442,
-      "sha256": "c56b3cda4340c415c326f4ec80a4911c7f92b321504ffd02a39f21345b7bfd97",
+      "commit": "42a6172d966f1f67f40e7ad5d207d9689f1c046c",
+      "bytes": 120666,
+      "sha256": "72d7586e8df379b5e84778fe24e2e98b71bfdff155149e1f8cc00c6a45efc09d",
       "constructor_args": [
         "CANONICAL"
       ],
       "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
-      "deployed_at": "2026-10-08T18:22:48.400Z",
+      "deployed_at": "2026-10-09T08:42:22.234Z",
       "mode": "CANONICAL"
     },
     "SentinelDemo": {
-      "address": "0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393",
-      "deploy_tx": "0x16b19f923919d9faca5e363425ff4f91e4f3aa297c3b9fe3b18ff7e837001b65",
+      "address": "0x74ca153c17a67F3E5Fcd893afF053395AEce1Aff",
+      "deploy_tx": "0x7c1b7a5051f18d12a49b0044a68a6e146e67cba8763ac26cf34f4c504365eefc",
       "file": "contracts/Sentinel.py",
-      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
-      "bytes": 115442,
-      "sha256": "c56b3cda4340c415c326f4ec80a4911c7f92b321504ffd02a39f21345b7bfd97",
+      "commit": "42a6172d966f1f67f40e7ad5d207d9689f1c046c",
+      "bytes": 120666,
+      "sha256": "72d7586e8df379b5e84778fe24e2e98b71bfdff155149e1f8cc00c6a45efc09d",
       "constructor_args": [
         "DEMO"
       ],
       "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
-      "deployed_at": "2026-10-08T18:22:58.740Z",
+      "deployed_at": "2026-10-09T08:42:35.510Z",
       "mode": "DEMO"
     },
     "SentinelConsumer": {
-      "address": "0x02F421486a6de07c3D2cF624576ED7ecDFe711e5",
-      "deploy_tx": "0x7865804def3a1b3daceaebd3ea8c67b759eeb5ea10e731c2a2d3e56a0acc4417",
+      "address": "0x053f15512462FD4f8F70F443EdCA1413e96D5eD0",
+      "deploy_tx": "0x08111d6b074f1b84a52d200714c58d274c8c44143902ec03b805cff4b31a3253",
       "file": "contracts/SentinelConsumer.py",
-      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "commit": "42a6172d966f1f67f40e7ad5d207d9689f1c046c",
       "bytes": 4757,
       "sha256": "f67d0989e39466e04d69b2680f5d99f55c826c4e410b55085ea007c043ca1a64",
       "constructor_args": [
-        "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90"
+        "0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB"
       ],
       "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
-      "deployed_at": "2026-10-08T18:23:05.079Z",
-      "reads": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90"
+      "deployed_at": "2026-10-09T08:42:44.969Z",
+      "reads": "0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB"
     }
   },
   "superseded": [
@@ -151,6 +151,57 @@
       "reads": "0x92979f66ca6b3f6F57Ab2c6AD425DA68c9Ccb48D",
       "superseded_by": "0x02F421486a6de07c3D2cF624576ED7ecDFe711e5",
       "why": "attack round 2 fix (v2.0.2)"
+    },
+    {
+      "name": "Sentinel",
+      "address": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90",
+      "deploy_tx": "0x3b033f4a8e47c9c8aebe567be13de67b61d1363905f0673ceb069fe968d0b43d",
+      "file": "contracts/Sentinel.py",
+      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "bytes": 115442,
+      "sha256": "c56b3cda4340c415c326f4ec80a4911c7f92b321504ffd02a39f21345b7bfd97",
+      "constructor_args": [
+        "CANONICAL"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:22:48.400Z",
+      "mode": "CANONICAL",
+      "superseded_by": "0x9147b6b4c1200daC6a9E0665925D391E6AEABDdB",
+      "why": "v2.1.0: one INCONCLUSIVE on the axis, paused agents answerable at any bond, exposure-limited withdrawals, bounded views"
+    },
+    {
+      "name": "SentinelDemo",
+      "address": "0x5b30a2E64aA5C4a6089C5Df616EAac0d2e035393",
+      "deploy_tx": "0x16b19f923919d9faca5e363425ff4f91e4f3aa297c3b9fe3b18ff7e837001b65",
+      "file": "contracts/Sentinel.py",
+      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "bytes": 115442,
+      "sha256": "c56b3cda4340c415c326f4ec80a4911c7f92b321504ffd02a39f21345b7bfd97",
+      "constructor_args": [
+        "DEMO"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:22:58.740Z",
+      "mode": "DEMO",
+      "superseded_by": "0x74ca153c17a67F3E5Fcd893afF053395AEce1Aff",
+      "why": "v2.1.0: one INCONCLUSIVE on the axis, paused agents answerable at any bond, exposure-limited withdrawals, bounded views"
+    },
+    {
+      "name": "SentinelConsumer",
+      "address": "0x02F421486a6de07c3D2cF624576ED7ecDFe711e5",
+      "deploy_tx": "0x7865804def3a1b3daceaebd3ea8c67b759eeb5ea10e731c2a2d3e56a0acc4417",
+      "file": "contracts/SentinelConsumer.py",
+      "commit": "bdca383329911eb5b40b9389899782b8c488723e",
+      "bytes": 4757,
+      "sha256": "f67d0989e39466e04d69b2680f5d99f55c826c4e410b55085ea007c043ca1a64",
+      "constructor_args": [
+        "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90"
+      ],
+      "deployer": "0xeb9B85D5664f134EAe70EFD2F70ee4bEFd8c9a3f",
+      "deployed_at": "2026-10-08T18:23:05.079Z",
+      "reads": "0x1d4B73BD37785F113a599505D80Bc9BDA3D96a90",
+      "superseded_by": "0x053f15512462FD4f8F70F443EdCA1413e96D5eD0",
+      "why": "v2.1.0: one INCONCLUSIVE on the axis, paused agents answerable at any bond, exposure-limited withdrawals, bounded views"
     }
   ]
 }
