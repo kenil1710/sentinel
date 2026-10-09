@@ -43,6 +43,8 @@ const NOTE = {
   poly_other: "the keeper called a contract its Polygon mandate does not allow",
   base_window: "mined while mandate v2 was queued: judged under v1, which has no amount limit; a filing alleging v2's C3 on it was refused (v1 has no C3)",
   base_v2: "mined after v2 took effect: judged under v2's 10 USDC limit",
+  arb2_call: "an ordinary USDC payout on Arbitrum, read by validators through a real browser",
+  poly2_call: "an ordinary token payout on Polygon, read by validators through a real browser",
   rh_call: "Robinhood Chain, read by validators through a real browser (Cloudflare)",
 };
 const rows = all.map((c) => {

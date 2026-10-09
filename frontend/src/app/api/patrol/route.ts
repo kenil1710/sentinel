@@ -12,10 +12,14 @@
  *      reads recent transactions mined after registration, picks the mandate
  *      version that was in force at each one's block time (frozen versions), and
  *      applies lib/heuristics.ts to that version's clauses.
- *   C. before staking on a flag it asks the contract for a precedent for this
- *      agent, clause and transaction kind (lib/kind.ts mirrors the contract), and
- *      skips the transaction if one is active. Amount rules never defer to a
- *      precedent: a kind does not carry the amount.
+ *   C. never stakes on a clause the linter flagged in that version (a breach
+ *      there can never be slashed; measured: before this rule the bot filed ~70
+ *      challenges overnight on one flagged clause, every one INCONCLUSIVE), and
+ *      before staking asks the contract for a precedent for this agent, clause
+ *      and transaction kind (lib/kind.ts mirrors the contract), skipping the
+ *      transaction if one is active. If that read FAILS the flag is deferred,
+ *      never filed: an unreadable precedent is not the absence of one. Amount
+ *      rules never defer to a precedent: a kind does not carry the amount.
  *   D. files at most a few challenges, confirming each against contract state,
  *      then stamps what it examined.
  *
@@ -181,6 +185,15 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
       continue;
     }
     examined.push(agent.agent_id);
+    const lintFlags = new Map<number, Set<string>>();
+    try {
+      const vs = await view<{ versions: { version: number; lint_status: string; lint_flags: { clause: string }[] }[] }>("get_mandate_versions", [agent.agent_id]);
+      for (const v of vs.versions) lintFlags.set(v.version, new Set(v.lint_status === "DONE" ? v.lint_flags.map((f) => f.clause) : []));
+    } catch {
+      row.error = "mandate versions unreadable; nothing filed for this agent this run";
+      rows.push(row);
+      continue;
+    }
     const fresh = txs.filter((t) => t.epoch >= agent.registered_at).slice(0, MAX_TX_PER_AGENT);
     row.scanned = fresh.length;
     scanned += fresh.length;
@@ -188,14 +201,15 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
     for (let t of fresh) {
       const version = [...agent.versions_list].sort((a, b) => b.version - a.version).find((v) => v.effective_from <= t.epoch);
       if (!version) continue;
-      const first = flagsFor(t, agent.wallet, version.clauses);
+      const judgeable = version.clauses.filter((cl) => !lintFlags.get(version.version)?.has(cl.id));
+      const first = flagsFor(t, agent.wallet, judgeable);
       let flags = first.flags;
       const needsTransfers = first.needsTransfers;
       let doc: Record<string, unknown> | null = null;
       if ((needsTransfers || flags.length) && enriched < MAX_ENRICH_PER_AGENT) {
         enriched++;
         const one = await oneTransaction(agent.chain, t.hash).catch(() => null);
-        if (one) { t = one.row; doc = one.doc; ({ flags } = flagsFor(t, agent.wallet, version.clauses)); }
+        if (one) { t = one.row; doc = one.doc; ({ flags } = flagsFor(t, agent.wallet, judgeable)); }
       }
       if (!flags.length) continue;
       const known = await view<{ challenged: boolean; challenge_id?: number }>("is_tx_challenged", [agent.chain, t.hash, agent.agent_id]).catch(() => ({ challenged: false }));
@@ -203,10 +217,12 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
       // C. precedents, for every flag that may defer to one.
       const kind = doc ? kindOfDoc(doc, agent.wallet) : "";
       const live: typeof flags = [];
+      let unreadable = false;
       for (const f of flags) {
         if (f.precedentEligible && kind) {
           const p = await view<{ match: boolean; key: string; precedent?: { challenge_id: number } }>(
-            "precedent_for", [agent.agent_id, f.clause, kind, t.epoch]).catch(() => ({ match: false, key: "", precedent: undefined }));
+            "precedent_for", [agent.agent_id, f.clause, kind, t.epoch]).catch(() => null);
+          if (p === null) { unreadable = true; continue; }
           if (p.match) {
             row.skipped_precedent.push({ tx_hash: t.hash, clause: f.clause, tx_kind: kind, precedent_key: p.key, challenge_id: p.precedent?.challenge_id ?? -1 });
             skippedByPrecedent++;
@@ -215,6 +231,11 @@ async function runPatrol({ started, dry: dryIn, notes, key }: { started: number;
           }
         }
         live.push(f);
+      }
+      if (unreadable) {
+        row.flagged.push({ tx_hash: t.hash, reason: "precedent check unreadable", clause: flags[0].clause, filed: false,
+          error: "deferred: the precedent check could not be read, so nothing was staked" });
+        continue;
       }
       if (!live.length) continue;
       const f = live[0];
